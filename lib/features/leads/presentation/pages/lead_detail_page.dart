@@ -61,9 +61,9 @@ class _LeadDetailView extends StatelessWidget {
           if (state is LeadDetailError) {
             return ErrorState(
               message: state.message,
-              onRetry: () => context
-                  .read<LeadDetailBloc>()
-                  .add(LeadDetailLoadRequested(leadId)),
+              onRetry: () => context.read<LeadDetailBloc>().add(
+                LeadDetailLoadRequested(leadId),
+              ),
             );
           }
           if (state is LeadDetailLoaded) {
@@ -127,11 +127,7 @@ class _LeadDetailView extends StatelessWidget {
                       ),
                       if (!lead.isConverted)
                         ElevatedButton.icon(
-                          onPressed: () {
-                            context.read<LeadDetailBloc>().add(
-                              LeadDetailConvertRequested(lead.id),
-                            );
-                          },
+                          onPressed: () => _showConvertDialog(context, lead.id),
                           icon: const Icon(Icons.swap_horiz, size: 16),
                           label: const Text('Convert to Account'),
                         ),
@@ -176,9 +172,7 @@ class _LeadDetailView extends StatelessWidget {
                         _infoRow(
                           'Next Follow-up',
                           lead.nextFollowUpDate != null
-                              ? DateFormatter.shortDate(
-                                  lead.nextFollowUpDate!,
-                                )
+                              ? DateFormatter.shortDate(lead.nextFollowUpDate!)
                               : 'Not scheduled',
                         ),
                       ]),
@@ -196,10 +190,12 @@ class _LeadDetailView extends StatelessWidget {
                     ),
                   ],
 
-                  if (lead.activities != null && lead.activities!.isNotEmpty) ...[
+                  if (lead.activities != null &&
+                      lead.activities!.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.xxl),
                     SectionCard(
-                      title: 'Activity (${lead.activityCount ?? lead.activities!.length})',
+                      title:
+                          'Activity (${lead.activityCount ?? lead.activities!.length})',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: lead.activities!
@@ -244,9 +240,7 @@ class _LeadDetailView extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              context.read<LeadDetailBloc>().add(
-                LeadDetailDeleteRequested(id),
-              );
+              context.read<LeadDetailBloc>().add(LeadDetailDeleteRequested(id));
             },
             child: const Text(
               'Delete',
@@ -256,6 +250,71 @@ class _LeadDetailView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showConvertDialog(BuildContext context, int leadId) async {
+    String selectedTier = leadTierLabels.keys.first;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Convert to Account'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select an Account Tier:'),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<String>(
+                    value: selectedTier,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    items: leadTierLabels.entries
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedTier = v!),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('Convert'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((result) {
+      if (result == true) {
+        if (!context.mounted) return;
+        context.read<LeadDetailBloc>().add(
+          LeadDetailConvertRequested(leadId, tier: selectedTier),
+        );
+      }
+    });
   }
 
   Widget _infoCard(String title, List<Widget> children) {

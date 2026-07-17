@@ -110,6 +110,8 @@ class LeadModel extends Lead {
           ? _formatDate(params.nextFollowUpDate!)
           : null,
       'follow_up_note': params.followUpNote,
+      if (params.additionalEmails != null && params.additionalEmails!.isNotEmpty)
+        'contacts': params.additionalEmails!.map((e) => {'email': e}).toList(),
     };
   }
 

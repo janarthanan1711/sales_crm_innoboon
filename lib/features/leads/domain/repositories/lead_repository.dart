@@ -27,6 +27,12 @@ abstract class LeadRepository {
     String? tier,
     int? ownerId,
   });
+
+  Future<Either<Failure, LeadActivity>> logActivity(
+    int leadId, {
+    required String type,
+    required String note,
+  });
 }
 
 /// Datasource interface for the data layer

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
@@ -18,7 +19,6 @@ class DioClient {
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -39,6 +39,16 @@ class DioClient {
 
   Dio get dio => _dio;
 
+  /// On Flutter Web the XMLHttpRequest adapter throws when [sendTimeout]
+  /// is set on a request that carries no body (GET, DELETE, HEAD).
+  /// Merging `sendTimeout: null` into [options] prevents this.
+  Options _webSafe(Options? options) {
+    if (!kIsWeb) return options ?? Options();
+    final merged = options ?? Options();
+    merged.sendTimeout = null;
+    return merged;
+  }
+
   // ─── Convenience HTTP methods ──────────────────────────
 
   Future<Response<T>> get<T>(
@@ -49,7 +59,7 @@ class DioClient {
     return _dio.get<T>(
       path,
       queryParameters: queryParameters,
-      options: options,
+      options: _webSafe(options),
     );
   }
 
@@ -105,7 +115,7 @@ class DioClient {
       path,
       data: data,
       queryParameters: queryParameters,
-      options: options,
+      options: _webSafe(options),
     );
   }
 }

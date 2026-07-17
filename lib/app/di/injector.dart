@@ -24,8 +24,15 @@ import '../../features/leads/domain/usecases/create_lead_usecase.dart';
 import '../../features/leads/domain/usecases/update_lead_usecase.dart';
 import '../../features/leads/domain/usecases/convert_lead_usecase.dart';
 import '../../features/leads/domain/usecases/delete_lead_usecase.dart';
+import '../../features/leads/domain/usecases/log_lead_activity_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
+
+// Users feature
+import '../../features/users/data/datasources/user_remote_datasource.dart';
+import '../../features/users/data/repositories/user_repository_impl.dart';
+import '../../features/users/domain/repositories/user_repository.dart';
+import '../../features/users/domain/usecases/get_users_usecase.dart';
 
 // Accounts feature
 import '../../features/accounts/data/datasources/account_mock_datasource.dart';
@@ -95,7 +102,8 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://api.saleshub.example.com/api/v1',
+      defaultValue: "http://192.168.0.187:8000/api/v1",
+      // 'https://api.saleshub.example.com/api/v1',
     ),
     authInterceptor: authInterceptor,
   );
@@ -114,10 +122,7 @@ Future<void> initDependencies() async {
 
   // Repository
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(
-      remoteDataSource: sl(),
-      localDataSource: sl(),
-    ),
+    () => AuthRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
   );
 
   // Use cases
@@ -126,11 +131,13 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
 
   // Bloc
-  sl.registerFactory(() => AuthBloc(
-        loginUseCase: sl(),
-        logoutUseCase: sl(),
-        getCurrentUserUseCase: sl(),
-      ));
+  sl.registerFactory(
+    () => AuthBloc(
+      loginUseCase: sl(),
+      logoutUseCase: sl(),
+      getCurrentUserUseCase: sl(),
+    ),
+  );
 
   // ─── Leads Feature ──────────────────────────────────
   sl.registerLazySingleton<LeadRemoteDataSource>(
@@ -145,14 +152,24 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateLeadUseCase(sl()));
   sl.registerLazySingleton(() => ConvertLeadToAccountUseCase(sl()));
   sl.registerLazySingleton(() => DeleteLeadUseCase(sl()));
-  sl.registerFactory(() => LeadsListBloc(
-        getLeadsUseCase: sl(),
-      ));
-  sl.registerFactory(() => LeadDetailBloc(
-        getLeadByIdUseCase: sl(),
-        convertLeadUseCase: sl(),
-        deleteLeadUseCase: sl(),
-      ));
+  sl.registerLazySingleton(() => LogLeadActivityUseCase(sl()));
+  sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
+  sl.registerFactory(
+    () => LeadDetailBloc(
+      getLeadByIdUseCase: sl(),
+      convertLeadUseCase: sl(),
+      deleteLeadUseCase: sl(),
+    ),
+  );
+
+  // ─── Users Feature ──────────────────────────────────
+  sl.registerLazySingleton<UserRemoteDataSource>(
+    () => UserRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<UserRepository>(
+    () => UserRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetUsersUseCase(sl()));
 
   // ─── Accounts Feature ───────────────────────────────
   sl.registerLazySingleton<AccountRemoteDataSource>(
@@ -163,17 +180,11 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => GetAccountsUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountByIdUseCase(sl()));
-  sl.registerFactory(() => AccountsListBloc(
-        getAccountsUseCase: sl(),
-      ));
-  sl.registerFactory(() => AccountDetailBloc(
-        getAccountByIdUseCase: sl(),
-      ));
+  sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
+  sl.registerFactory(() => AccountDetailBloc(getAccountByIdUseCase: sl()));
 
   // ─── Deals Feature ──────────────────────────────────
-  sl.registerLazySingleton<DealRemoteDataSource>(
-    () => DealMockDataSource(),
-  );
+  sl.registerLazySingleton<DealRemoteDataSource>(() => DealMockDataSource());
   sl.registerLazySingleton<DealRepository>(
     () => DealRepositoryImpl(remoteDataSource: sl()),
   );
@@ -181,13 +192,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealByIdUseCase(sl()));
   sl.registerLazySingleton(() => CreateDealUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
-  sl.registerFactory(() => DealsListBloc(
-        getDealsUseCase: sl(),
-      ));
-  sl.registerFactory(() => DealDetailBloc(
-        getDealByIdUseCase: sl(),
-        updateDealStageUseCase: sl(),
-      ));
+  sl.registerFactory(() => DealsListBloc(getDealsUseCase: sl()));
+  sl.registerFactory(
+    () =>
+        DealDetailBloc(getDealByIdUseCase: sl(), updateDealStageUseCase: sl()),
+  );
   // ─── Checklist Feature ──────────────────────────────
   sl.registerLazySingleton<ChecklistRemoteDataSource>(
     () => ChecklistMockDataSource(),
@@ -197,11 +206,13 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => GetChecklistForDealUseCase(sl()));
   sl.registerLazySingleton(() => ToggleChecklistItemUseCase(sl()));
-  sl.registerFactory(() => ChecklistBloc(
-        getChecklistForDealUseCase: sl(),
-        toggleChecklistItemUseCase: sl(),
-      ));
-      
+  sl.registerFactory(
+    () => ChecklistBloc(
+      getChecklistForDealUseCase: sl(),
+      toggleChecklistItemUseCase: sl(),
+    ),
+  );
+
   // ─── Activity Feature ──────────────────────────────
   sl.registerLazySingleton<ActivityRemoteDataSource>(
     () => ActivityMockDataSource(),
@@ -211,10 +222,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => GetActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => LogActivityUseCase(sl()));
-  sl.registerFactory(() => ActivityBloc(
-        getActivitiesUseCase: sl(),
-        logActivityUseCase: sl(),
-      ));
+  sl.registerFactory(
+    () => ActivityBloc(getActivitiesUseCase: sl(), logActivityUseCase: sl()),
+  );
 
   // ─── Analytics Feature ─────────────────────────────
   sl.registerLazySingleton<AnalyticsRemoteDataSource>(
@@ -224,9 +234,7 @@ Future<void> initDependencies() async {
     () => AnalyticsRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetSalesMetricsUseCase(sl()));
-  sl.registerFactory(() => AnalyticsBloc(
-        getSalesMetricsUseCase: sl(),
-      ));
+  sl.registerFactory(() => AnalyticsBloc(getSalesMetricsUseCase: sl()));
 
   // ─── Notifications Feature ─────────────────────────
   sl.registerLazySingleton<NotificationRemoteDataSource>(
@@ -239,10 +247,12 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetUnreadCountUseCase(sl()));
   sl.registerLazySingleton(() => MarkNotificationReadUseCase(sl()));
   sl.registerLazySingleton(() => MarkAllNotificationsReadUseCase(sl()));
-  sl.registerFactory(() => NotificationBloc(
-        getNotificationsUseCase: sl(),
-        getUnreadCountUseCase: sl(),
-        markNotificationReadUseCase: sl(),
-        markAllNotificationsReadUseCase: sl(),
-      ));
+  sl.registerFactory(
+    () => NotificationBloc(
+      getNotificationsUseCase: sl(),
+      getUnreadCountUseCase: sl(),
+      markNotificationReadUseCase: sl(),
+      markAllNotificationsReadUseCase: sl(),
+    ),
+  );
 }

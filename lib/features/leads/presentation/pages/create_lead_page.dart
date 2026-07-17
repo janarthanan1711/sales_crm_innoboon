@@ -12,6 +12,10 @@ import '../../domain/entities/lead_enums.dart';
 import '../../domain/usecases/lead_upsert_params.dart';
 import '../../domain/usecases/create_lead_usecase.dart';
 import '../../domain/usecases/update_lead_usecase.dart';
+import '../../domain/usecases/log_lead_activity_usecase.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
+import '../../../../core/utils/formatters.dart';
 
 class CreateLeadPage extends StatelessWidget {
   final Lead? lead;
@@ -47,6 +51,13 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   late String _statusLabel;
   bool _submitting = false;
 
+  List<OwnerUser> _users = [];
+  bool _loadingUsers = true;
+  int? _selectedOwnerId;
+
+  final List<TextEditingController> _additionalEmailControllers = [];
+  List<LeadActivity> _activities = [];
+
   bool get isEdit => widget.lead != null;
 
   @override
@@ -69,7 +80,33 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
 
       _sourceLabel = labelForWireValue(leadSourceLabels, l.source);
       _statusLabel = labelForWireValue(leadStatusLabels, l.status);
+      _selectedOwnerId = l.ownerId;
+      _activities = List.from(l.activities ?? []);
+
+      if (l.contacts != null) {
+        for (final contact in l.contacts!) {
+          if (contact.email != null && contact.email!.isNotEmpty) {
+            _additionalEmailControllers.add(
+              TextEditingController(text: contact.email),
+            );
+          }
+        }
+      }
     }
+
+    _fetchUsers();
+  }
+
+  Future<void> _fetchUsers() async {
+    final result = await sl<GetUsersUseCase>()();
+    if (!mounted) return;
+    result.fold(
+      (_) => setState(() => _loadingUsers = false),
+      (users) => setState(() {
+        _users = users;
+        _loadingUsers = false;
+      }),
+    );
   }
 
   @override
@@ -83,6 +120,9 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     _emailController.dispose();
     _phoneController.dispose();
     _followUpNoteController.dispose();
+    for (final controller in _additionalEmailControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -112,9 +152,14 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           : _linkedinController.text.trim(),
       source: wireValueForLabel(leadSourceLabels, _sourceLabel) ?? 'other',
       status: wireValueForLabel(leadStatusLabels, _statusLabel),
+      ownerId: _selectedOwnerId,
       followUpNote: _followUpNoteController.text.trim().isEmpty
           ? null
           : _followUpNoteController.text.trim(),
+      additionalEmails: _additionalEmailControllers
+          .map((c) => c.text.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
     );
 
     final result = isEdit
@@ -139,7 +184,9 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isEdit ? 'Lead updated successfully!' : 'Lead created successfully!',
+              isEdit
+                  ? 'Lead updated successfully!'
+                  : 'Lead created successfully!',
             ),
             backgroundColor: AppColors.success,
           ),
@@ -249,6 +296,67 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
         Expanded(child: child1),
         const SizedBox(width: 16),
         Expanded(child: child2),
+      ],
+    );
+  }
+
+  Widget _buildAdditionalEmails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < _additionalEmailControllers.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: _buildField(
+                    'Additional Email',
+                    false,
+                    TextFormField(
+                      controller: _additionalEmailControllers[i],
+                      validator: (v) =>
+                          v == null || v.isEmpty ? null : Validators.email(v),
+                      decoration: _inputDecoration(
+                        'alternate@acme.com',
+                        prefix: const Icon(
+                          Icons.mail_outline,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      final c = _additionalEmailControllers.removeAt(i);
+                      c.dispose();
+                    });
+                  },
+                  icon: const Icon(Icons.close, color: AppColors.textMuted),
+                  tooltip: 'Remove email',
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: () {
+            setState(() {
+              _additionalEmailControllers.add(TextEditingController());
+            });
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add another email'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            padding: EdgeInsets.zero,
+            alignment: Alignment.centerLeft,
+          ),
+        ),
       ],
     );
   }
@@ -366,9 +474,202 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             ),
             isMobile,
           ),
+          _buildAdditionalEmails(),
         ]),
+        if (isEdit) _buildActivityLog(),
       ],
     );
+  }
+
+  Future<void> _showLogActivityDialog() async {
+    final typeController = TextEditingController(
+      text: leadActivityTypeLabels.keys.first,
+    );
+    final noteController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Log Activity'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildField(
+                    'Activity Type',
+                    true,
+                    DropdownButtonFormField<String>(
+                      value: typeController.text,
+                      decoration: _inputDecoration(''),
+                      items: leadActivityTypeLabels.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => typeController.text = v!),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildField(
+                    'Note',
+                    true,
+                    TextFormField(
+                      controller: noteController,
+                      maxLines: 4,
+                      decoration: _inputDecoration('Activity details...'),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (noteController.text.trim().isEmpty) return;
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('Log Activity'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((result) async {
+      if (result == true) {
+        final res = await sl<LogLeadActivityUseCase>()(
+          LogLeadActivityParams(
+            leadId: widget.lead!.id,
+            type: typeController.text,
+            note: noteController.text.trim(),
+          ),
+        );
+
+        if (!mounted) return;
+        res.fold(
+          (failure) => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(failure.message),
+              backgroundColor: AppColors.error,
+            ),
+          ),
+          (activity) => setState(() => _activities.insert(0, activity)),
+        );
+      }
+    });
+  }
+
+  IconData _iconForActivity(String type) {
+    switch (type) {
+      case 'call':
+        return Icons.phone;
+      case 'meeting':
+        return Icons.calendar_today;
+      case 'comment':
+        return Icons.comment;
+      default:
+        return Icons.note;
+    }
+  }
+
+  Widget _buildActivityLog() {
+    return _buildCard('Activity', Icons.history, [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${_activities.length}',
+              style: AppTextStyles.labelMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _showLogActivityDialog,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Log Activity'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      if (_activities.isEmpty)
+        const Text(
+          'No activities logged yet.',
+          style: TextStyle(color: AppColors.textMuted),
+        )
+      else
+        ..._activities.map((act) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.primaryLight,
+                  child: Icon(
+                    _iconForActivity(act.type),
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            labelForWireValue(leadActivityTypeLabels, act.type),
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            DateFormatter.dateTime(act.createdAt),
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text('"${act.note}"', style: AppTextStyles.bodyMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Logged by ${act.createdByName ?? 'User ${act.createdBy}'}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+    ]);
   }
 
   Widget _buildRightColumn() {
@@ -386,6 +687,44 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                   .toList(),
               onChanged: (v) => setState(() => _sourceLabel = v!),
             ),
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            'Lead Owner',
+            false,
+            _loadingUsers
+                ? const SizedBox(
+                    height: 48,
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : DropdownButtonFormField<int?>(
+                    value: _users.any((u) => u.id == _selectedOwnerId)
+                        ? _selectedOwnerId
+                        : null,
+                    decoration: _inputDecoration(
+                      'Select owner',
+                      prefix: const Icon(
+                        Icons.search,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    items: _users
+                        .map(
+                          (u) => DropdownMenuItem<int?>(
+                            value: u.id,
+                            child: Text(u.displayName),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedOwnerId = v),
+                  ),
           ),
           const SizedBox(height: 16),
           _buildField(

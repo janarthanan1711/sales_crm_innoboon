@@ -17,6 +17,7 @@ class LeadUpsertParams {
   final int? ownerId;
   final DateTime? nextFollowUpDate;
   final String? followUpNote;
+  final List<String>? additionalEmails;
 
   const LeadUpsertParams({
     required this.firstName,
@@ -32,5 +33,6 @@ class LeadUpsertParams {
     this.ownerId,
     this.nextFollowUpDate,
     this.followUpNote,
+    this.additionalEmails,
   });
 }

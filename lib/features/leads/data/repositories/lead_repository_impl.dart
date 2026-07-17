@@ -91,4 +91,22 @@ class LeadRepositoryImpl implements LeadRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, LeadActivity>> logActivity(
+    int leadId, {
+    required String type,
+    required String note,
+  }) async {
+    try {
+      final activity = await remoteDataSource.logActivity(
+        leadId,
+        type: type,
+        note: note,
+      );
+      return Right(activity);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }
