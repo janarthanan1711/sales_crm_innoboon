@@ -1,9 +1,10 @@
 import '../../domain/entities/user.dart';
 
 /// User model with JSON serialization — data layer.
-/// `accessToken` is carried alongside the resolved user after login; it is
-/// never part of the backend's `UserRead` shape and is dropped by [toJson]
-/// (which is only used for caching the user, not for outgoing requests).
+/// `accessToken`/`refreshToken` are carried alongside the resolved user
+/// after login; neither is part of the backend's `UserRead` shape and both
+/// are dropped by [toJson] (which is only used for caching the user, not
+/// for outgoing requests) — tokens are persisted separately.
 class UserModel {
   final int id;
   final String email;
@@ -12,6 +13,7 @@ class UserModel {
   final String role;
   final bool isActive;
   final String? accessToken;
+  final String? refreshToken;
 
   const UserModel({
     required this.id,
@@ -21,6 +23,7 @@ class UserModel {
     required this.role,
     required this.isActive,
     this.accessToken,
+    this.refreshToken,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +35,7 @@ class UserModel {
       role: json['role'] as String,
       isActive: json['is_active'] as bool,
       accessToken: json['access_token'] as String?,
+      refreshToken: json['refresh_token'] as String?,
     );
   }
 

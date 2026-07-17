@@ -32,6 +32,9 @@ class DioClient {
     if (enableLogging) {
       _dio.interceptors.add(LoggingInterceptor());
     }
+
+    // So a 401 retry goes through this same client, not a bare Dio().
+    authInterceptor.attachDio(_dio);
   }
 
   Dio get dio => _dio;

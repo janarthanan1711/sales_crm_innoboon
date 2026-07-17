@@ -5,8 +5,10 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // ─── Auth ──────────────────────────────────────────────
-  // Only login exists — no refresh, logout, register, or /me endpoint.
+  // No register or /me endpoint.
   static const String login = '/auth/login';
+  static const String refresh = '/auth/refresh';
+  static const String logout = '/auth/logout';
 
   // ─── Users ─────────────────────────────────────────────
   static const String users = '/users';

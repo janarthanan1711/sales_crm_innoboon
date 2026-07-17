@@ -6,8 +6,10 @@ import '../models/user_model.dart';
 abstract class AuthLocalDataSource {
   Future<void> saveUser(UserModel user);
   Future<void> saveAccessToken(String accessToken);
+  Future<void> saveRefreshToken(String refreshToken);
   Future<UserModel?> getCachedUser();
   Future<String?> getAccessToken();
+  Future<String?> getRefreshToken();
   Future<void> clearAll();
 }
 
@@ -16,6 +18,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   static const String _userKey = 'cached_user';
   static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
 
   AuthLocalDataSourceImpl({required this.secureStorage});
 
@@ -33,6 +36,11 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
+  Future<void> saveRefreshToken(String refreshToken) async {
+    await secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+  }
+
+  @override
   Future<UserModel?> getCachedUser() async {
     final userJson = await secureStorage.read(key: _userKey);
     if (userJson == null) return null;
@@ -45,8 +53,14 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
+  Future<String?> getRefreshToken() async {
+    return secureStorage.read(key: _refreshTokenKey);
+  }
+
+  @override
   Future<void> clearAll() async {
     await secureStorage.delete(key: _userKey);
     await secureStorage.delete(key: _accessTokenKey);
+    await secureStorage.delete(key: _refreshTokenKey);
   }
 }

@@ -85,6 +85,10 @@ Future<void> initDependencies() async {
 
   final authInterceptor = AuthInterceptor(
     secureStorage: secureStorage,
+    onRefreshToken: () async {
+      final result = await sl<AuthRepository>().refreshToken();
+      return result.fold((_) => null, (token) => token);
+    },
   );
   sl.registerLazySingleton<AuthInterceptor>(() => authInterceptor);
 
