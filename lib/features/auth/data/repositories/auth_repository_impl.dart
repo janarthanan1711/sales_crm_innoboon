@@ -19,13 +19,9 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userModel = await remoteDataSource.login(email, password);
 
-      // Cache user and tokens
       await localDataSource.saveUser(userModel);
       if (userModel.accessToken != null) {
-        await localDataSource.saveTokens(
-          userModel.accessToken!,
-          userModel.refreshToken,
-        );
+        await localDataSource.saveAccessToken(userModel.accessToken!);
       }
 
       return Right(userModel.toEntity());
@@ -54,22 +50,6 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Left(AuthFailure(message: 'No cached user found'));
     } on Exception catch (e) {
       return Left(CacheFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, String>> refreshToken() async {
-    try {
-      final currentRefreshToken = await localDataSource.getRefreshToken();
-      if (currentRefreshToken == null) {
-        return const Left(AuthFailure(message: 'No refresh token'));
-      }
-      final newToken =
-          await remoteDataSource.refreshToken(currentRefreshToken);
-      await localDataSource.saveTokens(newToken, null);
-      return Right(newToken);
-    } on Exception catch (e) {
-      return Left(ServerFailure(message: e.toString()));
     }
   }
 }

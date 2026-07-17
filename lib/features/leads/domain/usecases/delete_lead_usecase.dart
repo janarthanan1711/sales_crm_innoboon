@@ -1,15 +1,14 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/usecase/usecase.dart';
-import '../entities/lead.dart';
 import '../repositories/lead_repository.dart';
 
-class GetLeadByIdUseCase implements UseCase<Lead, int> {
+class DeleteLeadUseCase implements UseCase<void, int> {
   final LeadRepository repository;
-  GetLeadByIdUseCase(this.repository);
+  DeleteLeadUseCase(this.repository);
 
   @override
-  Future<Either<Failure, Lead>> call(int id) {
-    return repository.getLeadById(id);
+  Future<Either<Failure, void>> call(int id) {
+    return repository.deleteLead(id);
   }
 }

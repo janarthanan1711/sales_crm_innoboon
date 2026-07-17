@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sales_hub/features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -10,6 +8,10 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
 
 import '../../domain/entities/lead.dart';
+import '../../domain/entities/lead_enums.dart';
+import '../../domain/usecases/lead_upsert_params.dart';
+import '../../domain/usecases/create_lead_usecase.dart';
+import '../../domain/usecases/update_lead_usecase.dart';
 
 class CreateLeadPage extends StatelessWidget {
   final Lead? lead;
@@ -17,10 +19,7 @@ class CreateLeadPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<LeadsListBloc>(),
-      child: _CreateLeadView(lead: lead),
-    );
+    return _CreateLeadView(lead: lead);
   }
 }
 
@@ -42,32 +41,34 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   final _linkedinController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _followUpNoteController = TextEditingController();
 
-  String _source = AppConstants.leadSources.first;
-  String _owner = 'Sarah Jenkins';
-  String _status = 'New';
+  late String _sourceLabel;
+  late String _statusLabel;
+  bool _submitting = false;
 
   bool get isEdit => widget.lead != null;
 
   @override
   void initState() {
     super.initState();
-    if (isEdit) {
-      final names = widget.lead!.contactName.split(' ');
-      _firstNameController.text = names.first;
-      if (names.length > 1) {
-        _lastNameController.text = names.sublist(1).join(' ');
-      }
-      _companyController.text = widget.lead!.companyName;
-      _domainController.text = widget.lead!.website ?? '';
-      _emailController.text = widget.lead!.email;
-      _phoneController.text = widget.lead!.phone ?? '';
-      _notesController.text = widget.lead!.notes ?? '';
+    _sourceLabel = AppConstants.leadSources.first;
+    _statusLabel = AppConstants.leadStatuses.first;
 
-      _source = widget.lead!.source;
-      _owner = widget.lead!.owner ?? 'Sarah Jenkins';
-      _status = widget.lead!.status;
+    if (isEdit) {
+      final l = widget.lead!;
+      _firstNameController.text = l.firstName;
+      _lastNameController.text = l.lastName ?? '';
+      _companyController.text = l.company;
+      _domainController.text = l.domain ?? '';
+      _jobTitleController.text = l.jobTitle ?? '';
+      _linkedinController.text = l.linkedinUrl ?? '';
+      _emailController.text = l.email;
+      _phoneController.text = l.phone ?? '';
+      _followUpNoteController.text = l.followUpNote ?? '';
+
+      _sourceLabel = labelForWireValue(leadSourceLabels, l.source);
+      _statusLabel = labelForWireValue(leadStatusLabels, l.status);
     }
   }
 
@@ -81,24 +82,71 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     _linkedinController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _notesController.dispose();
+    _followUpNoteController.dispose();
     super.dispose();
   }
 
-  void _onSubmit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEdit
-                ? 'Lead updated successfully!'
-                : 'Lead created successfully!',
+  Future<void> _onSubmit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _submitting = true);
+
+    final params = LeadUpsertParams(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim().isEmpty
+          ? null
+          : _lastNameController.text.trim(),
+      company: _companyController.text.trim(),
+      domain: _domainController.text.trim().isEmpty
+          ? null
+          : _domainController.text.trim(),
+      jobTitle: _jobTitleController.text.trim().isEmpty
+          ? null
+          : _jobTitleController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim().isEmpty
+          ? null
+          : _phoneController.text.trim(),
+      linkedinUrl: _linkedinController.text.trim().isEmpty
+          ? null
+          : _linkedinController.text.trim(),
+      source: wireValueForLabel(leadSourceLabels, _sourceLabel) ?? 'other',
+      status: wireValueForLabel(leadStatusLabels, _statusLabel),
+      followUpNote: _followUpNoteController.text.trim().isEmpty
+          ? null
+          : _followUpNoteController.text.trim(),
+    );
+
+    final result = isEdit
+        ? await sl<UpdateLeadUseCase>()(
+            UpdateLeadParams(id: widget.lead!.id, data: params),
+          )
+        : await sl<CreateLeadUseCase>()(params);
+
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: AppColors.error,
           ),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      _safePop();
-    }
+        );
+      },
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEdit ? 'Lead updated successfully!' : 'Lead created successfully!',
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _safePop();
+      },
+    );
   }
 
   void _safePop() {
@@ -221,10 +269,9 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             ),
             _buildField(
               'Last Name',
-              true,
+              false,
               TextFormField(
                 controller: _lastNameController,
-                validator: (v) => Validators.required(v, 'Last name'),
                 decoration: _inputDecoration('Doe'),
               ),
             ),
@@ -244,11 +291,11 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           _buildResponsiveRow(
             _buildField(
               'Company Domain',
-              true,
+              false,
               TextFormField(
                 controller: _domainController,
                 decoration: _inputDecoration(
-                  'https://acme.com',
+                  'acme.com',
                   prefix: const Icon(
                     Icons.link,
                     size: 18,
@@ -319,25 +366,6 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             ),
             isMobile,
           ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                '+ Add another email',
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
         ]),
       ],
     );
@@ -351,36 +379,12 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             'Lead Source',
             false,
             DropdownButtonFormField<String>(
-              value: _source,
+              value: _sourceLabel,
               decoration: _inputDecoration(''),
               items: AppConstants.leadSources
                   .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                   .toList(),
-              onChanged: (v) => setState(() => _source = v!),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildField(
-            'Lead Owner',
-            false,
-            DropdownButtonFormField<String>(
-              value: _owner,
-              decoration: _inputDecoration(
-                '',
-                prefix: const Icon(
-                  Icons.search,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Sarah Jenkins',
-                  child: Text('Sarah Jenkins (Me)'),
-                ),
-                DropdownMenuItem(value: 'Karthick', child: Text('Karthick')),
-              ],
-              onChanged: (v) => setState(() => _owner = v!),
+              onChanged: (v) => setState(() => _sourceLabel = v!),
             ),
           ),
           const SizedBox(height: 16),
@@ -388,12 +392,12 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             'Status',
             false,
             DropdownButtonFormField<String>(
-              value: _status,
+              value: _statusLabel,
               decoration: _inputDecoration(''),
               items: AppConstants.leadStatuses
                   .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                   .toList(),
-              onChanged: (v) => setState(() => _status = v!),
+              onChanged: (v) => setState(() => _statusLabel = v!),
             ),
           ),
         ]),
@@ -402,10 +406,10 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           Icons.notes_outlined,
           [
             _buildField(
-              isEdit ? 'Notes' : 'Notes / Comments',
+              'Follow-up Note',
               false,
               TextFormField(
-                controller: _notesController,
+                controller: _followUpNoteController,
                 maxLines: 4,
                 decoration: _inputDecoration(
                   'Add relevant background information here...',
@@ -429,7 +433,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       mainAxisSize: MainAxisSize.min,
       children: [
         TextButton(
-          onPressed: () => _safePop(),
+          onPressed: _submitting ? null : () => _safePop(),
           child: Text(
             'Cancel',
             style: AppTextStyles.buttonMedium.copyWith(
@@ -438,30 +442,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           ),
         ),
         const SizedBox(width: 16),
-        if (!isEdit) ...[
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryLight,
-              foregroundColor: AppColors.primary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 12 : 16,
-                vertical: isMobile ? 12 : 16,
-              ),
-            ),
-            child: Text(
-              isMobile ? 'Convert' : 'Save & Convert to Account',
-              style: AppTextStyles.buttonMedium,
-            ),
-          ),
-          const SizedBox(width: 16),
-        ],
         ElevatedButton(
-          onPressed: _onSubmit,
+          onPressed: _submitting ? null : _onSubmit,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0F47C6),
             foregroundColor: Colors.white,
@@ -474,7 +456,16 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
               vertical: isMobile ? 12 : 16,
             ),
           ),
-          child: Text('Save', style: AppTextStyles.buttonMedium),
+          child: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('Save', style: AppTextStyles.buttonMedium),
         ),
       ],
     );
@@ -548,7 +539,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                       children: [
                         Text(
                           isEdit
-                              ? 'Edit Lead: ${widget.lead!.contactName}'
+                              ? 'Edit Lead: ${widget.lead!.firstName} ${widget.lead!.lastName ?? ''}'
                               : 'New Lead',
                           style: AppTextStyles.displayLarge.copyWith(
                             fontSize: 32,

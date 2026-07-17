@@ -30,8 +30,12 @@ class LeadDetailError extends LeadDetailState {
 }
 
 class LeadDetailConverted extends LeadDetailState {
-  final String accountId;
+  final int accountId;
   const LeadDetailConverted(this.accountId);
   @override
   List<Object?> get props => [accountId];
+}
+
+class LeadDetailDeleted extends LeadDetailState {
+  const LeadDetailDeleted();
 }

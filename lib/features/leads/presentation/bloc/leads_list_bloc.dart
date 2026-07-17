@@ -10,9 +10,8 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
 
   String? _search;
   String? _statusFilter;
-  String? _tierFilter;
-  String? _ownerFilter;
   String? _sourceFilter;
+  int? _ownerIdFilter;
 
   LeadsListBloc({required this.getLeadsUseCase})
     : super(const LeadsListInitial()) {
@@ -41,10 +40,9 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
     LeadsListFilterChanged event,
     Emitter<LeadsListState> emit,
   ) async {
-    if (event.status != null) _statusFilter = event.status;
-    if (event.tier != null) _tierFilter = event.tier;
-    if (event.owner != null) _ownerFilter = event.owner;
-    if (event.source != null) _sourceFilter = event.source;
+    _statusFilter = event.status;
+    _sourceFilter = event.source;
+    _ownerIdFilter = event.ownerId;
     await _loadLeads(emit);
   }
 
@@ -53,22 +51,21 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
       GetLeadsParams(
         search: _search,
         status: _statusFilter,
-        tier: _tierFilter,
-        owner: _ownerFilter,
         source: _sourceFilter,
+        ownerId: _ownerIdFilter,
       ),
     );
 
     result.fold(
       (failure) => emit(LeadsListError(failure.message)),
-      (leads) => emit(
+      (page) => emit(
         LeadsListLoaded(
-          leads: leads,
+          leads: page.items,
+          total: page.total,
           search: _search,
           statusFilter: _statusFilter,
-          tierFilter: _tierFilter,
-          ownerFilter: _ownerFilter,
           sourceFilter: _sourceFilter,
+          ownerIdFilter: _ownerIdFilter,
         ),
       ),
     );

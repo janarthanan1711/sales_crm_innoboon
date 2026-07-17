@@ -11,6 +11,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
+import '../../domain/entities/lead_enums.dart';
 import '../bloc/leads_list_bloc.dart';
 
 class LeadsListPage extends StatelessWidget {
@@ -76,7 +77,10 @@ class _LeadsListView extends StatelessWidget {
                     }
                     return ResponsiveBuilder(
                       mobile: _MobileLeadsList(leads: state.leads),
-                      web: _WebLeadsTable(leads: state.leads),
+                      web: _WebLeadsTable(
+                        leads: state.leads,
+                        total: state.total,
+                      ),
                     );
                   }
                   return const SizedBox.shrink();
@@ -139,18 +143,11 @@ class _LeadsListView extends StatelessWidget {
             options: ['All', ...AppConstants.leadStatuses],
             onSelected: (value) {
               context.read<LeadsListBloc>().add(
-                LeadsListFilterChanged(status: value),
-              );
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Tier',
-            icon: Icons.star_outline,
-            options: ['All', ...AppConstants.tiers],
-            onSelected: (value) {
-              context.read<LeadsListBloc>().add(
-                LeadsListFilterChanged(tier: value),
+                LeadsListFilterChanged(
+                  status: value == 'All'
+                      ? null
+                      : wireValueForLabel(leadStatusLabels, value),
+                ),
               );
             },
           ),
@@ -161,7 +158,11 @@ class _LeadsListView extends StatelessWidget {
             options: ['All', ...AppConstants.leadSources],
             onSelected: (value) {
               context.read<LeadsListBloc>().add(
-                LeadsListFilterChanged(source: value),
+                LeadsListFilterChanged(
+                  source: value == 'All'
+                      ? null
+                      : wireValueForLabel(leadSourceLabels, value),
+                ),
               );
             },
           ),
@@ -173,8 +174,9 @@ class _LeadsListView extends StatelessWidget {
 
 /// ─── Web/Tablet: Data Table ─────────────────────────────
 class _WebLeadsTable extends StatelessWidget {
-  const _WebLeadsTable({required this.leads});
+  const _WebLeadsTable({required this.leads, required this.total});
   final List<Lead> leads;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -201,9 +203,8 @@ class _WebLeadsTable extends StatelessWidget {
                 _tableHeader('CONTACT', flex: 3),
                 _tableHeader('SOURCE', flex: 2),
                 _tableHeader('STATUS', flex: 2),
-                _tableHeader('TIER', flex: 2),
                 _tableHeader('OWNER', flex: 2),
-                _tableHeader('DATE', flex: 2),
+                _tableHeader('UPDATED', flex: 2),
               ],
             ),
           ),
@@ -230,20 +231,8 @@ class _WebLeadsTable extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  'Showing ${leads.length} leads',
+                  'Showing ${leads.length} of $total leads',
                   style: AppTextStyles.bodySmall,
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Text('Rows per page: ', style: AppTextStyles.bodySmall),
-                    Text('25', style: AppTextStyles.labelMedium),
-                    const Icon(
-                      Icons.arrow_drop_down,
-                      size: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -274,11 +263,17 @@ class _LeadTableRowState extends State<_LeadTableRow> {
 
   @override
   Widget build(BuildContext context) {
+    final lead = widget.lead;
+    final contactName = [
+      lead.firstName,
+      lead.lastName,
+    ].where((s) => s != null && s.isNotEmpty).join(' ');
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: InkWell(
-        onTap: () => context.go('/leads/${widget.lead.id}'),
+        onTap: () => context.go('/leads/${lead.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
@@ -292,11 +287,11 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                 flex: 3,
                 child: Row(
                   children: [
-                    InitialsAvatar(name: widget.lead.companyName, size: 32),
+                    InitialsAvatar(name: lead.company, size: 32),
                     const SizedBox(width: AppSpacing.sm),
                     Flexible(
                       child: Text(
-                        widget.lead.companyName,
+                        lead.company,
                         style: AppTextStyles.tableCellLink,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -311,12 +306,12 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.lead.contactName,
+                      contactName,
                       style: AppTextStyles.tableCell,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      widget.lead.email,
+                      lead.email,
                       style: AppTextStyles.caption,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -326,25 +321,25 @@ class _LeadTableRowState extends State<_LeadTableRow> {
               // Source
               Expanded(
                 flex: 2,
-                child: Text(widget.lead.source, style: AppTextStyles.tableCell),
+                child: Text(
+                  labelForWireValue(leadSourceLabels, lead.source),
+                  style: AppTextStyles.tableCell,
+                ),
               ),
               // Status
               Expanded(
                 flex: 2,
-                child: StatusBadge.leadStatus(widget.lead.status),
-              ),
-              // Tier
-              Expanded(
-                flex: 2,
-                child: TierBadge(tier: widget.lead.tier, showDot: true),
+                child: StatusBadge.leadStatus(
+                  labelForWireValue(leadStatusLabels, lead.status),
+                ),
               ),
               // Owner
-              Expanded(flex: 2, child: OwnerChip(name: widget.lead.owner)),
-              // Date
+              Expanded(flex: 2, child: OwnerChip(name: lead.ownerName)),
+              // Updated
               Expanded(
                 flex: 2,
                 child: Text(
-                  DateFormatter.shortDate(widget.lead.createdAt),
+                  DateFormatter.shortDate(lead.updatedAt),
                   style: AppTextStyles.tableCell,
                 ),
               ),
@@ -380,6 +375,11 @@ class _LeadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final contactName = [
+      lead.firstName,
+      lead.lastName,
+    ].where((s) => s != null && s.isNotEmpty).join(' ');
+
     return Card(
       child: InkWell(
         onTap: () => context.go('/leads/${lead.id}'),
@@ -391,29 +391,33 @@ class _LeadCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  InitialsAvatar(name: lead.companyName, size: 40),
+                  InitialsAvatar(name: lead.company, size: 40),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(lead.companyName, style: AppTextStyles.h4),
-                        Text(lead.contactName, style: AppTextStyles.bodySmall),
+                        Text(lead.company, style: AppTextStyles.h4),
+                        Text(contactName, style: AppTextStyles.bodySmall),
                       ],
                     ),
                   ),
-                  TierBadge(tier: lead.tier),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  StatusBadge.leadStatus(lead.status),
+                  StatusBadge.leadStatus(
+                    labelForWireValue(leadStatusLabels, lead.status),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text('• ${lead.source}', style: AppTextStyles.caption),
+                  Text(
+                    '• ${labelForWireValue(leadSourceLabels, lead.source)}',
+                    style: AppTextStyles.caption,
+                  ),
                   const Spacer(),
                   Text(
-                    DateFormatter.relativeTime(lead.createdAt),
+                    DateFormatter.relativeTime(lead.updatedAt),
                     style: AppTextStyles.caption,
                   ),
                 ],
@@ -435,7 +439,7 @@ class _LeadCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  OwnerChip(name: lead.owner),
+                  OwnerChip(name: lead.ownerName),
                 ],
               ),
             ],

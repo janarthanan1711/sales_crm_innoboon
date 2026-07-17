@@ -15,7 +15,7 @@ import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 // Leads feature
-import '../../features/leads/data/datasources/lead_mock_datasource.dart';
+import '../../features/leads/data/datasources/lead_remote_datasource_impl.dart';
 import '../../features/leads/data/repositories/lead_repository_impl.dart';
 import '../../features/leads/domain/repositories/lead_repository.dart';
 import '../../features/leads/domain/usecases/get_leads_usecase.dart';
@@ -23,6 +23,7 @@ import '../../features/leads/domain/usecases/get_lead_by_id_usecase.dart';
 import '../../features/leads/domain/usecases/create_lead_usecase.dart';
 import '../../features/leads/domain/usecases/update_lead_usecase.dart';
 import '../../features/leads/domain/usecases/convert_lead_usecase.dart';
+import '../../features/leads/domain/usecases/delete_lead_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
 
@@ -90,7 +91,7 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://api.saleshub.example.com/v1',
+      defaultValue: 'https://api.saleshub.example.com/api/v1',
     ),
     authInterceptor: authInterceptor,
   );
@@ -129,7 +130,7 @@ Future<void> initDependencies() async {
 
   // ─── Leads Feature ──────────────────────────────────
   sl.registerLazySingleton<LeadRemoteDataSource>(
-    () => LeadMockDataSource(),
+    () => LeadRemoteDataSourceImpl(dioClient: sl()),
   );
   sl.registerLazySingleton<LeadRepository>(
     () => LeadRepositoryImpl(remoteDataSource: sl()),
@@ -139,13 +140,14 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => CreateLeadUseCase(sl()));
   sl.registerLazySingleton(() => UpdateLeadUseCase(sl()));
   sl.registerLazySingleton(() => ConvertLeadToAccountUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteLeadUseCase(sl()));
   sl.registerFactory(() => LeadsListBloc(
         getLeadsUseCase: sl(),
       ));
   sl.registerFactory(() => LeadDetailBloc(
         getLeadByIdUseCase: sl(),
-        updateLeadUseCase: sl(),
         convertLeadUseCase: sl(),
+        deleteLeadUseCase: sl(),
       ));
 
   // ─── Accounts Feature ───────────────────────────────
