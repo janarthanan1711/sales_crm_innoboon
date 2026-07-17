@@ -173,13 +173,47 @@ class _LeadsListView extends StatelessWidget {
 }
 
 /// ─── Web/Tablet: Data Table ─────────────────────────────
-class _WebLeadsTable extends StatelessWidget {
+const double _kCheckboxColWidth = 44;
+const double _kActionsColWidth = 56;
+
+class _WebLeadsTable extends StatefulWidget {
   const _WebLeadsTable({required this.leads, required this.total});
   final List<Lead> leads;
   final int total;
 
   @override
+  State<_WebLeadsTable> createState() => _WebLeadsTableState();
+}
+
+class _WebLeadsTableState extends State<_WebLeadsTable> {
+  final Set<int> _selectedIds = {};
+
+  void _toggleSelected(int id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _toggleSelectAll(bool? selectAll) {
+    setState(() {
+      if (selectAll == true) {
+        _selectedIds.addAll(widget.leads.map((lead) => lead.id));
+      } else {
+        _selectedIds.clear();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final leads = widget.leads;
+    final allSelected =
+        leads.isNotEmpty && leads.every((lead) => _selectedIds.contains(lead.id));
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -199,12 +233,28 @@ class _WebLeadsTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _tableHeader('COMPANY', flex: 3),
+                SizedBox(
+                  width: _kCheckboxColWidth,
+                  child: Checkbox(
+                    value: allSelected,
+                    onChanged: _toggleSelectAll,
+                  ),
+                ),
+                _tableHeader('LEAD NAME', flex: 3),
+                _tableHeader('COMPANY', flex: 2),
                 _tableHeader('CONTACT', flex: 3),
-                _tableHeader('SOURCE', flex: 2),
+                _tableHeader('SOURCE', flex: 1),
                 _tableHeader('STATUS', flex: 2),
                 _tableHeader('OWNER', flex: 2),
-                _tableHeader('UPDATED', flex: 2),
+                _tableHeader('LAST ACTIVITY', flex: 2),
+                SizedBox(
+                  width: _kActionsColWidth,
+                  child: Text(
+                    'ACTIONS',
+                    style: AppTextStyles.tableHeader,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           ),
@@ -215,7 +265,11 @@ class _WebLeadsTable extends StatelessWidget {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final lead = leads[index];
-                return _LeadTableRow(lead: lead);
+                return _LeadTableRow(
+                  lead: lead,
+                  isSelected: _selectedIds.contains(lead.id),
+                  onSelectToggle: () => _toggleSelected(lead.id),
+                );
               },
             ),
           ),
@@ -231,7 +285,7 @@ class _WebLeadsTable extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  'Showing ${leads.length} of $total leads',
+                  'Showing ${leads.length} of ${widget.total} leads',
                   style: AppTextStyles.bodySmall,
                 ),
               ],
@@ -251,8 +305,14 @@ class _WebLeadsTable extends StatelessWidget {
 }
 
 class _LeadTableRow extends StatefulWidget {
-  const _LeadTableRow({required this.lead});
+  const _LeadTableRow({
+    required this.lead,
+    required this.isSelected,
+    required this.onSelectToggle,
+  });
   final Lead lead;
+  final bool isSelected;
+  final VoidCallback onSelectToggle;
 
   @override
   State<_LeadTableRow> createState() => _LeadTableRowState();
@@ -281,22 +341,53 @@ class _LeadTableRowState extends State<_LeadTableRow> {
           ),
           color: _isHovered ? AppColors.navHover : Colors.transparent,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Company
+              SizedBox(
+                width: _kCheckboxColWidth,
+                child: Checkbox(
+                  value: widget.isSelected,
+                  onChanged: (_) => widget.onSelectToggle(),
+                ),
+              ),
+              // Lead Name
               Expanded(
                 flex: 3,
                 child: Row(
                   children: [
-                    InitialsAvatar(name: lead.company, size: 32),
+                    InitialsAvatar(
+                      name: contactName.isEmpty ? lead.firstName : contactName,
+                      size: 32,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
-                    Flexible(
-                      child: Text(
-                        lead.company,
-                        style: AppTextStyles.tableCellLink,
-                        overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            contactName,
+                            style: AppTextStyles.tableCellLink,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (lead.jobTitle != null && lead.jobTitle!.isNotEmpty)
+                            Text(
+                              lead.jobTitle!,
+                              style: AppTextStyles.caption,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
                       ),
                     ),
                   ],
+                ),
+              ),
+              // Company
+              Expanded(
+                flex: 2,
+                child: Text(
+                  lead.company,
+                  style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               // Contact
@@ -304,26 +395,29 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                 flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      contactName,
-                      style: AppTextStyles.tableCell,
-                      overflow: TextOverflow.ellipsis,
+                    _ContactLine(
+                      icon: Icons.email_outlined,
+                      value: lead.email,
+                      missingLabel: 'Missing Email',
                     ),
-                    Text(
-                      lead.email,
-                      style: AppTextStyles.caption,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 2),
+                    _ContactLine(
+                      icon: Icons.phone_outlined,
+                      value: lead.phone,
+                      missingLabel: 'Missing Phone',
                     ),
                   ],
                 ),
               ),
               // Source
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: Text(
                   labelForWireValue(leadSourceLabels, lead.source),
                   style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               // Status
@@ -334,8 +428,15 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                 ),
               ),
               // Owner
-              Expanded(flex: 2, child: OwnerChip(name: lead.ownerName)),
-              // Updated
+              Expanded(
+                flex: 2,
+                child: Text(
+                  lead.ownerName ?? 'Unassigned',
+                  style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Last Activity
               Expanded(
                 flex: 2,
                 child: Text(
@@ -343,10 +444,69 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                   style: AppTextStyles.tableCell,
                 ),
               ),
+              // Actions
+              SizedBox(
+                width: _kActionsColWidth,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textMuted,
+                  ),
+                  tooltip: 'View lead',
+                  onPressed: () => context.go('/leads/${lead.id}'),
+                ),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A single row inside the Contact cell: shows an icon + value, or a
+/// red "Missing X" warning when the value is absent.
+class _ContactLine extends StatelessWidget {
+  const _ContactLine({
+    required this.icon,
+    required this.value,
+    required this.missingLabel,
+  });
+
+  final IconData icon;
+  final String? value;
+  final String missingLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMissing = value == null || value!.isEmpty;
+    if (isMissing) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.error),
+          const SizedBox(width: 4),
+          Text(
+            missingLabel,
+            style: AppTextStyles.caption.copyWith(color: AppColors.error),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            value!,
+            style: AppTextStyles.caption,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
