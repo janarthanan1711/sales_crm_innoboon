@@ -12,6 +12,8 @@ import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_enums.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
 
 class LeadsListPage extends StatelessWidget {
@@ -26,8 +28,46 @@ class LeadsListPage extends StatelessWidget {
   }
 }
 
-class _LeadsListView extends StatelessWidget {
+class _LeadsListView extends StatefulWidget {
   const _LeadsListView();
+
+  @override
+  State<_LeadsListView> createState() => _LeadsListViewState();
+}
+
+class _LeadsListViewState extends State<_LeadsListView> {
+  final _searchController = TextEditingController();
+
+  String? _statusFilter;
+  String? _sourceFilter;
+  int? _ownerIdFilter;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _applyFilters(BuildContext context) {
+    context.read<LeadsListBloc>().add(
+      LeadsListFilterChanged(
+        status: _statusFilter,
+        source: _sourceFilter,
+        ownerId: _ownerIdFilter,
+      ),
+    );
+  }
+
+  void _clearFilters(BuildContext context) {
+    _searchController.clear();
+    setState(() {
+      _statusFilter = null;
+      _sourceFilter = null;
+      _ownerIdFilter = null;
+    });
+    context.read<LeadsListBloc>().add(const LeadsListSearchChanged(''));
+    context.read<LeadsListBloc>().add(const LeadsListFilterChanged());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +168,7 @@ class _LeadsListView extends StatelessWidget {
           SizedBox(
             width: context.isMobile ? 200 : 280,
             child: AppSearchField(
+              controller: _searchController,
               hintText: 'Search leads...',
               onChanged: (query) {
                 context.read<LeadsListBloc>().add(
@@ -137,18 +178,10 @@ class _LeadsListView extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Status',
-            icon: Icons.circle_outlined,
-            options: ['All', ...AppConstants.leadStatuses],
-            onSelected: (value) {
-              context.read<LeadsListBloc>().add(
-                LeadsListFilterChanged(
-                  status: value == 'All'
-                      ? null
-                      : wireValueForLabel(leadStatusLabels, value),
-                ),
-              );
+          _OwnerFilterDropdown(
+            onSelected: (ownerId) {
+              setState(() => _ownerIdFilter = ownerId);
+              _applyFilters(context);
             },
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -157,14 +190,33 @@ class _LeadsListView extends StatelessWidget {
             icon: Icons.source_outlined,
             options: ['All', ...AppConstants.leadSources],
             onSelected: (value) {
-              context.read<LeadsListBloc>().add(
-                LeadsListFilterChanged(
-                  source: value == 'All'
-                      ? null
-                      : wireValueForLabel(leadSourceLabels, value),
-                ),
-              );
+              setState(() {
+                _sourceFilter = value == 'All'
+                    ? null
+                    : wireValueForLabel(leadSourceLabels, value);
+              });
+              _applyFilters(context);
             },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _FilterDropdown(
+            label: 'Status',
+            icon: Icons.circle_outlined,
+            options: ['All', ...AppConstants.leadStatuses],
+            onSelected: (value) {
+              setState(() {
+                _statusFilter = value == 'All'
+                    ? null
+                    : wireValueForLabel(leadStatusLabels, value);
+              });
+              _applyFilters(context);
+            },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          TextButton.icon(
+            onPressed: () => _clearFilters(context),
+            icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+            label: const Text('Clear'),
           ),
         ],
       ),
@@ -652,6 +704,80 @@ class _FilterDropdown extends StatelessWidget {
               const SizedBox(width: 4),
             ],
             Text(label, style: AppTextStyles.labelMedium),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ─── Owner Filter Dropdown ──────────────────────────────
+/// Options are loaded from `GET /api/v1/users` rather than a static list.
+class _OwnerFilterDropdown extends StatefulWidget {
+  const _OwnerFilterDropdown({required this.onSelected});
+  final ValueChanged<int?> onSelected;
+
+  @override
+  State<_OwnerFilterDropdown> createState() => _OwnerFilterDropdownState();
+}
+
+class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
+  List<OwnerUser> _owners = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwners();
+  }
+
+  Future<void> _loadOwners() async {
+    final result = await sl<GetUsersUseCase>()();
+    if (!mounted) return;
+    result.fold((_) {}, (owners) => setState(() => _owners = owners));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<int?>(
+      onSelected: widget.onSelected,
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      itemBuilder: (context) => [
+        const PopupMenuItem<int?>(value: null, child: Text('All')),
+        ..._owners.map(
+          (owner) => PopupMenuItem<int?>(
+            value: owner.id,
+            child: Text(owner.displayName),
+          ),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.person_outline,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text('Owner', style: AppTextStyles.labelMedium),
             const SizedBox(width: 4),
             const Icon(
               Icons.keyboard_arrow_down,
