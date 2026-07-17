@@ -35,7 +35,7 @@ import '../../features/users/domain/repositories/user_repository.dart';
 import '../../features/users/domain/usecases/get_users_usecase.dart';
 
 // Accounts feature
-import '../../features/accounts/data/datasources/account_mock_datasource.dart';
+import '../../features/accounts/data/datasources/account_remote_datasource_impl.dart';
 import '../../features/accounts/data/repositories/account_repository_impl.dart';
 import '../../features/accounts/domain/repositories/account_repository.dart';
 import '../../features/accounts/domain/usecases/get_accounts_usecase.dart';
@@ -173,7 +173,7 @@ Future<void> initDependencies() async {
 
   // ─── Accounts Feature ───────────────────────────────
   sl.registerLazySingleton<AccountRemoteDataSource>(
-    () => AccountMockDataSource(),
+    () => AccountRemoteDataSourceImpl(sl()),
   );
   sl.registerLazySingleton<AccountRepository>(
     () => AccountRepositoryImpl(remoteDataSource: sl()),

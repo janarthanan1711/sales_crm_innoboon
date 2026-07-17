@@ -8,8 +8,11 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
+import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_enums.dart';
 import '../bloc/lead_detail_bloc.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
 
 class LeadDetailPage extends StatelessWidget {
   const LeadDetailPage({super.key, required this.leadId});
@@ -127,7 +130,7 @@ class _LeadDetailView extends StatelessWidget {
                       ),
                       if (!lead.isConverted)
                         ElevatedButton.icon(
-                          onPressed: () => _showConvertDialog(context, lead.id),
+                          onPressed: () => _showConvertDialog(context, lead),
                           icon: const Icon(Icons.swap_horiz, size: 16),
                           label: const Text('Convert to Account'),
                         ),
@@ -252,8 +255,15 @@ class _LeadDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showConvertDialog(BuildContext context, int leadId) async {
+  Future<void> _showConvertDialog(BuildContext context, Lead lead) async {
     String selectedTier = leadTierLabels.keys.first;
+    int? selectedOwnerId = lead.ownerId;
+    List<OwnerUser> users = [];
+
+    final usersResult = await sl<GetUsersUseCase>()();
+    usersResult.fold((_) {}, (u) => users = u);
+
+    if (!context.mounted) return;
 
     await showDialog(
       context: context,
@@ -267,7 +277,7 @@ class _LeadDetailView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Select an Account Tier:'),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
                     value: selectedTier,
                     decoration: InputDecoration(
@@ -289,6 +299,30 @@ class _LeadDetailView extends StatelessWidget {
                         .toList(),
                     onChanged: (v) => setState(() => selectedTier = v!),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text('Select Account Owner:'),
+                  const SizedBox(height: AppSpacing.sm),
+                  DropdownButtonFormField<int?>(
+                    value: selectedOwnerId,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    items: users
+                        .map(
+                          (u) => DropdownMenuItem<int?>(
+                            value: u.id,
+                            child: Text(u.displayName),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedOwnerId = v),
+                  ),
                 ],
               ),
               actions: [
@@ -297,9 +331,11 @@ class _LeadDetailView extends StatelessWidget {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context, true);
-                  },
+                  onPressed: selectedOwnerId == null
+                      ? null
+                      : () {
+                          Navigator.pop(context, true);
+                        },
                   child: const Text('Convert'),
                 ),
               ],
@@ -311,7 +347,11 @@ class _LeadDetailView extends StatelessWidget {
       if (result == true) {
         if (!context.mounted) return;
         context.read<LeadDetailBloc>().add(
-          LeadDetailConvertRequested(leadId, tier: selectedTier),
+          LeadDetailConvertRequested(
+            lead.id,
+            tier: selectedTier,
+            ownerId: selectedOwnerId,
+          ),
         );
       }
     });
