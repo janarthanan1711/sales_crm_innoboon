@@ -1,0 +1,365 @@
+{
+  "sampleResponses": {
+    "leads": {
+      "list": [
+        {
+          "id": "lead_001",
+          "companyName": "Nexbridge Tech",
+          "contactName": "Karthick Selvam",
+          "email": "karthick@nexbridge.io",
+          "phone": "+91 98765 43210",
+          "source": "LinkedIn",
+          "status": "Qualified",
+          "tier": "Gold",
+          "owner": "Sarah Jenkins",
+          "website": "nexbridge.io",
+          "industry": "IT Services",
+          "notes": "Interested in cloud migration services",
+          "createdAt": "2024-08-15T00:00:00Z",
+          "lastContactedAt": "2024-09-10T00:00:00Z"
+        },
+        {
+          "id": "lead_002",
+          "companyName": "Cloudverge Solutions",
+          "contactName": "Vishnu Priya",
+          "email": "vishnu@cloudverge.com",
+          "phone": "+91 87654 32109",
+          "source": "Referral",
+          "status": "New",
+          "tier": "Diamond",
+          "owner": "M. Chen",
+          "website": "cloudverge.com",
+          "industry": "SaaS",
+          "notes": "Referred by Nexbridge Tech CEO",
+          "createdAt": "2024-09-01T00:00:00Z",
+          "lastContactedAt": null
+        }
+      ]
+    },
+    "accounts": {
+      "list": [
+        {
+          "id": "acc_nexbridge",
+          "companyName": "Nexbridge Tech",
+          "domain": "nexbridge.io",
+          "industry": "IT Services",
+          "tier": "Strategic",
+          "primaryOwner": "Sarah Jenkins",
+          "description": "Enterprise IT services provider specializing in cloud migration and digital transformation.",
+          "activeDealsCount": 3,
+          "contacts": [
+            {
+              "id": "con_001",
+              "name": "Karthick Selvam",
+              "role": "CTO",
+              "email": "karthick@nexbridge.io",
+              "phone": "+91 98765 43210",
+              "isDecisionMaker": true,
+              "accountId": "acc_nexbridge"
+            }
+          ],
+          "createdAt": "2024-01-15T00:00:00Z"
+        }
+      ]
+    },
+    "deals": {
+      "list": [
+        {
+          "id": "deal_001",
+          "name": "Q3 Enterprise Expansion",
+          "accountId": "acc_nexbridge",
+          "accountName": "Nexbridge Tech",
+          "contactId": "con_001",
+          "contactName": "Karthick Selvam",
+          "value": 4500000,
+          "currency": "INR",
+          "stage": "Proposals",
+          "expectedCloseDate": "2024-09-15T00:00:00Z",
+          "owner": "Sarah Jenkins",
+          "tier": "Strategic",
+          "description": "Expanding their cloud infrastructure to support 10k new concurrent users.",
+          "stakeholders": [
+            {
+              "id": "st_1",
+              "name": "Karthick Selvam",
+              "role": "CTO",
+              "email": "karthick@nexbridge.io",
+              "dealId": "deal_001",
+              "isPrimary": true
+            }
+          ],
+          "createdAt": "2024-07-01T00:00:00Z"
+        }
+      ]
+    },
+    "activities": {
+      "list": [
+        {
+          "id": "act_1",
+          "type": "Meeting",
+          "title": "Discovery Call",
+          "description": "Discussed cloud migration strategy and timeline expectations.",
+          "entityType": "Deal",
+          "entityId": "deal_001",
+          "performedBy": "Sarah Jenkins",
+          "performedAt": "2024-09-18T10:00:00Z"
+        },
+        {
+          "id": "act_2",
+          "type": "Email",
+          "title": "Sent Proposal Draft",
+          "description": "Emailed the V1 architecture proposal for review.",
+          "entityType": "Deal",
+          "entityId": "deal_001",
+          "performedBy": "Sarah Jenkins",
+          "performedAt": "2024-09-20T15:00:00Z"
+        }
+      ]
+    },
+    "checklists": {
+      "dealChecklist": [
+        {
+          "stageName": "Discovery Phase",
+          "stageOrder": 1,
+          "items": [
+            {
+              "id": "chk_1",
+              "dealId": "deal_001",
+              "stageName": "Discovery Phase",
+              "stageOrder": 1,
+              "itemText": "Identify Key Stakeholders",
+              "isCompleted": true,
+              "owningTeam": "Sales",
+              "completedAt": "2024-09-15T00:00:00Z",
+              "completedBy": "Sarah Jenkins",
+              "notes": null,
+              "isConditional": false
+            },
+            {
+              "id": "chk_2",
+              "dealId": "deal_001",
+              "stageName": "Discovery Phase",
+              "stageOrder": 1,
+              "itemText": "Define Budget Constraints",
+              "isCompleted": true,
+              "owningTeam": "Sales",
+              "completedAt": "2024-09-16T00:00:00Z",
+              "completedBy": "Sarah Jenkins",
+              "notes": null,
+              "isConditional": false
+            },
+            {
+              "id": "chk_3",
+              "dealId": "deal_001",
+              "stageName": "Discovery Phase",
+              "stageOrder": 1,
+              "itemText": "Technical Requirements Document",
+              "isCompleted": false,
+              "owningTeam": "Pre-Sales",
+              "completedAt": null,
+              "completedBy": null,
+              "notes": "Waiting for client IT team to send architecture diagrams.",
+              "isConditional": false
+            }
+          ]
+        },
+        {
+          "stageName": "Solution Design",
+          "stageOrder": 2,
+          "items": [
+            {
+              "id": "chk_4",
+              "dealId": "deal_001",
+              "stageName": "Solution Design",
+              "stageOrder": 2,
+              "itemText": "Architecture Review",
+              "isCompleted": false,
+              "owningTeam": "Pre-Sales",
+              "completedAt": null,
+              "completedBy": null,
+              "notes": null,
+              "isConditional": false
+            }
+          ]
+        }
+      ]
+    },
+    "notifications": {
+      "list": [
+        {
+          "id": "notif_1",
+          "type": "Lead Assigned",
+          "title": "New Lead Assigned",
+          "message": "Alex Johnson has been assigned to you.",
+          "entityId": "lead_002",
+          "entityType": "Lead",
+          "isRead": false,
+          "createdAt": "2024-09-20T10:25:00Z"
+        },
+        {
+          "id": "notif_2",
+          "type": "Deal Stage Changed",
+          "title": "Deal Stage Updated",
+          "message": "Q3 Enterprise Expansion moved to Proposals.",
+          "entityId": "deal_001",
+          "entityType": "Deal",
+          "isRead": false,
+          "createdAt": "2024-09-20T09:00:00Z"
+        }
+      ]
+    },
+    "analytics": {
+      "salesMetrics": {
+        "revenueHistory": [
+          {
+            "date": "2024-04-01T00:00:00Z",
+            "amount": 500000.0
+          },
+          {
+            "date": "2024-05-01T00:00:00Z",
+            "amount": 800000.0
+          },
+          {
+            "date": "2024-06-01T00:00:00Z",
+            "amount": 750000.0
+          },
+          {
+            "date": "2024-07-01T00:00:00Z",
+            "amount": 1100000.0
+          },
+          {
+            "date": "2024-08-01T00:00:00Z",
+            "amount": 1250000.0
+          },
+          {
+            "date": "2024-09-01T00:00:00Z",
+            "amount": 1450000.0
+          }
+        ],
+        "targetHistory": [
+          {
+            "date": "2024-04-01T00:00:00Z",
+            "amount": 600000.0
+          },
+          {
+            "date": "2024-05-01T00:00:00Z",
+            "amount": 780000.0
+          },
+          {
+            "date": "2024-06-01T00:00:00Z",
+            "amount": 960000.0
+          },
+          {
+            "date": "2024-07-01T00:00:00Z",
+            "amount": 1140000.0
+          },
+          {
+            "date": "2024-08-01T00:00:00Z",
+            "amount": 1320000.0
+          },
+          {
+            "date": "2024-09-01T00:00:00Z",
+            "amount": 1500000.0
+          }
+        ],
+        "overallWinRate": 0.68,
+        "funnel": [
+          {
+            "stageName": "Leads",
+            "count": 450,
+            "value": 0
+          },
+          {
+            "stageName": "Qualified",
+            "count": 180,
+            "value": 45000000
+          },
+          {
+            "stageName": "Proposals",
+            "count": 85,
+            "value": 21000000
+          },
+          {
+            "stageName": "Closed Won",
+            "count": 58,
+            "value": 12500000
+          }
+        ],
+        "leaderboard": [
+          {
+            "repName": "Sarah Jenkins",
+            "dealsClosed": 24,
+            "revenueGenerated": 6200000,
+            "winRate": 0.75
+          },
+          {
+            "repName": "M. Chen",
+            "dealsClosed": 18,
+            "revenueGenerated": 4100000,
+            "winRate": 0.62
+          },
+          {
+            "repName": "P. Kumar",
+            "dealsClosed": 16,
+            "revenueGenerated": 2200000,
+            "winRate": 0.58
+          }
+        ]
+      }
+    }
+  },
+  "enums": {
+    "leadStatus": [
+      "New",
+      "Contacted",
+      "Junk",
+      "Closed",
+      "Contact in Future"
+    ],
+    "tiers": [
+      "Bronze",
+      "Silver",
+      "Gold",
+      "Diamond",
+      "Strategic",
+      "Not Applicable"
+    ],
+    "dealStages": [
+      "Prospecting",
+      "Qualified to Buy",
+      "Evaluation",
+      "Proposals",
+      "Negotiation",
+      "Closed Won",
+      "Closed Lost"
+    ],
+    "activityTypes": [
+      "Meeting",
+      "Email",
+      "Call",
+      "Stage Change",
+      "Note",
+      "Document Upload"
+    ],
+    "notificationTypes": [
+      "Lead Assigned",
+      "Deal Stage Changed",
+      "Deal Created",
+      "Contact Added",
+      "Mention",
+      "Task Assigned",
+      "Task Completed"
+    ],
+    "leadSources": [
+      "LinkedIn",
+      "Referral",
+      "Website",
+      "Cold Outreach",
+      "Apollo",
+      "Conference",
+      "Lusha",
+      "HubSpot Import",
+      "Partner"
+    ]
+  }
+}

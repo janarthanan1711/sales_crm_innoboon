@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../app/di/injector.dart';
+import '../../../../app/router/route_paths.dart';
+import '../bloc/lead_detail_bloc.dart';
+
+class LeadDetailPage extends StatelessWidget {
+  const LeadDetailPage({super.key, required this.leadId});
+  final String leadId;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<LeadDetailBloc>()..add(LeadDetailLoadRequested(leadId)),
+      child: const _LeadDetailView(),
+    );
+  }
+}
+
+class _LeadDetailView extends StatelessWidget {
+  const _LeadDetailView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: BlocConsumer<LeadDetailBloc, LeadDetailState>(
+        listener: (context, state) {
+          if (state is LeadDetailConverted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lead converted to Account successfully!'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go('/accounts/${state.accountId}');
+          }
+        },
+        builder: (context, state) {
+          if (state is LeadDetailLoading) {
+            return const AppLoadingIndicator(message: 'Loading lead...');
+          }
+          if (state is LeadDetailError) {
+            return ErrorState(message: state.message, onRetry: () {});
+          }
+          if (state is LeadDetailLoaded) {
+            final lead = state.lead;
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(context.isMobile ? 16.0 : 32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Back button + title
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => context.go('/leads'),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(lead.companyName, style: AppTextStyles.h1),
+                            Text(
+                              lead.contactName,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TierBadge(tier: lead.tier),
+                      const SizedBox(width: AppSpacing.sm),
+                      StatusBadge.leadStatus(lead.status),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+
+                  // Action buttons
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          context.push(
+                            RoutePaths.editLead.replaceFirst(':id', lead.id),
+                            extra: lead,
+                          );
+                        },
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit Lead'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          context.read<LeadDetailBloc>().add(
+                            LeadDetailConvertRequested(lead.id),
+                          );
+                        },
+                        icon: const Icon(Icons.swap_horiz, size: 16),
+                        label: const Text('Convert to Account'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+
+                  // Info cards
+                  Wrap(
+                    spacing: AppSpacing.lg,
+                    runSpacing: AppSpacing.lg,
+                    children: [
+                      _infoCard('Contact Information', [
+                        _infoRow('Email', lead.email),
+                        _infoRow('Phone', lead.phone ?? 'Not provided'),
+                        _infoRow('Company', lead.companyName),
+                      ]),
+                      _infoCard('Lead Details', [
+                        _infoRow('Source', lead.source),
+                        _infoRow('Industry', lead.industry ?? 'Not set'),
+                        _infoRow('Website', lead.website ?? 'Not set'),
+                        _infoRow('Owner', lead.owner ?? 'Unassigned'),
+                      ]),
+                      _infoCard('Timeline', [
+                        _infoRow(
+                          'Created',
+                          DateFormatter.shortDate(lead.createdAt),
+                        ),
+                        _infoRow(
+                          'Last Contacted',
+                          lead.lastContactedAt != null
+                              ? DateFormatter.relativeTime(
+                                  lead.lastContactedAt!,
+                                )
+                              : 'Never',
+                        ),
+                      ]),
+                    ],
+                  ),
+
+                  if (lead.notes != null) ...[
+                    const SizedBox(height: AppSpacing.xxl),
+                    SectionCard(
+                      title: 'Notes',
+                      child: Text(lead.notes!, style: AppTextStyles.bodyMedium),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  Widget _infoCard(String title, List<Widget> children) {
+    return SizedBox(
+      width: 340,
+      child: SectionCard(
+        title: title,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: AppTextStyles.labelMedium),
+          ),
+          Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
+extension on BuildContext {
+  bool get isMobile => MediaQuery.sizeOf(this).width < 600;
+}
