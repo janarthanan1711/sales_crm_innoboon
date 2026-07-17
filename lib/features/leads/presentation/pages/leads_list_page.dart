@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -151,6 +155,15 @@ class _LeadsListViewState extends State<_LeadsListView> {
             ],
           ),
         ),
+        OutlinedButton.icon(
+          onPressed: () => showDialog(
+            context: context,
+            builder: (_) => const _ImportLeadsDialog(),
+          ),
+          icon: const Icon(Icons.upload_file_outlined, size: 18),
+          label: const Text('Import Leads'),
+        ),
+        const SizedBox(width: AppSpacing.sm),
         ElevatedButton.icon(
           onPressed: () => context.go(RoutePaths.createLead),
           icon: const Icon(Icons.add, size: 18),
@@ -787,6 +800,200 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// ─── Import Leads Dialog ────────────────────────────────
+const List<String> _kImportAllowedExtensions = ['csv', 'xlsx'];
+
+/// Sample CSV columns mirror the Create Lead form fields exactly (see
+/// create_lead_page.dart), using the same placeholder values shown as
+/// hints there so the two stay recognizably in sync.
+const String _kSampleCsvHeader =
+    'first_name,last_name,company,company_domain,job_title,linkedin_url,'
+    'email,phone,source,status,owner_email,follow_up_note';
+const String _kSampleCsvRow =
+    'Jane,Doe,Acme Corp,acme.com,VP of Sales,linkedin.com/in/janedoe,'
+    'jane.doe@acme.com,+1 (555) 000-0000,Website,Not Contacted,'
+    'owner@example.com,Interested in the enterprise plan';
+
+class _ImportLeadsDialog extends StatefulWidget {
+  const _ImportLeadsDialog();
+
+  @override
+  State<_ImportLeadsDialog> createState() => _ImportLeadsDialogState();
+}
+
+class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
+  PlatformFile? _pickedFile;
+  bool _picking = false;
+
+  Future<void> _pickFile() async {
+    setState(() => _picking = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: _kImportAllowedExtensions,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() => _pickedFile = result.files.first);
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _downloadSample() async {
+    final csv = '$_kSampleCsvHeader\n$_kSampleCsvRow\n';
+    final bytes = Uint8List.fromList(utf8.encode(csv));
+    await downloadBytes(bytes, 'leads_import_sample.csv');
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Expanded(child: Text('Import Leads')),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Upload File', style: AppTextStyles.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            InkWell(
+              onTap: _picking ? null : _pickFile,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                ),
+                child: _pickedFile == null
+                    ? Column(
+                        children: [
+                          const Icon(
+                            Icons.upload_file_outlined,
+                            size: 28,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            _picking
+                                ? 'Opening file picker...'
+                                : 'Click to browse for a file',
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          const Icon(
+                            Icons.description_outlined,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _pickedFile!.name,
+                                  style: AppTextStyles.bodyMedium,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  _formatSize(_pickedFile!.size),
+                                  style: AppTextStyles.caption,
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Remove file',
+                            onPressed: () =>
+                                setState(() => _pickedFile = null),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Only .csv and .xlsx files are supported.',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Need a template? Download a sample CSV with a dummy lead.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _downloadSample,
+                    child: const Text('Sample Import'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _pickedFile == null
+              ? null
+              : () {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final fileName = _pickedFile!.name;
+                  Navigator.pop(context);
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('$fileName selected.')),
+                  );
+                },
+          child: const Text('Upload'),
+        ),
+      ],
     );
   }
 }
