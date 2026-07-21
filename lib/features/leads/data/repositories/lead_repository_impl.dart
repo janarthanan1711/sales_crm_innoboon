@@ -109,4 +109,57 @@ class LeadRepositoryImpl implements LeadRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, List<LeadActivity>>> listActivities(
+    int leadId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      final activities = await remoteDataSource.listActivities(
+        leadId,
+        types: types,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+      );
+      return Right(activities);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LeadActivity>> updateActivity(
+    int leadId,
+    int activityId, {
+    String? type,
+    String? note,
+  }) async {
+    try {
+      final activity = await remoteDataSource.updateActivity(
+        leadId,
+        activityId,
+        type: type,
+        note: note,
+      );
+      return Right(activity);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteActivity(
+    int leadId,
+    int activityId,
+  ) async {
+    try {
+      await remoteDataSource.deleteActivity(leadId, activityId);
+      return const Right(null);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

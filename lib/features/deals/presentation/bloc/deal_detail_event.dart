@@ -17,7 +17,12 @@ class DealDetailLoadRequested extends DealDetailEvent {
 class DealDetailStageUpdateRequested extends DealDetailEvent {
   final String id;
   final DealStage stage;
-  const DealDetailStageUpdateRequested({required this.id, required this.stage});
+  final String? note;
+  const DealDetailStageUpdateRequested({
+    required this.id,
+    required this.stage,
+    this.note,
+  });
   @override
-  List<Object?> get props => [id, stage];
+  List<Object?> get props => [id, stage, note];
 }

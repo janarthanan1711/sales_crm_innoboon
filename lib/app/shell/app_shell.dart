@@ -101,12 +101,6 @@ const List<NavItem> _sidebarMainItems = [
 
 const List<NavItem> _sidebarBottomItems = [
   NavItem(
-    label: 'Settings',
-    icon: Icons.settings_outlined,
-    activeIcon: Icons.settings,
-    path: RoutePaths.settings,
-  ),
-  NavItem(
     label: 'Support',
     icon: Icons.help_outline,
     activeIcon: Icons.help,
@@ -143,7 +137,8 @@ class _MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
+    final navItems = _visibleMainNavItems(context);
+    final currentIndex = _getCurrentIndex(context, navItems);
 
     return Scaffold(
       body: Column(
@@ -159,9 +154,9 @@ class _MobileShell extends StatelessWidget {
           ),
         ),
         child: BottomNavigationBar(
-          currentIndex: currentIndex.clamp(0, _mainNavItems.length - 1),
-          onTap: (index) => _onNavTap(context, _mainNavItems[index].path),
-          items: _mainNavItems.map((item) {
+          currentIndex: currentIndex.clamp(0, navItems.length - 1),
+          onTap: (index) => _onNavTap(context, navItems[index].path),
+          items: navItems.map((item) {
             return BottomNavigationBarItem(
               icon: Icon(item.icon),
               activeIcon: Icon(item.activeIcon),
@@ -181,15 +176,16 @@ class _TabletShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
+    final navItems = _visibleMainNavItems(context);
+    final currentIndex = _getCurrentIndex(context, navItems);
 
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            selectedIndex: currentIndex.clamp(0, _mainNavItems.length - 1),
+            selectedIndex: currentIndex.clamp(0, navItems.length - 1),
             onDestinationSelected: (index) =>
-                _onNavTap(context, _mainNavItems[index].path),
+                _onNavTap(context, navItems[index].path),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
@@ -199,7 +195,7 @@ class _TabletShell extends StatelessWidget {
                 size: 32,
               ),
             ),
-            destinations: _mainNavItems.map((item) {
+            destinations: navItems.map((item) {
               return NavigationRailDestination(
                 icon: Icon(item.icon),
                 selectedIcon: Icon(item.activeIcon),
@@ -340,6 +336,17 @@ class _WebSidebar extends StatelessWidget {
                 isActive: currentPath == item.path,
                 onTap: () => _onNavTap(context, item.path),
               )),
+          if (_hasAdminAccess(context))
+            _SidebarNavItem(
+              item: const NavItem(
+                label: 'Admin Settings',
+                icon: Icons.settings_outlined,
+                activeIcon: Icons.settings,
+                path: RoutePaths.settings,
+              ),
+              isActive: currentPath == RoutePaths.settings,
+              onTap: () => _onNavTap(context, RoutePaths.settings),
+            ),
 
           const Spacer(),
 
@@ -553,11 +560,11 @@ class _MobileTopBar extends StatelessWidget {
 
 /// ─── Helpers ────────────────────────────────────────────
 
-int _getCurrentIndex(BuildContext context) {
+int _getCurrentIndex(BuildContext context, List<NavItem> navItems) {
   final currentPath = GoRouterState.of(context).matchedLocation;
-  for (int i = 0; i < _mainNavItems.length; i++) {
-    if (currentPath == _mainNavItems[i].path ||
-        currentPath.startsWith('${_mainNavItems[i].path}/')) {
+  for (int i = 0; i < navItems.length; i++) {
+    if (currentPath == navItems[i].path ||
+        currentPath.startsWith('${navItems[i].path}/')) {
       return i;
     }
   }
@@ -566,6 +573,20 @@ int _getCurrentIndex(BuildContext context) {
 
 void _onNavTap(BuildContext context, String path) {
   context.go(path);
+}
+
+/// Only users whose role can manage users/roles see the Admin Settings
+/// entry point (top-level nav item, sidebar item, or "Settings" tab).
+bool _hasAdminAccess(BuildContext context) {
+  final state = context.watch<AuthBloc>().state;
+  final user = state is AuthAuthenticated ? state.user : null;
+  if (user == null) return false;
+  return user.hasPermission('users.manage') || user.hasPermission('roles.manage');
+}
+
+List<NavItem> _visibleMainNavItems(BuildContext context) {
+  if (_hasAdminAccess(context)) return _mainNavItems;
+  return _mainNavItems.where((i) => i.path != RoutePaths.settings).toList();
 }
 
 class _UserProfileDropdown extends StatelessWidget {
@@ -579,19 +600,7 @@ class _UserProfileDropdown extends StatelessWidget {
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
         final displayName = user?.name ?? 'Sarah Jenkins';
-        final displayRole = user?.role ?? 'sales_manager';
-        
-        // Convert camelCase or snake_case roles to Title Case for UI display
-        String roleName = displayRole;
-        if (displayRole == 'sales_manager') {
-          roleName = 'Sales Manager';
-        } else if (displayRole == 'sales_rep') {
-          roleName = 'Sales Representative';
-        } else if (displayRole == 'delivery_sme') {
-          roleName = 'Delivery SME';
-        } else {
-          roleName = displayRole.split('_').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1)}' : '').join(' ');
-        }
+        final roleName = user?.role.name ?? 'Sales Team';
 
         final initials = displayName.isNotEmpty
             ? displayName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
@@ -601,6 +610,8 @@ class _UserProfileDropdown extends StatelessWidget {
           onSelected: (value) {
             if (value == 'logout') {
               context.read<AuthBloc>().add(const AuthLogoutRequested());
+            } else if (value == 'profile') {
+              context.go(RoutePaths.profile);
             }
           },
           offset: const Offset(0, 48),
@@ -638,6 +649,16 @@ class _UserProfileDropdown extends StatelessWidget {
               ),
             ),
             const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'profile',
+              child: Row(
+                children: [
+                  Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
+                  SizedBox(width: 8),
+                  Text('View Profile'),
+                ],
+              ),
+            ),
             const PopupMenuItem(
               value: 'logout',
               child: Row(

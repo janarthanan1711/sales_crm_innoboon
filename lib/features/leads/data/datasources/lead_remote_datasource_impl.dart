@@ -119,18 +119,72 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
         ApiEndpoints.leadActivities('$leadId'),
         data: {'type': type, 'note': note},
       );
-      final data = response.data as Map<String, dynamic>;
-      return LeadActivity(
-        id: data['id'] as int,
-        leadId: data['lead_id'] as int,
-        type: data['type'] as String,
-        note: data['note'] as String,
-        createdBy: data['created_by'] as int,
-        createdAt: DateTime.parse(data['created_at'] as String),
+      return leadActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<LeadActivity>> listActivities(
+    int leadId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      final response = await dioClient.get(
+        ApiEndpoints.leadActivities('$leadId'),
+        queryParameters: {
+          if (types != null && types.isNotEmpty) 'types': types,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
+        },
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((json) => leadActivityFromJson(json as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<LeadActivity> updateActivity(
+    int leadId,
+    int activityId, {
+    String? type,
+    String? note,
+  }) async {
+    try {
+      final response = await dioClient.patch(
+        '${ApiEndpoints.leadActivities('$leadId')}/$activityId',
+        data: {
+          if (type != null) 'type': type,
+          if (note != null) 'note': note,
+        },
+      );
+      return leadActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> deleteActivity(int leadId, int activityId) async {
+    try {
+      await dioClient.delete(
+        '${ApiEndpoints.leadActivities('$leadId')}/$activityId',
       );
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 
   Exception _normalize(DioException e) {

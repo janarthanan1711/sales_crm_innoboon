@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../app/router/route_paths.dart';
 import '../bloc/notification_bloc.dart';
 
 class NotificationBell extends StatelessWidget {
@@ -34,11 +36,8 @@ class _BellWidget extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.notifications_none),
               color: AppColors.textPrimary,
-              onPressed: () {
-                // Typically you'd open a dialog or navigate to notifications page
-                // For now, we could just mark all as read or show a dropdown
-                context.read<NotificationBloc>().add(const NotificationMarkedAllRead());
-              },
+              tooltip: 'Notifications',
+              onPressed: () => context.go(RoutePaths.notifications),
             ),
             if (unreadCount > 0)
               Positioned(

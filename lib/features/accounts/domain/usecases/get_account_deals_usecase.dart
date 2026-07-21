@@ -1,0 +1,12 @@
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
+import '../../../deals/domain/entities/deal.dart';
+import '../repositories/account_repository.dart';
+
+class GetAccountDealsUseCase {
+  final AccountRepository repository;
+  GetAccountDealsUseCase(this.repository);
+
+  Future<Either<Failure, List<Deal>>> call(String accountId) =>
+      repository.getAccountDeals(accountId);
+}

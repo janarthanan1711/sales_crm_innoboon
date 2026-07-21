@@ -38,6 +38,7 @@ const Map<String, String> leadActivityTypeLabels = {
   'meeting': 'Meeting',
   'call': 'Call',
   'comment': 'Comment',
+  'follow_up': 'Follow-up',
 };
 
 /// Display label for a backend wire value; falls back to the raw value if

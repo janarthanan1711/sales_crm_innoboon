@@ -25,6 +25,7 @@ class LeadModel extends Lead {
     super.followUpNote,
     required super.isConverted,
     required super.updatedAt,
+    super.createdAt,
     super.contacts,
     super.activities,
     super.activityCount,
@@ -58,6 +59,9 @@ class LeadModel extends Lead {
       followUpNote: json['follow_up_note'] as String?,
       isConverted: json['is_converted'] as bool,
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
       contacts: rawContacts
           ?.map(
             (c) => LeadContact(
@@ -68,17 +72,7 @@ class LeadModel extends Lead {
           )
           .toList(),
       activities: rawActivities
-          ?.map(
-            (a) => LeadActivity(
-              id: a['id'] as int,
-              leadId: a['lead_id'] as int,
-              type: a['type'] as String,
-              note: a['note'] as String,
-              createdBy: a['created_by'] as int,
-              createdAt: DateTime.parse(a['created_at'] as String),
-              createdByName: a['created_by_name'] as String?,
-            ),
-          )
+          ?.map((a) => leadActivityFromJson(a as Map<String, dynamic>))
           .toList(),
       activityCount: json['activity_count'] as int?,
     );
@@ -119,4 +113,25 @@ class LeadModel extends Lead {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
+}
+
+/// Shared parser for a single lead-activity JSON object — used both when
+/// activities are embedded on `LeadDetailRead` and when they come back
+/// standalone from `POST/PATCH /leads/{id}/activities[...]` or
+/// `GET /leads/{id}/activities`.
+LeadActivity leadActivityFromJson(Map<String, dynamic> json) {
+  return LeadActivity(
+    id: json['id'] as int,
+    leadId: json['lead_id'] as int,
+    type: json['type'] as String,
+    note: json['note'] as String,
+    createdBy: json['created_by'] as int,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    createdByName: json['created_by_name'] as String?,
+    updatedBy: json['updated_by'] as int?,
+    updatedByName: json['updated_by_name'] as String?,
+    updatedAt: json['updated_at'] != null
+        ? DateTime.parse(json['updated_at'] as String)
+        : null,
+  );
 }

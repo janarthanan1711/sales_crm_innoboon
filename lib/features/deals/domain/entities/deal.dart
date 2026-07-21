@@ -25,6 +25,29 @@ extension DealStageExtension on DealStage {
       case DealStage.coldDeals: return 'Cold Deals';
     }
   }
+
+  /// Backend wire value — see `saleshub`'s deal-stage enum.
+  String get wireValue {
+    switch (this) {
+      case DealStage.receivedRequirements: return 'received_requirements';
+      case DealStage.qualifiedToBuy: return 'qualified_to_buy';
+      case DealStage.evaluation: return 'evaluation';
+      case DealStage.proposals: return 'proposals';
+      case DealStage.contracts: return 'contracts';
+      case DealStage.closedWon: return 'closed_won';
+      case DealStage.closedLost: return 'closed_lost';
+      case DealStage.coldDeals: return 'cold_deals';
+    }
+  }
+}
+
+/// Backend wire value -> [DealStage]; falls back to [DealStage.receivedRequirements]
+/// if the backend ever sends an unrecognized value.
+DealStage dealStageFromWire(String wire) {
+  return DealStage.values.firstWhere(
+    (s) => s.wireValue == wire,
+    orElse: () => DealStage.receivedRequirements,
+  );
 }
 
 class Deal extends Equatable {
@@ -38,7 +61,9 @@ class Deal extends Equatable {
   final String currency;
   final DealStage stage;
   final DateTime? expectedCloseDate;
+  final int? ownerId;
   final String owner;
+  final String? coldReason;
   final String tier;
   final String description;
   final List<Stakeholder> stakeholders;
@@ -56,7 +81,9 @@ class Deal extends Equatable {
     this.currency = 'INR',
     required this.stage,
     this.expectedCloseDate,
+    this.ownerId,
     required this.owner,
+    this.coldReason,
     required this.tier,
     this.description = '',
     this.stakeholders = const [],
@@ -75,7 +102,9 @@ class Deal extends Equatable {
     String? currency,
     DealStage? stage,
     DateTime? expectedCloseDate,
+    int? ownerId,
     String? owner,
+    String? coldReason,
     String? tier,
     String? description,
     List<Stakeholder>? stakeholders,
@@ -93,7 +122,9 @@ class Deal extends Equatable {
       currency: currency ?? this.currency,
       stage: stage ?? this.stage,
       expectedCloseDate: expectedCloseDate ?? this.expectedCloseDate,
+      ownerId: ownerId ?? this.ownerId,
       owner: owner ?? this.owner,
+      coldReason: coldReason ?? this.coldReason,
       tier: tier ?? this.tier,
       description: description ?? this.description,
       stakeholders: stakeholders ?? this.stakeholders,
@@ -114,7 +145,9 @@ class Deal extends Equatable {
         currency,
         stage,
         expectedCloseDate,
+        ownerId,
         owner,
+        coldReason,
         tier,
         description,
         stakeholders,

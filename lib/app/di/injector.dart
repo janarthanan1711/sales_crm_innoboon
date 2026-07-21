@@ -12,7 +12,14 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/logout_usecase.dart';
 import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
+import '../../features/auth/domain/usecases/profile_usecases.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+
+// Roles feature
+import '../../features/roles/data/datasources/role_remote_datasource_impl.dart';
+import '../../features/roles/data/repositories/role_repository_impl.dart';
+import '../../features/roles/domain/repositories/role_repository.dart';
+import '../../features/roles/domain/usecases/role_usecases.dart';
 
 // Leads feature
 import '../../features/leads/data/datasources/lead_remote_datasource_impl.dart';
@@ -25,6 +32,9 @@ import '../../features/leads/domain/usecases/update_lead_usecase.dart';
 import '../../features/leads/domain/usecases/convert_lead_usecase.dart';
 import '../../features/leads/domain/usecases/delete_lead_usecase.dart';
 import '../../features/leads/domain/usecases/log_lead_activity_usecase.dart';
+import '../../features/leads/domain/usecases/list_lead_activities_usecase.dart';
+import '../../features/leads/domain/usecases/update_lead_activity_usecase.dart';
+import '../../features/leads/domain/usecases/delete_lead_activity_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
 
@@ -33,6 +43,8 @@ import '../../features/users/data/datasources/user_remote_datasource.dart';
 import '../../features/users/data/repositories/user_repository_impl.dart';
 import '../../features/users/domain/repositories/user_repository.dart';
 import '../../features/users/domain/usecases/get_users_usecase.dart';
+import '../../features/users/domain/usecases/create_user_usecase.dart';
+import '../../features/users/domain/usecases/delete_user_usecase.dart';
 
 // Accounts feature
 import '../../features/accounts/data/datasources/account_remote_datasource_impl.dart';
@@ -40,17 +52,29 @@ import '../../features/accounts/data/repositories/account_repository_impl.dart';
 import '../../features/accounts/domain/repositories/account_repository.dart';
 import '../../features/accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
+import '../../features/accounts/domain/usecases/create_account_usecase.dart';
+import '../../features/accounts/domain/usecases/update_account_usecase.dart';
+import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
+import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
 import '../../features/accounts/presentation/bloc/accounts_list_bloc.dart';
 import '../../features/accounts/presentation/bloc/account_detail_bloc.dart';
 
+// Contacts feature
+import '../../features/contacts/data/datasources/contact_remote_datasource_impl.dart';
+import '../../features/contacts/data/repositories/contact_repository_impl.dart';
+import '../../features/contacts/domain/repositories/contact_repository.dart';
+import '../../features/contacts/domain/usecases/contact_usecases.dart';
+
 // Deals feature
-import '../../features/deals/data/datasources/deal_mock_datasource.dart';
+import '../../features/deals/data/datasources/deal_remote_datasource_impl.dart';
 import '../../features/deals/data/repositories/deal_repository_impl.dart';
 import '../../features/deals/domain/repositories/deal_repository.dart';
 import '../../features/deals/domain/usecases/get_deals_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_by_id_usecase.dart';
 import '../../features/deals/domain/usecases/create_deal_usecase.dart';
+import '../../features/deals/domain/usecases/update_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
+import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
 
@@ -76,7 +100,7 @@ import '../../features/performance_dashboard/domain/usecases/get_sales_metrics_u
 import '../../features/performance_dashboard/presentation/bloc/analytics_bloc.dart';
 
 // Notifications feature
-import '../../features/notifications/data/datasources/notification_mock_datasource.dart';
+import '../../features/notifications/data/datasources/notification_remote_datasource_impl.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/domain/usecases/notification_usecases.dart';
@@ -129,6 +153,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LoginUseCase(sl()));
   sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => FetchCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -138,6 +166,19 @@ Future<void> initDependencies() async {
       getCurrentUserUseCase: sl(),
     ),
   );
+
+  // ─── Roles Feature ───────────────────────────────────
+  sl.registerLazySingleton<RoleRemoteDataSource>(
+    () => RoleRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<RoleRepository>(
+    () => RoleRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => ListPermissionsUseCase(sl()));
+  sl.registerLazySingleton(() => ListRolesUseCase(sl()));
+  sl.registerLazySingleton(() => CreateRoleUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateRoleUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteRoleUseCase(sl()));
 
   // ─── Leads Feature ──────────────────────────────────
   sl.registerLazySingleton<LeadRemoteDataSource>(
@@ -153,12 +194,19 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ConvertLeadToAccountUseCase(sl()));
   sl.registerLazySingleton(() => DeleteLeadUseCase(sl()));
   sl.registerLazySingleton(() => LogLeadActivityUseCase(sl()));
+  sl.registerLazySingleton(() => ListLeadActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateLeadActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteLeadActivityUseCase(sl()));
   sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
   sl.registerFactory(
     () => LeadDetailBloc(
       getLeadByIdUseCase: sl(),
       convertLeadUseCase: sl(),
       deleteLeadUseCase: sl(),
+      listLeadActivitiesUseCase: sl(),
+      logLeadActivityUseCase: sl(),
+      updateLeadActivityUseCase: sl(),
+      deleteLeadActivityUseCase: sl(),
     ),
   );
 
@@ -170,6 +218,8 @@ Future<void> initDependencies() async {
     () => UserRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetUsersUseCase(sl()));
+  sl.registerLazySingleton(() => CreateUserUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteUserUseCase(sl()));
 
   // ─── Accounts Feature ───────────────────────────────
   sl.registerLazySingleton<AccountRemoteDataSource>(
@@ -180,22 +230,59 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => GetAccountsUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountByIdUseCase(sl()));
+  sl.registerLazySingleton(() => CreateAccountUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAccountUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountContactsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
-  sl.registerFactory(() => AccountDetailBloc(getAccountByIdUseCase: sl()));
+  sl.registerFactory(
+    () => AccountDetailBloc(
+      getAccountByIdUseCase: sl(),
+      getAccountContactsUseCase: sl(),
+      getAccountDealsUseCase: sl(),
+    ),
+  );
+
+  // ─── Contacts Feature ───────────────────────────────
+  sl.registerLazySingleton<ContactRemoteDataSource>(
+    () => ContactRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<ContactRepository>(
+    () => ContactRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => CreateContactUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateContactUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
 
   // ─── Deals Feature ──────────────────────────────────
-  sl.registerLazySingleton<DealRemoteDataSource>(() => DealMockDataSource());
+  sl.registerLazySingleton<DealRemoteDataSource>(
+    () => DealRemoteDataSourceImpl(dioClient: sl()),
+  );
   sl.registerLazySingleton<DealRepository>(
     () => DealRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetDealsUseCase(sl()));
   sl.registerLazySingleton(() => GetDealByIdUseCase(sl()));
   sl.registerLazySingleton(() => CreateDealUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateDealUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
-  sl.registerFactory(() => DealsListBloc(getDealsUseCase: sl()));
+  sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerFactory(
-    () =>
-        DealDetailBloc(getDealByIdUseCase: sl(), updateDealStageUseCase: sl()),
+    () => DealsListBloc(
+      getDealsUseCase: sl(),
+      updateDealStageUseCase: sl(),
+      getAccountsUseCase: sl(),
+      getUsersUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => DealDetailBloc(
+      getDealByIdUseCase: sl(),
+      updateDealStageUseCase: sl(),
+      getDealStageHistoryUseCase: sl(),
+      getAccountByIdUseCase: sl(),
+      getUsersUseCase: sl(),
+    ),
   );
   // ─── Checklist Feature ──────────────────────────────
   sl.registerLazySingleton<ChecklistRemoteDataSource>(
@@ -238,7 +325,7 @@ Future<void> initDependencies() async {
 
   // ─── Notifications Feature ─────────────────────────
   sl.registerLazySingleton<NotificationRemoteDataSource>(
-    () => NotificationMockDataSource(),
+    () => NotificationRemoteDataSourceImpl(dioClient: sl()),
   );
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(remoteDataSource: sl()),
@@ -247,12 +334,16 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetUnreadCountUseCase(sl()));
   sl.registerLazySingleton(() => MarkNotificationReadUseCase(sl()));
   sl.registerLazySingleton(() => MarkAllNotificationsReadUseCase(sl()));
+  sl.registerLazySingleton(() => MarkManyNotificationsReadUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteNotificationsUseCase(sl()));
   sl.registerFactory(
     () => NotificationBloc(
       getNotificationsUseCase: sl(),
       getUnreadCountUseCase: sl(),
       markNotificationReadUseCase: sl(),
       markAllNotificationsReadUseCase: sl(),
+      markManyNotificationsReadUseCase: sl(),
+      deleteNotificationsUseCase: sl(),
     ),
   );
 }

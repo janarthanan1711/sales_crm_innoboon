@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_history.dart';
 
 abstract class DealDetailState extends Equatable {
   const DealDetailState();
@@ -17,9 +18,10 @@ class DealDetailLoading extends DealDetailState {
 
 class DealDetailLoaded extends DealDetailState {
   final Deal deal;
-  const DealDetailLoaded(this.deal);
+  final List<DealStageHistoryEntry> stageHistory;
+  const DealDetailLoaded(this.deal, {this.stageHistory = const []});
   @override
-  List<Object?> get props => [deal];
+  List<Object?> get props => [deal, stageHistory];
 }
 
 class DealDetailError extends DealDetailState {

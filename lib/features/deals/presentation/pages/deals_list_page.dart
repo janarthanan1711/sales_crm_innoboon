@@ -7,8 +7,9 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/shared_widgets.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/deal.dart';
 import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
@@ -35,6 +36,19 @@ class _DealsListView extends StatefulWidget {
 
 class _DealsListViewState extends State<_DealsListView> {
   bool _isKanbanView = true;
+  List<OwnerUser> _users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    final result = await sl<GetUsersUseCase>()();
+    if (!mounted) return;
+    result.fold((_) {}, (u) => setState(() => _users = u));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +66,14 @@ class _DealsListViewState extends State<_DealsListView> {
             _buildFilters(context),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
-              child: BlocBuilder<DealsListBloc, DealsListState>(
+              child: BlocConsumer<DealsListBloc, DealsListState>(
+                listener: (context, state) {
+                  if (state is DealsListLoaded && state.actionError != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.actionError!), backgroundColor: AppColors.error),
+                    );
+                  }
+                },
                 builder: (context, state) {
                   if (state is DealsListLoading) {
                     return const AppLoadingIndicator(message: 'Loading deals...');
@@ -71,7 +92,7 @@ class _DealsListViewState extends State<_DealsListView> {
                         subtitle: 'Adjust your filters or add a new deal',
                       );
                     }
-                    return _isKanbanView 
+                    return _isKanbanView
                         ? KanbanBoard(deals: state.deals)
                         : _DealsTable(deals: state.deals);
                   }
@@ -83,6 +104,13 @@ class _DealsListViewState extends State<_DealsListView> {
         ),
       ),
     );
+  }
+
+  void _openCreateDealDialog(BuildContext context) {
+    final bloc = context.read<DealsListBloc>();
+    showDialog(context: context, builder: (_) => const CreateDealDialog()).then((result) {
+      if (result != null) bloc.add(const DealsListLoadRequested());
+    });
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -122,10 +150,7 @@ class _DealsListViewState extends State<_DealsListView> {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (_) => const CreateDealDialog(),
-                ),
+                onPressed: () => _openCreateDealDialog(context),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('New Deal'),
               ),
@@ -190,14 +215,34 @@ class _DealsListViewState extends State<_DealsListView> {
         children: [
           _FilterDropdown(
             label: 'Owner',
-            options: ['All', 'Sarah Jenkins', 'M. Chen', 'P. Kumar'],
-            onSelected: (v) => context.read<DealsListBloc>().add(DealsListFilterChanged(owner: v)),
+            options: ['All', ..._users.map((u) => u.displayName)],
+            onSelected: (v) {
+              final bloc = context.read<DealsListBloc>();
+              if (v == 'All') {
+                bloc.add(const DealsListFilterChanged(clearOwner: true));
+                return;
+              }
+              final match = _users.where((u) => u.displayName == v);
+              if (match.isNotEmpty) {
+                bloc.add(DealsListFilterChanged(ownerId: match.first.id));
+              }
+            },
           ),
           const SizedBox(width: AppSpacing.sm),
           _FilterDropdown(
-            label: 'Tier',
-            options: ['All', ...AppConstants.tiers],
-            onSelected: (v) => context.read<DealsListBloc>().add(DealsListFilterChanged(tier: v)),
+            label: 'Stage',
+            options: ['All', ...DealStage.values.map((s) => s.name)],
+            onSelected: (v) {
+              final bloc = context.read<DealsListBloc>();
+              if (v == 'All') {
+                bloc.add(const DealsListFilterChanged(clearStage: true));
+                return;
+              }
+              final stage = DealStage.values.where((s) => s.name == v);
+              if (stage.isNotEmpty) {
+                bloc.add(DealsListFilterChanged(stage: stage.first));
+              }
+            },
           ),
         ],
       ),

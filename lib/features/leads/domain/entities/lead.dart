@@ -25,6 +25,9 @@ class LeadActivity extends Equatable {
   final int createdBy;
   final DateTime createdAt;
   final String? createdByName; // only present on the detail-view shape
+  final int? updatedBy;
+  final String? updatedByName;
+  final DateTime? updatedAt;
 
   const LeadActivity({
     required this.id,
@@ -34,7 +37,36 @@ class LeadActivity extends Equatable {
     required this.createdBy,
     required this.createdAt,
     this.createdByName,
+    this.updatedBy,
+    this.updatedByName,
+    this.updatedAt,
   });
+
+  LeadActivity copyWith({
+    int? id,
+    int? leadId,
+    String? type,
+    String? note,
+    int? createdBy,
+    DateTime? createdAt,
+    String? createdByName,
+    int? updatedBy,
+    String? updatedByName,
+    DateTime? updatedAt,
+  }) {
+    return LeadActivity(
+      id: id ?? this.id,
+      leadId: leadId ?? this.leadId,
+      type: type ?? this.type,
+      note: note ?? this.note,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      createdByName: createdByName ?? this.createdByName,
+      updatedBy: updatedBy ?? this.updatedBy,
+      updatedByName: updatedByName ?? this.updatedByName,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   @override
   List<Object?> get props => [
@@ -45,6 +77,9 @@ class LeadActivity extends Equatable {
     createdBy,
     createdAt,
     createdByName,
+    updatedBy,
+    updatedByName,
+    updatedAt,
   ];
 }
 
@@ -76,6 +111,7 @@ class Lead extends Equatable {
   final String? followUpNote;
   final bool isConverted;
   final DateTime updatedAt;
+  final DateTime? createdAt;
   final List<LeadContact>? contacts;
   final List<LeadActivity>? activities;
   final int? activityCount;
@@ -98,6 +134,7 @@ class Lead extends Equatable {
     this.followUpNote,
     required this.isConverted,
     required this.updatedAt,
+    this.createdAt,
     this.contacts,
     this.activities,
     this.activityCount,
@@ -121,6 +158,7 @@ class Lead extends Equatable {
     String? followUpNote,
     bool? isConverted,
     DateTime? updatedAt,
+    DateTime? createdAt,
     List<LeadContact>? contacts,
     List<LeadActivity>? activities,
     int? activityCount,
@@ -143,6 +181,7 @@ class Lead extends Equatable {
       followUpNote: followUpNote ?? this.followUpNote,
       isConverted: isConverted ?? this.isConverted,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdAt: createdAt ?? this.createdAt,
       contacts: contacts ?? this.contacts,
       activities: activities ?? this.activities,
       activityCount: activityCount ?? this.activityCount,
@@ -168,6 +207,7 @@ class Lead extends Equatable {
     followUpNote,
     isConverted,
     updatedAt,
+    createdAt,
     contacts,
     activities,
     activityCount,

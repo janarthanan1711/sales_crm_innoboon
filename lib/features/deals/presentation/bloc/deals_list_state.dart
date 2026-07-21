@@ -17,17 +17,21 @@ class DealsListLoading extends DealsListState {
 
 class DealsListLoaded extends DealsListState {
   final List<Deal> deals;
-  final String? ownerFilter;
-  final String? tierFilter;
+  final int? ownerIdFilter;
+  final DealStage? stageFilter;
+  /// One-shot error surfaced after a failed stage update (e.g. from a
+  /// kanban drag) — read once via `BlocListener`, not persisted.
+  final String? actionError;
 
   const DealsListLoaded({
     required this.deals,
-    this.ownerFilter,
-    this.tierFilter,
+    this.ownerIdFilter,
+    this.stageFilter,
+    this.actionError,
   });
 
   @override
-  List<Object?> get props => [deals, ownerFilter, tierFilter];
+  List<Object?> get props => [deals, ownerIdFilter, stageFilter, actionError];
 }
 
 class DealsListError extends DealsListState {

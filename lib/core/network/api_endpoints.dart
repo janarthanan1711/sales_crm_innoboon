@@ -12,6 +12,10 @@ class ApiEndpoints {
 
   // ─── Users ─────────────────────────────────────────────
   static const String users = '/users';
+  static String userById(String id) => '/users/$id';
+  static const String usersMe = '/users/me';
+  static const String usersMePassword = '/users/me/password';
+  static const String usersMeAvatar = '/users/me/avatar';
 
   // ─── Leads ─────────────────────────────────────────────
   static const String leads = '/leads';
@@ -22,20 +26,22 @@ class ApiEndpoints {
   // ─── Accounts ──────────────────────────────────────────
   static const String accounts = '/accounts';
   static String accountById(String id) => '/accounts/$id';
+  static String accountContacts(String id) => '/accounts/$id/contacts';
+  static String accountDeals(String id) => '/accounts/$id/deals';
 
   // ─── Contacts ──────────────────────────────────────────
   static const String contacts = '/contacts';
   static String contactById(String id) => '/contacts/$id';
 
   // ─── Deals ─────────────────────────────────────────────
+  // Stage changes go through the same PATCH /deals/{id} used for any other
+  // deal update — the backend has no separate /stage sub-route.
   static const String deals = '/deals';
   static String dealById(String id) => '/deals/$id';
-  static String updateDealStage(String id) => '/deals/$id/stage';
   static String dealStageHistory(String id) => '/deals/$id/stage-history';
 
   // ─── Checklist ─────────────────────────────────────────
-  static String checklistByAccount(String accountId) =>
-      '/checklist/$accountId';
+  static String checklistByAccount(String accountId) => '/checklist/$accountId';
   static String checklistItem(String id) => '/checklist-items/$id';
 
   // ─── Tasks ─────────────────────────────────────────────
@@ -44,8 +50,9 @@ class ApiEndpoints {
 
   // ─── Notifications ─────────────────────────────────────
   static const String notifications = '/notifications';
-  static String markNotificationRead(String id) =>
-      '/notifications/$id/read';
+  static const String notificationsUnreadCount = '/notifications/unread-count';
+  static const String notificationsReadAll = '/notifications/read-all';
+  static String markNotificationRead(String id) => '/notifications/$id/read';
 
   // ─── Dashboard ─────────────────────────────────────────
   static const String dashboardPerformance = '/dashboard/performance';
@@ -67,4 +74,11 @@ class ApiEndpoints {
 
   // ─── Admin ─────────────────────────────────────────────
   static const String adminChecklistTemplate = '/admin/checklist-template';
+
+  // ─── Permissions ───────────────────────────────────────
+  static const String permissions = '/permissions';
+
+  // ─── Roles ─────────────────────────────────────────────
+  static const String roles = '/roles';
+  static String roleById(String id) => '/roles/$id';
 }

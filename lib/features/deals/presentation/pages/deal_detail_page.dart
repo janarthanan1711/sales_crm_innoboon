@@ -8,7 +8,9 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_history.dart';
 import '../bloc/deal_detail_bloc.dart';
 import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
 
@@ -38,14 +40,14 @@ class _DealDetailView extends StatelessWidget {
         builder: (context, state) {
           if (state is DealDetailLoading) return const AppLoadingIndicator(message: 'Loading deal...');
           if (state is DealDetailError) return ErrorState(message: state.message, onRetry: () {});
-          if (state is DealDetailLoaded) return _buildContent(context, state.deal);
+          if (state is DealDetailLoaded) return _buildContent(context, state.deal, state.stageHistory);
           return const SizedBox.shrink();
         },
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, Deal deal) {
+  Widget _buildContent(BuildContext context, Deal deal, List<DealStageHistoryEntry> stageHistory) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,23 +93,14 @@ class _DealDetailView extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            children: [
-                              Expanded(child: Text(deal.name, style: AppTextStyles.h1)),
-                              const SizedBox(width: AppSpacing.md),
-                              TierBadge(tier: deal.tier),
-                            ],
-                          ),
+                          Text(deal.name, style: AppTextStyles.h1),
                           const SizedBox(height: AppSpacing.lg),
                           Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.h2),
                           const SizedBox(height: AppSpacing.xs),
                           Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
                           const SizedBox(height: AppSpacing.md),
                           ElevatedButton.icon(
-                            onPressed: () => showDialog(
-                              context: context,
-                              builder: (_) => CreateDealDialog(deal: deal),
-                            ),
+                            onPressed: () => _openEditDealDialog(context, deal),
                             icon: const Icon(Icons.edit, size: 16),
                             label: const Text('Edit Deal'),
                           ),
@@ -142,13 +135,7 @@ class _DealDetailView extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: AppSpacing.sm),
-                                Row(
-                                  children: [
-                                    Text(deal.name, style: AppTextStyles.h1),
-                                    const SizedBox(width: AppSpacing.md),
-                                    TierBadge(tier: deal.tier),
-                                  ],
-                                ),
+                                Text(deal.name, style: AppTextStyles.h1),
                               ],
                             ),
                           ),
@@ -160,10 +147,7 @@ class _DealDetailView extends StatelessWidget {
                               Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
                               const SizedBox(height: AppSpacing.md),
                               ElevatedButton.icon(
-                                onPressed: () => showDialog(
-                                  context: context,
-                                  builder: (_) => CreateDealDialog(deal: deal),
-                                ),
+                                onPressed: () => _openEditDealDialog(context, deal),
                                 icon: const Icon(Icons.edit, size: 16),
                                 label: const Text('Edit Deal'),
                               ),
@@ -268,7 +252,11 @@ class _DealDetailView extends StatelessWidget {
                           child: ChecklistView(dealId: deal.id),
                         ),
                       ),
-
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionCard(
+                        title: 'Stage History',
+                        child: _StageHistoryList(history: stageHistory),
+                      ),
                     ],
                   )
                 : Row(
@@ -336,7 +324,11 @@ class _DealDetailView extends StatelessWidget {
                                 child: ChecklistView(dealId: deal.id),
                               ),
                             ),
-
+                            const SizedBox(height: AppSpacing.xl),
+                            SectionCard(
+                              title: 'Stage History',
+                              child: _StageHistoryList(history: stageHistory),
+                            ),
                           ],
                         ),
                       ),
@@ -346,6 +338,13 @@ class _DealDetailView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _openEditDealDialog(BuildContext context, Deal deal) {
+    final bloc = context.read<DealDetailBloc>();
+    showDialog(context: context, builder: (_) => CreateDealDialog(deal: deal)).then((result) {
+      if (result != null) bloc.add(DealDetailLoadRequested(deal.id));
+    });
   }
 
   Widget _infoRow(String label, String value) {
@@ -363,6 +362,46 @@ class _DealDetailView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StageHistoryList extends StatelessWidget {
+  const _StageHistoryList({required this.history});
+  final List<DealStageHistoryEntry> history;
+
+  @override
+  Widget build(BuildContext context) {
+    if (history.isEmpty) {
+      return Text('No stage changes recorded yet.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: history.map((h) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      h.fromStage != null ? '${h.fromStage!.name} → ${h.toStage.name}' : 'Set to ${h.toStage.name}',
+                      style: AppTextStyles.labelMedium,
+                    ),
+                  ),
+                  Text(DateFormatter.relativeTime(h.createdAt), style: AppTextStyles.caption),
+                ],
+              ),
+              if (h.note != null && h.note!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(h.note!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

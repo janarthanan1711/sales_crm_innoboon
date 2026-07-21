@@ -22,7 +22,8 @@ import '../../features/activity_log/presentation/pages/activity_log_page.dart';
 import '../../features/tasks/presentation/pages/tasks_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/performance_dashboard/presentation/pages/analytics_page.dart';
-import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/admin/presentation/pages/admin_settings_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 
 /// Global navigator key
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -148,7 +149,12 @@ class AppRouter {
           GoRoute(
             path: RoutePaths.settings,
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsPage()),
+                const NoTransitionPage(child: AdminSettingsPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.profile,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProfilePage()),
           ),
         ],
       ),

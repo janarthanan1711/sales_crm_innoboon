@@ -7,6 +7,46 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/deal.dart';
 import '../bloc/deals_list_bloc.dart';
 
+/// Sentinel distinguishing "user cancelled the note dialog" from "user left
+/// the note blank and confirmed" (a legitimate `null` note).
+const String _cancelled = '__cancelled__';
+
+Future<String?> _showStageChangeNoteDialog(
+  BuildContext context,
+  Deal deal,
+  DealStage newStage,
+) async {
+  final controller = TextEditingController();
+  final result = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Move "${deal.name}" to ${newStage.name}?'),
+      content: TextField(
+        controller: controller,
+        maxLines: 3,
+        decoration: const InputDecoration(
+          labelText: 'Note (optional)',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(_cancelled),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(dialogContext).pop(
+            controller.text.trim().isEmpty ? '' : controller.text.trim(),
+          ),
+          child: const Text('Move'),
+        ),
+      ],
+    ),
+  );
+  if (result == null || result == _cancelled) return _cancelled;
+  return result.isEmpty ? null : result;
+}
+
 class KanbanBoard extends StatelessWidget {
   const KanbanBoard({super.key, required this.deals});
   final List<Deal> deals;
@@ -36,13 +76,16 @@ class _KanbanColumn extends StatelessWidget {
     final double totalValue = deals.fold(0, (sum, deal) => sum + deal.value);
 
     return DragTarget<Deal>(
-      onAcceptWithDetails: (details) {
-        if (details.data.stage != stage) {
-          context.read<DealsListBloc>().add(DealsListStageUpdated(
-            dealId: details.data.id,
-            newStage: stage,
-          ));
-        }
+      onAcceptWithDetails: (details) async {
+        if (details.data.stage == stage) return;
+        final bloc = context.read<DealsListBloc>();
+        final note = await _showStageChangeNoteDialog(context, details.data, stage);
+        if (note == _cancelled) return;
+        bloc.add(DealsListStageUpdated(
+          dealId: details.data.id,
+          newStage: stage,
+          note: note,
+        ));
       },
       builder: (context, candidateData, rejectedData) {
         return Container(
@@ -144,14 +187,7 @@ class _DealCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(deal.accountName, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.labelMedium),
-              if (deal.tier == 'Strategic' || deal.tier == 'Diamond')
-                const Icon(Icons.star, size: 16, color: Colors.amber)
-            ],
-          ),
+          Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.labelMedium),
         ],
       ),
     );

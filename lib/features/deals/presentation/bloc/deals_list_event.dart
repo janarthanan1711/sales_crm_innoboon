@@ -12,17 +12,29 @@ class DealsListLoadRequested extends DealsListEvent {
 }
 
 class DealsListFilterChanged extends DealsListEvent {
-  final String? owner;
-  final String? tier;
-  const DealsListFilterChanged({this.owner, this.tier});
+  final int? ownerId;
+  final DealStage? stage;
+  final bool clearOwner;
+  final bool clearStage;
+  const DealsListFilterChanged({
+    this.ownerId,
+    this.stage,
+    this.clearOwner = false,
+    this.clearStage = false,
+  });
   @override
-  List<Object?> get props => [owner, tier];
+  List<Object?> get props => [ownerId, stage, clearOwner, clearStage];
 }
 
 class DealsListStageUpdated extends DealsListEvent {
   final String dealId;
   final DealStage newStage;
-  const DealsListStageUpdated({required this.dealId, required this.newStage});
+  final String? note;
+  const DealsListStageUpdated({
+    required this.dealId,
+    required this.newStage,
+    this.note,
+  });
   @override
-  List<Object?> get props => [dealId, newStage];
+  List<Object?> get props => [dealId, newStage, note];
 }

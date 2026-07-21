@@ -9,10 +9,20 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<AppNotification>>> getNotifications() async {
+  Future<Either<Failure, ({List<AppNotification> items, int total})>> getNotifications({
+    bool unreadOnly = false,
+    NotificationType? type,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
-      final notifications = await remoteDataSource.getNotifications();
-      return Right(notifications);
+      final page = await remoteDataSource.getNotifications(
+        unreadOnly: unreadOnly,
+        type: type,
+        limit: limit,
+        offset: offset,
+      );
+      return Right(page);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -29,7 +39,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markAsRead(String notificationId) async {
+  Future<Either<Failure, void>> markAsRead(int notificationId) async {
     try {
       await remoteDataSource.markAsRead(notificationId);
       return const Right(null);
@@ -39,10 +49,20 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markAllAsRead() async {
+  Future<Either<Failure, int>> markManyAsRead(List<int>? notificationIds) async {
     try {
-      await remoteDataSource.markAllAsRead();
-      return const Right(null);
+      final updated = await remoteDataSource.markManyAsRead(notificationIds);
+      return Right(updated);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, int>> deleteNotifications(List<int> notificationIds) async {
+    try {
+      final deleted = await remoteDataSource.deleteNotifications(notificationIds);
+      return Right(deleted);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

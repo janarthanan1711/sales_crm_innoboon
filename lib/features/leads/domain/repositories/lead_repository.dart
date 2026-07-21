@@ -33,6 +33,22 @@ abstract class LeadRepository {
     required String type,
     required String note,
   });
+
+  Future<Either<Failure, List<LeadActivity>>> listActivities(
+    int leadId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
+
+  Future<Either<Failure, LeadActivity>> updateActivity(
+    int leadId,
+    int activityId, {
+    String? type,
+    String? note,
+  });
+
+  Future<Either<Failure, void>> deleteActivity(int leadId, int activityId);
 }
 
 /// Datasource interface for the data layer
@@ -51,4 +67,17 @@ abstract class LeadRemoteDataSource {
   Future<void> deleteLead(int id);
   Future<int> convertToAccount(int leadId, {String? tier, int? ownerId});
   Future<LeadActivity> logActivity(int leadId, {required String type, required String note});
+  Future<List<LeadActivity>> listActivities(
+    int leadId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
+  Future<LeadActivity> updateActivity(
+    int leadId,
+    int activityId, {
+    String? type,
+    String? note,
+  });
+  Future<void> deleteActivity(int leadId, int activityId);
 }

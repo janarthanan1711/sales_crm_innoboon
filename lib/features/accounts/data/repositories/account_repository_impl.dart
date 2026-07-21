@@ -1,7 +1,8 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../contacts/domain/entities/contact.dart';
+import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
-import '../../domain/entities/contact.dart';
 import '../../domain/repositories/account_repository.dart';
 
 class AccountRepositoryImpl implements AccountRepository {
@@ -23,7 +24,11 @@ class AccountRepositoryImpl implements AccountRepository {
         tier: tier,
         owner: owner,
       );
-      return Right(accounts);
+      // The backend has no server-side industry filter — applied here.
+      final filtered = (industry == null || industry.isEmpty || industry == 'All')
+          ? accounts
+          : accounts.where((a) => a.industry == industry).toList();
+      return Right(filtered);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -40,9 +45,27 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
-  Future<Either<Failure, Account>> createAccount(Account account) async {
+  Future<Either<Failure, Account>> createAccount({
+    required String company,
+    String? domain,
+    required String tier,
+    int? ownerId,
+    String? industry,
+    String? city,
+    String? description,
+    String? linkedinUrl,
+  }) async {
     try {
-      final created = await remoteDataSource.createAccount(account);
+      final created = await remoteDataSource.createAccount(
+        company: company,
+        domain: domain,
+        tier: tier,
+        ownerId: ownerId,
+        industry: industry,
+        city: city,
+        description: description,
+        linkedinUrl: linkedinUrl,
+      );
       return Right(created);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -50,9 +73,29 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
-  Future<Either<Failure, Account>> updateAccount(Account account) async {
+  Future<Either<Failure, Account>> updateAccount(
+    String id, {
+    String? company,
+    String? domain,
+    String? tier,
+    int? ownerId,
+    String? industry,
+    String? city,
+    String? description,
+    String? linkedinUrl,
+  }) async {
     try {
-      final updated = await remoteDataSource.updateAccount(account);
+      final updated = await remoteDataSource.updateAccount(
+        id,
+        company: company,
+        domain: domain,
+        tier: tier,
+        ownerId: ownerId,
+        industry: industry,
+        city: city,
+        description: description,
+        linkedinUrl: linkedinUrl,
+      );
       return Right(updated);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -60,10 +103,20 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
-  Future<Either<Failure, Contact>> addContact(String accountId, Contact contact) async {
+  Future<Either<Failure, List<Contact>>> getAccountContacts(
+    String accountId,
+  ) async {
     try {
-      final added = await remoteDataSource.addContact(accountId, contact);
-      return Right(added);
+      return Right(await remoteDataSource.getAccountContacts(accountId));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Deal>>> getAccountDeals(String accountId) async {
+    try {
+      return Right(await remoteDataSource.getAccountDeals(accountId));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

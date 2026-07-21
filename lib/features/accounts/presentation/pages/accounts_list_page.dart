@@ -8,7 +8,11 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
+import '../../../leads/domain/entities/lead_enums.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/usecases/create_account_usecase.dart';
 import '../bloc/accounts_list_bloc.dart';
 
 class AccountsListPage extends StatelessWidget {
@@ -90,7 +94,7 @@ class _AccountsListView extends StatelessWidget {
           ),
         ),
         ElevatedButton.icon(
-          onPressed: () {}, // context.go(RoutePaths.createAccount) in future
+          onPressed: () => _showCreateAccountDialog(context),
           icon: const Icon(Icons.add, size: 18),
           label: const Text('+ New Account'),
         ),
@@ -121,11 +125,124 @@ class _AccountsListView extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           _FilterDropdown(
             label: 'Tier',
-            options: ['All', ...AppConstants.tiers],
-            onSelected: (v) => context.read<AccountsListBloc>().add(AccountsListFilterChanged(tier: v)),
+            options: ['All', ...leadTierLabels.values],
+            onSelected: (v) => context.read<AccountsListBloc>().add(
+              AccountsListFilterChanged(
+                tier: v == 'All' ? 'All' : wireValueForLabel(leadTierLabels, v),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showCreateAccountDialog(BuildContext context) async {
+    final bloc = context.read<AccountsListBloc>();
+    final companyController = TextEditingController();
+    final domainController = TextEditingController();
+    final cityController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final linkedinController = TextEditingController();
+    String tier = leadTierLabels.keys.first;
+    String? industry;
+    int? ownerId;
+    List<OwnerUser> users = [];
+    final usersResult = await sl<GetUsersUseCase>()();
+    usersResult.fold((_) {}, (u) => users = u);
+
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            return AlertDialog(
+              title: const Text('New Account'),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(controller: companyController, decoration: const InputDecoration(labelText: 'Company *')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: domainController, decoration: const InputDecoration(labelText: 'Domain')),
+                      const SizedBox(height: AppSpacing.md),
+                      DropdownButtonFormField<String>(
+                        value: tier,
+                        decoration: const InputDecoration(labelText: 'Tier'),
+                        items: leadTierLabels.entries
+                            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                            .toList(),
+                        onChanged: (v) => setState(() => tier = v!),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      DropdownButtonFormField<String?>(
+                        value: industry,
+                        decoration: const InputDecoration(labelText: 'Industry'),
+                        items: AppConstants.industries.map((i) => DropdownMenuItem<String?>(value: i, child: Text(i))).toList(),
+                        onChanged: (v) => setState(() => industry = v),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: cityController, decoration: const InputDecoration(labelText: 'City')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: linkedinController, decoration: const InputDecoration(labelText: 'LinkedIn URL')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'Description'),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      DropdownButtonFormField<int?>(
+                        value: ownerId,
+                        decoration: const InputDecoration(labelText: 'Owner'),
+                        items: users.map((u) => DropdownMenuItem<int?>(value: u.id, child: Text(u.displayName))).toList(),
+                        onChanged: (v) => setState(() => ownerId = v),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (companyController.text.trim().isEmpty) return;
+                    final result = await sl<CreateAccountUseCase>()(
+                      AccountUpsertParams(
+                        company: companyController.text.trim(),
+                        domain: domainController.text.trim().isEmpty ? null : domainController.text.trim(),
+                        tier: tier,
+                        ownerId: ownerId,
+                        industry: industry,
+                        city: cityController.text.trim().isEmpty ? null : cityController.text.trim(),
+                        description: descriptionController.text.trim(),
+                        linkedinUrl: linkedinController.text.trim().isEmpty ? null : linkedinController.text.trim(),
+                      ),
+                    );
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext);
+                    result.fold(
+                      (f) => ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to create account: ${f.message}'), backgroundColor: AppColors.error),
+                      ),
+                      (account) {
+                        bloc.add(const AccountsListLoadRequested());
+                        context.go('/accounts/${account.id}');
+                      },
+                    );
+                  },
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -153,10 +270,9 @@ class _AccountsTable extends StatelessWidget {
               children: [
                 _header('COMPANY', flex: 3),
                 _header('INDUSTRY', flex: 2),
+                _header('CITY', flex: 2),
                 _header('TIER', flex: 2),
                 _header('OWNER', flex: 2),
-                _header('CONTACTS', flex: 1),
-                _header('ACTIVE DEALS', flex: 1),
               ],
             ),
           ),
@@ -211,18 +327,17 @@ class _AccountRowState extends State<_AccountRow> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(widget.account.companyName, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
-                          Text(widget.account.domain, style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
+                          Text(widget.account.domain ?? '—', style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              Expanded(flex: 2, child: Text(widget.account.industry, style: AppTextStyles.tableCell)),
+              Expanded(flex: 2, child: Text(widget.account.industry ?? '—', style: AppTextStyles.tableCell)),
+              Expanded(flex: 2, child: Text(widget.account.city ?? '—', style: AppTextStyles.tableCell)),
               Expanded(flex: 2, child: TierBadge(tier: widget.account.tier, showDot: true)),
               Expanded(flex: 2, child: OwnerChip(name: widget.account.primaryOwner)),
-              Expanded(flex: 1, child: Text('${widget.account.contacts.length}', style: AppTextStyles.tableCell)),
-              Expanded(flex: 1, child: Text('${widget.account.activeDealsCount}', style: AppTextStyles.tableCell)),
             ],
           ),
         ),

@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -10,15 +10,13 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> login(String email, String password);
   Future<String> refreshToken(String refreshToken);
   Future<void> logout(String refreshToken);
+  Future<UserModel> getMe();
+  Future<UserModel> updateMe({String? firstName, String? lastName, String? phoneNumber});
+  Future<void> changePassword({required String currentPassword, required String newPassword});
+  Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename});
 }
 
 /// Real API implementation of AuthRemoteDataSource.
-///
-/// Backend has no `/me` endpoint (see app/api/v1/auth.py — only `/login`
-/// exists) and the JWT carries only `sub` (user id) + `exp`, no user
-/// profile or role claim. So identity is resolved by decoding `sub` from
-/// the token, then looking that id up via `GET /users` (open to any
-/// authenticated role).
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final DioClient dioClient;
 
@@ -36,26 +34,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final accessToken = data['access_token'] as String;
       final refreshToken = data['refresh_token'] as String;
 
-      final payload = _decodeJwtPayload(accessToken);
-      final userId = int.tryParse(payload['sub']?.toString() ?? '');
-      if (userId == null) {
-        throw const ServerException(message: 'Invalid token: missing subject');
-      }
-
-      final usersResponse = await dioClient.get(
-        ApiEndpoints.users,
+      final me = await dioClient.get(
+        ApiEndpoints.usersMe,
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
-      final users = usersResponse.data as List<dynamic>;
-      final match = users
-          .cast<Map<String, dynamic>>()
-          .firstWhere((u) => u['id'] == userId, orElse: () => const {});
-      if (match.isEmpty) {
-        throw const ServerException(message: 'Could not resolve current user');
-      }
 
       return UserModel.fromJson({
-        ...match,
+        ...me.data as Map<String, dynamic>,
         'access_token': accessToken,
         'refresh_token': refreshToken,
       });
@@ -90,6 +75,60 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
   }
 
+  @override
+  Future<UserModel> getMe() async {
+    try {
+      final response = await dioClient.get(ApiEndpoints.usersMe);
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<UserModel> updateMe({String? firstName, String? lastName, String? phoneNumber}) async {
+    try {
+      final response = await dioClient.patch(
+        ApiEndpoints.usersMe,
+        data: {
+          if (firstName != null) 'first_name': firstName,
+          if (lastName != null) 'last_name': lastName,
+          if (phoneNumber != null) 'phone_number': phoneNumber,
+        },
+      );
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    try {
+      await dioClient.post(
+        ApiEndpoints.usersMePassword,
+        data: {'current_password': currentPassword, 'new_password': newPassword},
+      );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename}) async {
+    try {
+      final response = await dioClient.post(
+        ApiEndpoints.usersMeAvatar,
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: filename),
+        }),
+      );
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   Exception _normalize(DioException e) {
     final normalized = e.error;
     if (normalized is Exception) return normalized;
@@ -97,17 +136,5 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       message: e.message ?? 'Server error',
       statusCode: e.response?.statusCode,
     );
-  }
-
-  Map<String, dynamic> _decodeJwtPayload(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return {};
-      final normalized = base64Url.normalize(parts[1]);
-      final decoded = utf8.decode(base64Url.decode(normalized));
-      return jsonDecode(decoded) as Map<String, dynamic>;
-    } catch (e) {
-      return {};
-    }
   }
 }

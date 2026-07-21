@@ -26,5 +26,6 @@ class RoutePaths {
   static const String analytics = '/analytics';
   static const String leaderboard = '/leaderboard';
   static const String settings = '/settings';
+  static const String profile = '/profile';
   static const String support = '/support';
 }
