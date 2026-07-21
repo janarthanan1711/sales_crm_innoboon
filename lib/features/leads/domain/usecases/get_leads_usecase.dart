@@ -5,39 +5,39 @@ import '../entities/lead.dart';
 import '../repositories/lead_repository.dart';
 
 class GetLeadsParams {
-  final String? search;
-  final String? status;
-  final String? tier;
-  final String? owner;
+  final int? ownerId;
   final String? source;
-  final int page;
-  final int pageSize;
+  final String? status;
+  final String? search;
+  final int limit;
+  final int offset;
 
   const GetLeadsParams({
-    this.search,
-    this.status,
-    this.tier,
-    this.owner,
+    this.ownerId,
     this.source,
-    this.page = 1,
-    this.pageSize = 25,
+    this.status,
+    this.search,
+    this.limit = 20,
+    this.offset = 0,
   });
 }
 
-class GetLeadsUseCase implements UseCase<List<Lead>, GetLeadsParams> {
+class GetLeadsUseCase
+    implements UseCase<({List<Lead> items, int total}), GetLeadsParams> {
   final LeadRepository repository;
   GetLeadsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, List<Lead>>> call(GetLeadsParams params) {
+  Future<Either<Failure, ({List<Lead> items, int total})>> call(
+    GetLeadsParams params,
+  ) {
     return repository.getLeads(
-      search: params.search,
-      status: params.status,
-      tier: params.tier,
-      owner: params.owner,
+      ownerId: params.ownerId,
       source: params.source,
-      page: params.page,
-      pageSize: params.pageSize,
+      status: params.status,
+      search: params.search,
+      limit: params.limit,
+      offset: params.offset,
     );
   }
 }

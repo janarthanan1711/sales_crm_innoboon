@@ -8,7 +8,11 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
+import '../../domain/entities/lead.dart';
+import '../../domain/entities/lead_enums.dart';
 import '../bloc/lead_detail_bloc.dart';
+import '../../../users/domain/entities/owner_user.dart';
+import '../../../users/domain/usecases/get_users_usecase.dart';
 
 class LeadDetailPage extends StatelessWidget {
   const LeadDetailPage({super.key, required this.leadId});
@@ -16,15 +20,17 @@ class LeadDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final id = int.tryParse(leadId) ?? 0;
     return BlocProvider(
-      create: (_) => sl<LeadDetailBloc>()..add(LeadDetailLoadRequested(leadId)),
-      child: const _LeadDetailView(),
+      create: (_) => sl<LeadDetailBloc>()..add(LeadDetailLoadRequested(id)),
+      child: _LeadDetailView(leadId: id),
     );
   }
 }
 
 class _LeadDetailView extends StatelessWidget {
-  const _LeadDetailView();
+  const _LeadDetailView({required this.leadId});
+  final int leadId;
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +47,35 @@ class _LeadDetailView extends StatelessWidget {
             );
             context.go('/accounts/${state.accountId}');
           }
+          if (state is LeadDetailDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lead deleted.'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go(RoutePaths.leads);
+          }
         },
         builder: (context, state) {
           if (state is LeadDetailLoading) {
             return const AppLoadingIndicator(message: 'Loading lead...');
           }
           if (state is LeadDetailError) {
-            return ErrorState(message: state.message, onRetry: () {});
+            return ErrorState(
+              message: state.message,
+              onRetry: () => context.read<LeadDetailBloc>().add(
+                LeadDetailLoadRequested(leadId),
+              ),
+            );
           }
           if (state is LeadDetailLoaded) {
             final lead = state.lead;
+            final contactName = [
+              lead.firstName,
+              lead.lastName,
+            ].where((s) => s != null && s.isNotEmpty).join(' ');
+
             return SingleChildScrollView(
               padding: EdgeInsets.all(context.isMobile ? 16.0 : 32.0),
               child: Column(
@@ -68,9 +93,9 @@ class _LeadDetailView extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(lead.companyName, style: AppTextStyles.h1),
+                            Text(lead.company, style: AppTextStyles.h1),
                             Text(
-                              lead.contactName,
+                              contactName,
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: AppColors.textSecondary,
                               ),
@@ -78,9 +103,9 @@ class _LeadDetailView extends StatelessWidget {
                           ],
                         ),
                       ),
-                      TierBadge(tier: lead.tier),
-                      const SizedBox(width: AppSpacing.sm),
-                      StatusBadge.leadStatus(lead.status),
+                      StatusBadge.leadStatus(
+                        labelForWireValue(leadStatusLabels, lead.status),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xxl),
@@ -93,21 +118,30 @@ class _LeadDetailView extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: () {
                           context.push(
-                            RoutePaths.editLead.replaceFirst(':id', lead.id),
+                            RoutePaths.editLead.replaceFirst(
+                              ':id',
+                              '${lead.id}',
+                            ),
                             extra: lead,
                           );
                         },
                         icon: const Icon(Icons.edit, size: 16),
                         label: const Text('Edit Lead'),
                       ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          context.read<LeadDetailBloc>().add(
-                            LeadDetailConvertRequested(lead.id),
-                          );
-                        },
-                        icon: const Icon(Icons.swap_horiz, size: 16),
-                        label: const Text('Convert to Account'),
+                      if (!lead.isConverted)
+                        ElevatedButton.icon(
+                          onPressed: () => _showConvertDialog(context, lead),
+                          icon: const Icon(Icons.swap_horiz, size: 16),
+                          label: const Text('Convert to Account'),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: () => _confirmDelete(context, lead.id),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
+                        icon: const Icon(Icons.delete_outline, size: 16),
+                        label: const Text('Delete'),
                       ),
                     ],
                   ),
@@ -121,36 +155,68 @@ class _LeadDetailView extends StatelessWidget {
                       _infoCard('Contact Information', [
                         _infoRow('Email', lead.email),
                         _infoRow('Phone', lead.phone ?? 'Not provided'),
-                        _infoRow('Company', lead.companyName),
+                        _infoRow('Company', lead.company),
+                        _infoRow('Job Title', lead.jobTitle ?? 'Not set'),
                       ]),
                       _infoCard('Lead Details', [
-                        _infoRow('Source', lead.source),
-                        _infoRow('Industry', lead.industry ?? 'Not set'),
-                        _infoRow('Website', lead.website ?? 'Not set'),
-                        _infoRow('Owner', lead.owner ?? 'Unassigned'),
+                        _infoRow(
+                          'Source',
+                          labelForWireValue(leadSourceLabels, lead.source),
+                        ),
+                        _infoRow('Domain', lead.domain ?? 'Not set'),
+                        _infoRow('LinkedIn', lead.linkedinUrl ?? 'Not set'),
+                        _infoRow('Owner', lead.ownerName ?? 'Unassigned'),
                       ]),
                       _infoCard('Timeline', [
                         _infoRow(
-                          'Created',
-                          DateFormatter.shortDate(lead.createdAt),
+                          'Last Updated',
+                          DateFormatter.shortDate(lead.updatedAt),
                         ),
                         _infoRow(
-                          'Last Contacted',
-                          lead.lastContactedAt != null
-                              ? DateFormatter.relativeTime(
-                                  lead.lastContactedAt!,
-                                )
-                              : 'Never',
+                          'Next Follow-up',
+                          lead.nextFollowUpDate != null
+                              ? DateFormatter.shortDate(lead.nextFollowUpDate!)
+                              : 'Not scheduled',
                         ),
                       ]),
                     ],
                   ),
 
-                  if (lead.notes != null) ...[
+                  if (lead.followUpNote != null) ...[
                     const SizedBox(height: AppSpacing.xxl),
                     SectionCard(
-                      title: 'Notes',
-                      child: Text(lead.notes!, style: AppTextStyles.bodyMedium),
+                      title: 'Follow-up Note',
+                      child: Text(
+                        lead.followUpNote!,
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
+                  ],
+
+                  if (lead.activities != null &&
+                      lead.activities!.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xxl),
+                    SectionCard(
+                      title:
+                          'Activity (${lead.activityCount ?? lead.activities!.length})',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: lead.activities!
+                            .map(
+                              (a) => Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.sm,
+                                ),
+                                child: Text(
+                                  '${labelForWireValue(leadActivityTypeLabels, a.type)}'
+                                  '${a.createdByName != null ? ' — logged by ${a.createdByName}' : ''}: '
+                                  '${a.note}',
+                                  style: AppTextStyles.bodyMedium,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ),
                   ],
                 ],
@@ -161,6 +227,134 @@ class _LeadDetailView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, int id) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete lead?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.read<LeadDetailBloc>().add(LeadDetailDeleteRequested(id));
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showConvertDialog(BuildContext context, Lead lead) async {
+    String selectedTier = leadTierLabels.keys.first;
+    int? selectedOwnerId = lead.ownerId;
+    List<OwnerUser> users = [];
+
+    final usersResult = await sl<GetUsersUseCase>()();
+    usersResult.fold((_) {}, (u) => users = u);
+
+    if (!context.mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Convert to Account'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select an Account Tier:'),
+                  const SizedBox(height: AppSpacing.sm),
+                  DropdownButtonFormField<String>(
+                    value: selectedTier,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    items: leadTierLabels.entries
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedTier = v!),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text('Select Account Owner:'),
+                  const SizedBox(height: AppSpacing.sm),
+                  DropdownButtonFormField<int?>(
+                    value: selectedOwnerId,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    items: users
+                        .map(
+                          (u) => DropdownMenuItem<int?>(
+                            value: u.id,
+                            child: Text(u.displayName),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedOwnerId = v),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: selectedOwnerId == null
+                      ? null
+                      : () {
+                          Navigator.pop(context, true);
+                        },
+                  child: const Text('Convert'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((result) {
+      if (result == true) {
+        if (!context.mounted) return;
+        context.read<LeadDetailBloc>().add(
+          LeadDetailConvertRequested(
+            lead.id,
+            tier: selectedTier,
+            ownerId: selectedOwnerId,
+          ),
+        );
+      }
+    });
   }
 
   Widget _infoCard(String title, List<Widget> children) {

@@ -1,35 +1,39 @@
 import '../../domain/entities/user.dart';
 
-/// User model with JSON serialization — data layer
+/// User model with JSON serialization — data layer.
+/// `accessToken`/`refreshToken` are carried alongside the resolved user
+/// after login; neither is part of the backend's `UserRead` shape and both
+/// are dropped by [toJson] (which is only used for caching the user, not
+/// for outgoing requests) — tokens are persisted separately.
 class UserModel {
-  final String id;
-  final String name;
+  final int id;
   final String email;
+  final String firstName;
+  final String? lastName;
   final String role;
-  final String? avatarUrl;
-  final String? phone;
+  final bool isActive;
   final String? accessToken;
   final String? refreshToken;
 
   const UserModel({
     required this.id,
-    required this.name,
     required this.email,
+    required this.firstName,
+    this.lastName,
     required this.role,
-    this.avatarUrl,
-    this.phone,
+    required this.isActive,
     this.accessToken,
     this.refreshToken,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      id: json['id'] as int,
       email: json['email'] as String,
+      firstName: json['first_name'] as String,
+      lastName: json['last_name'] as String?,
       role: json['role'] as String,
-      avatarUrl: json['avatar_url'] as String?,
-      phone: json['phone'] as String?,
+      isActive: json['is_active'] as bool,
       accessToken: json['access_token'] as String?,
       refreshToken: json['refresh_token'] as String?,
     );
@@ -38,23 +42,22 @@ class UserModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
       'email': email,
+      'first_name': firstName,
+      'last_name': lastName,
       'role': role,
-      'avatar_url': avatarUrl,
-      'phone': phone,
+      'is_active': isActive,
     };
   }
 
-  /// Convert to domain entity
   User toEntity() {
     return User(
       id: id,
-      name: name,
       email: email,
+      firstName: firstName,
+      lastName: lastName,
       role: role,
-      avatarUrl: avatarUrl,
-      phone: phone,
+      isActive: isActive,
     );
   }
 }

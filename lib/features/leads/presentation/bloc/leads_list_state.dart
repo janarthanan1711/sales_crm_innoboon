@@ -17,29 +17,29 @@ class LeadsListLoading extends LeadsListState {
 
 class LeadsListLoaded extends LeadsListState {
   final List<Lead> leads;
+  final int total;
   final String? search;
   final String? statusFilter;
-  final String? tierFilter;
-  final String? ownerFilter;
   final String? sourceFilter;
+  final int? ownerIdFilter;
 
   const LeadsListLoaded({
     required this.leads,
+    required this.total,
     this.search,
     this.statusFilter,
-    this.tierFilter,
-    this.ownerFilter,
     this.sourceFilter,
+    this.ownerIdFilter,
   });
 
   @override
   List<Object?> get props => [
     leads,
+    total,
     search,
     statusFilter,
-    tierFilter,
-    ownerFilter,
     sourceFilter,
+    ownerIdFilter,
   ];
 }
 

@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/repositories/lead_repository.dart';
+import '../../domain/usecases/lead_upsert_params.dart';
 
 class LeadRepositoryImpl implements LeadRepository {
   final LeadRemoteDataSource remoteDataSource;
@@ -9,23 +10,31 @@ class LeadRepositoryImpl implements LeadRepository {
   LeadRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<Lead>>> getLeads({
-    String? search, String? status, String? tier,
-    String? owner, String? source, int page = 1, int pageSize = 25,
+  Future<Either<Failure, ({List<Lead> items, int total})>> getLeads({
+    int? ownerId,
+    String? source,
+    String? status,
+    String? search,
+    int limit = 20,
+    int offset = 0,
   }) async {
     try {
-      final leads = await remoteDataSource.getLeads(
-        search: search, status: status, tier: tier,
-        owner: owner, source: source, page: page, pageSize: pageSize,
+      final result = await remoteDataSource.getLeads(
+        ownerId: ownerId,
+        source: source,
+        status: status,
+        search: search,
+        limit: limit,
+        offset: offset,
       );
-      return Right(leads);
+      return Right(result);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, Lead>> getLeadById(String id) async {
+  Future<Either<Failure, Lead>> getLeadById(int id) async {
     try {
       return Right(await remoteDataSource.getLeadById(id));
     } on Exception catch (e) {
@@ -34,36 +43,68 @@ class LeadRepositoryImpl implements LeadRepository {
   }
 
   @override
-  Future<Either<Failure, Lead>> createLead(Lead lead) async {
+  Future<Either<Failure, Lead>> createLead(LeadUpsertParams params) async {
     try {
-      return Right(await remoteDataSource.createLead(lead));
+      return Right(await remoteDataSource.createLead(params));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, Lead>> updateLead(Lead lead) async {
+  Future<Either<Failure, Lead>> updateLead(
+    int id,
+    LeadUpsertParams params,
+  ) async {
     try {
-      return Right(await remoteDataSource.updateLead(lead));
+      return Right(await remoteDataSource.updateLead(id, params));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, bool>> checkDuplicate(String email) async {
+  Future<Either<Failure, void>> deleteLead(int id) async {
     try {
-      return Right(await remoteDataSource.checkDuplicate(email));
+      await remoteDataSource.deleteLead(id);
+      return const Right(null);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, String>> convertToAccount(String leadId) async {
+  Future<Either<Failure, int>> convertToAccount(
+    int leadId, {
+    String? tier,
+    int? ownerId,
+  }) async {
     try {
-      return Right(await remoteDataSource.convertToAccount(leadId));
+      return Right(
+        await remoteDataSource.convertToAccount(
+          leadId,
+          tier: tier,
+          ownerId: ownerId,
+        ),
+      );
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LeadActivity>> logActivity(
+    int leadId, {
+    required String type,
+    required String note,
+  }) async {
+    try {
+      final activity = await remoteDataSource.logActivity(
+        leadId,
+        type: type,
+        note: note,
+      );
+      return Right(activity);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

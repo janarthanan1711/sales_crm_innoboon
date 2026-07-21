@@ -587,6 +587,8 @@ class _UserProfileDropdown extends StatelessWidget {
           roleName = 'Sales Manager';
         } else if (displayRole == 'sales_rep') {
           roleName = 'Sales Representative';
+        } else if (displayRole == 'delivery_sme') {
+          roleName = 'Delivery SME';
         } else {
           roleName = displayRole.split('_').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1)}' : '').join(' ');
         }

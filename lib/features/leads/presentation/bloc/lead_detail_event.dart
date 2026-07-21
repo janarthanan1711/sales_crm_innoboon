@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/lead.dart';
 
 abstract class LeadDetailEvent extends Equatable {
   const LeadDetailEvent();
@@ -8,22 +7,24 @@ abstract class LeadDetailEvent extends Equatable {
 }
 
 class LeadDetailLoadRequested extends LeadDetailEvent {
-  final String leadId;
+  final int leadId;
   const LeadDetailLoadRequested(this.leadId);
   @override
   List<Object?> get props => [leadId];
 }
 
-class LeadDetailUpdateRequested extends LeadDetailEvent {
-  final Lead lead;
-  const LeadDetailUpdateRequested(this.lead);
+class LeadDetailConvertRequested extends LeadDetailEvent {
+  final int leadId;
+  final String? tier;
+  final int? ownerId;
+  const LeadDetailConvertRequested(this.leadId, {this.tier, this.ownerId});
   @override
-  List<Object?> get props => [lead];
+  List<Object?> get props => [leadId, tier, ownerId];
 }
 
-class LeadDetailConvertRequested extends LeadDetailEvent {
-  final String leadId;
-  const LeadDetailConvertRequested(this.leadId);
+class LeadDetailDeleteRequested extends LeadDetailEvent {
+  final int leadId;
+  const LeadDetailDeleteRequested(this.leadId);
   @override
   List<Object?> get props => [leadId];
 }

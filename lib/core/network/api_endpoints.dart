@@ -1,19 +1,23 @@
-/// API endpoint constants.
-/// Stubbed paths — update when backend contracts are confirmed.
+/// API endpoint constants — paths as actually implemented by `saleshub`
+/// (see `app/api/v1/*.py`). Base URL includes the `/api/v1` prefix, so
+/// paths here start from the resource root (e.g. `/auth/login`).
 class ApiEndpoints {
   ApiEndpoints._();
 
   // ─── Auth ──────────────────────────────────────────────
+  // No register or /me endpoint.
   static const String login = '/auth/login';
-  static const String refreshToken = '/auth/refresh';
+  static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
+
+  // ─── Users ─────────────────────────────────────────────
+  static const String users = '/users';
 
   // ─── Leads ─────────────────────────────────────────────
   static const String leads = '/leads';
   static String leadById(String id) => '/leads/$id';
-  static String convertLeadToAccount(String id) =>
-      '/leads/$id/convert-to-account';
-  static const String checkDuplicateLead = '/leads/check-duplicate';
+  static String convertLead(String id) => '/leads/$id/convert';
+  static String leadActivities(String id) => '/leads/$id/activities';
 
   // ─── Accounts ──────────────────────────────────────────
   static const String accounts = '/accounts';
@@ -62,7 +66,5 @@ class ApiEndpoints {
   static const String activities = '/activity';
 
   // ─── Admin ─────────────────────────────────────────────
-  static const String adminUsers = '/admin/users';
-  static String adminUserRole(String id) => '/admin/users/$id/role';
   static const String adminChecklistTemplate = '/admin/checklist-template';
 }

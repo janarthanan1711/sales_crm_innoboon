@@ -12,7 +12,8 @@ class AccountMockDataSource implements AccountRemoteDataSource {
       industry: 'IT Services',
       tier: 'Strategic',
       primaryOwner: 'Sarah Jenkins',
-      description: 'Enterprise IT services provider specializing in cloud migration and digital transformation.',
+      description:
+          'Enterprise IT services provider specializing in cloud migration and digital transformation.',
       activeDealsCount: 3,
       createdAt: DateTime(2024, 1, 15),
       contacts: const [
@@ -84,9 +85,13 @@ class AccountMockDataSource implements AccountRemoteDataSource {
 
     if (search != null && search.isNotEmpty) {
       final q = search.toLowerCase();
-      filtered = filtered.where((a) =>
-          a.companyName.toLowerCase().contains(q) ||
-          a.domain.toLowerCase().contains(q)).toList();
+      filtered = filtered
+          .where(
+            (a) =>
+                a.companyName.toLowerCase().contains(q) ||
+                a.domain.toLowerCase().contains(q),
+          )
+          .toList();
     }
     if (industry != null && industry.isNotEmpty && industry != 'All') {
       filtered = filtered.where((a) => a.industry == industry).toList();
@@ -136,7 +141,7 @@ class AccountMockDataSource implements AccountRemoteDataSource {
     await Future.delayed(const Duration(milliseconds: 500));
     final index = _mockAccounts.indexWhere((a) => a.id == accountId);
     if (index == -1) throw Exception('Account not found');
-    
+
     final newContact = Contact(
       id: 'con_${const Uuid().v4().substring(0, 8)}',
       name: contact.name,
@@ -146,7 +151,7 @@ class AccountMockDataSource implements AccountRemoteDataSource {
       isDecisionMaker: contact.isDecisionMaker,
       accountId: accountId,
     );
-    
+
     final updatedAccount = _mockAccounts[index].copyWith(
       contacts: [..._mockAccounts[index].contacts, newContact],
     );

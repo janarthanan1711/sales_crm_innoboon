@@ -79,11 +79,12 @@ class ErrorInterceptor extends Interceptor {
     }
   }
 
+  // Backend returns {"detail": ...} for business errors (401/403/404/409/400
+  // from a route) and {"status_code","status","message"} for uncaught
+  // DB/500 errors — check `detail` first since it's the common case.
   String? _extractErrorMessage(dynamic data) {
     if (data is Map<String, dynamic>) {
-      return data['message'] as String? ??
-          data['error'] as String? ??
-          data['detail'] as String?;
+      return data['detail'] as String? ?? data['message'] as String?;
     }
     if (data is String) return data;
     return null;
