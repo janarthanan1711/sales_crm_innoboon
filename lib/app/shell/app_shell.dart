@@ -91,12 +91,12 @@ const List<NavItem> _sidebarMainItems = [
     activeIcon: Icons.description,
     path: RoutePaths.documents,
   ),
-  NavItem(
-    label: 'Activity',
-    icon: Icons.timeline_outlined,
-    activeIcon: Icons.timeline,
-    path: RoutePaths.activity,
-  ),
+  // NavItem(
+  //   label: 'Activity',
+  //   icon: Icons.timeline_outlined,
+  //   activeIcon: Icons.timeline,
+  //   path: RoutePaths.activity,
+  // ),
 ];
 
 const List<NavItem> _sidebarBottomItems = [
@@ -149,9 +149,7 @@ class _MobileShell extends StatelessWidget {
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: AppColors.border, width: 1),
-          ),
+          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex.clamp(0, navItems.length - 1),
@@ -253,9 +251,7 @@ class _WebSidebar extends StatelessWidget {
       width: AppSpacing.sidebarWidth,
       decoration: const BoxDecoration(
         color: AppColors.sidebarBackground,
-        border: Border(
-          right: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(right: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Column(
         children: [
@@ -299,9 +295,7 @@ class _WebSidebar extends StatelessWidget {
 
           // ── Quick Action Button ──────────
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -323,19 +317,18 @@ class _WebSidebar extends StatelessWidget {
             ),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                'MAIN MENU',
-                style: AppTextStyles.overline,
-              ),
+              child: Text('MAIN MENU', style: AppTextStyles.overline),
             ),
           ),
 
           // ── Main Nav Items ───────────────
-          ..._sidebarMainItems.map((item) => _SidebarNavItem(
-                item: item,
-                isActive: currentPath == item.path,
-                onTap: () => _onNavTap(context, item.path),
-              )),
+          ..._sidebarMainItems.map(
+            (item) => _SidebarNavItem(
+              item: item,
+              isActive: currentPath == item.path,
+              onTap: () => _onNavTap(context, item.path),
+            ),
+          ),
           if (_hasAdminAccess(context))
             _SidebarNavItem(
               item: const NavItem(
@@ -369,11 +362,13 @@ class _WebSidebar extends StatelessWidget {
           const Divider(),
 
           // ── Bottom Items ─────────────────
-          ..._sidebarBottomItems.map((item) => _SidebarNavItem(
-                item: item,
-                isActive: currentPath == item.path,
-                onTap: () => _onNavTap(context, item.path),
-              )),
+          ..._sidebarBottomItems.map(
+            (item) => _SidebarNavItem(
+              item: item,
+              isActive: currentPath == item.path,
+              onTap: () => _onNavTap(context, item.path),
+            ),
+          ),
           const SizedBox(height: AppSpacing.lg),
         ],
       ),
@@ -423,8 +418,8 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
               color: widget.isActive
                   ? AppColors.navActiveBg
                   : _isHovered
-                      ? AppColors.navHover
-                      : Colors.transparent,
+                  ? AppColors.navHover
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
             ),
             child: Row(
@@ -461,9 +456,7 @@ class _DesktopTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
         children: [
@@ -527,9 +520,7 @@ class _MobileTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
         children: [
@@ -581,7 +572,8 @@ bool _hasAdminAccess(BuildContext context) {
   final state = context.watch<AuthBloc>().state;
   final user = state is AuthAuthenticated ? state.user : null;
   if (user == null) return false;
-  return user.hasPermission('users.manage') || user.hasPermission('roles.manage');
+  return user.hasPermission('users.manage') ||
+      user.hasPermission('roles.manage');
 }
 
 List<NavItem> _visibleMainNavItems(BuildContext context) {
@@ -603,7 +595,13 @@ class _UserProfileDropdown extends StatelessWidget {
         final roleName = user?.role.name ?? 'Sales Team';
 
         final initials = displayName.isNotEmpty
-            ? displayName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+            ? displayName
+                  .trim()
+                  .split(' ')
+                  .map((e) => e.isNotEmpty ? e[0] : '')
+                  .take(2)
+                  .join()
+                  .toUpperCase()
             : 'U';
 
         return PopupMenuButton<String>(
@@ -653,7 +651,11 @@ class _UserProfileDropdown extends StatelessWidget {
               value: 'profile',
               child: Row(
                 children: [
-                  Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.person_outline,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   SizedBox(width: 8),
                   Text('View Profile'),
                 ],
