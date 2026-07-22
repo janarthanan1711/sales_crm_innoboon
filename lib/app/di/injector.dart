@@ -57,7 +57,7 @@ import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
-import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
+import '../../features/accounts/domain/usecases/get_account_overview_usecase.dart';
 import '../../features/accounts/presentation/bloc/accounts_list_bloc.dart';
 import '../../features/accounts/presentation/bloc/account_detail_bloc.dart';
 
@@ -237,13 +237,12 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => CreateAccountUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAccountUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountContactsUseCase(sl()));
-  sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountOverviewUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
-      getAccountByIdUseCase: sl(),
+      getAccountOverviewUseCase: sl(),
       getAccountContactsUseCase: sl(),
-      getAccountDealsUseCase: sl(),
     ),
   );
 
@@ -254,8 +253,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<ContactRepository>(
     () => ContactRepositoryImpl(remoteDataSource: sl()),
   );
-  sl.registerLazySingleton(() => CreateContactUseCase(sl()));
-  sl.registerLazySingleton(() => UpdateContactUseCase(sl()));
+  sl.registerLazySingleton(() => UpsertAccountContactUseCase(sl()));
   sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
 
   // ─── Deals Feature ──────────────────────────────────

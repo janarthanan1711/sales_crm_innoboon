@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
-import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_overview.dart';
 import '../../domain/repositories/account_repository.dart';
 
 class AccountRepositoryImpl implements AccountRepository {
@@ -11,20 +11,24 @@ class AccountRepositoryImpl implements AccountRepository {
   AccountRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<Account>>> getAccounts({
+  Future<Either<Failure, ({List<Account> items, int total})>> getAccounts({
     String? search,
     String? industry,
     String? tier,
     int? ownerId,
+    int limit = 25,
+    int offset = 0,
   }) async {
     try {
-      final accounts = await remoteDataSource.getAccounts(
+      final page = await remoteDataSource.getAccounts(
         search: search,
         industry: industry,
         tier: tier,
         ownerId: ownerId,
+        limit: limit,
+        offset: offset,
       );
-      return Right(accounts);
+      return Right(page);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -112,9 +116,11 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
-  Future<Either<Failure, List<Deal>>> getAccountDeals(String accountId) async {
+  Future<Either<Failure, AccountOverview>> getAccountOverview(
+    String accountId,
+  ) async {
     try {
-      return Right(await remoteDataSource.getAccountDeals(accountId));
+      return Right(await remoteDataSource.getAccountOverview(accountId));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

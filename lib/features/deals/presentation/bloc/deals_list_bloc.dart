@@ -115,11 +115,11 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
   /// The `/deals` endpoints only return `account_id`/`owner_id` — resolve
   /// display names client-side so the table/kanban don't show blanks.
   Future<List<Deal>> _enrichDeals(List<Deal> deals) async {
-    final accountsResult = await getAccountsUseCase(const GetAccountsParams());
+    final accountsResult = await getAccountsUseCase(const GetAccountsParams(limit: 1000));
     final usersResult = await getUsersUseCase();
     final accountNames = <String, String>{};
-    accountsResult.fold((_) {}, (accounts) {
-      for (final a in accounts) {
+    accountsResult.fold((_) {}, (page) {
+      for (final a in page.items) {
         accountNames[a.id] = a.companyName;
       }
     });

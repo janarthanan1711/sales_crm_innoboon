@@ -105,12 +105,23 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                       children: [
                         Row(
                           children: [
-                            Text(account.companyName, style: AppTextStyles.h1),
+                            Flexible(child: Text(account.companyName, style: AppTextStyles.h1, overflow: TextOverflow.ellipsis)),
                             const SizedBox(width: AppSpacing.md),
                             TierBadge(tier: account.tier),
                           ],
                         ),
-                        Text(account.domain ?? 'No domain set', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            if (account.domain != null && account.domain!.isNotEmpty) ...[
+                              Text(account.domain!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+                              const SizedBox(width: AppSpacing.md),
+                            ],
+                            const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
+                            const SizedBox(width: 4),
+                            Text(account.primaryOwner, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -119,7 +130,13 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                     icon: const Icon(Icons.edit, size: 16),
                     label: const Text('Edit Account'),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => _tabController.animateTo(1),
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: const Text('New Contact'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   ElevatedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -131,6 +148,8 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.lg),
+              _HeaderStats(state: state),
             ],
           ),
         ),
@@ -158,7 +177,7 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
           child: TabBarView(
             controller: _tabController,
             children: [
-              _OverviewTab(account: account, contacts: state.contacts, deals: state.deals),
+              _OverviewTab(state: state),
               _ContactsTab(account: account, contacts: state.contacts),
               _DealsTab(deals: state.deals),
               Padding(
@@ -300,13 +319,21 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
 }
 
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.account, required this.contacts, required this.deals});
-  final Account account;
-  final List<Contact> contacts;
-  final List<Deal> deals;
+  const _OverviewTab({required this.state});
+  final AccountDetailLoaded state;
+
+  Account get account => state.account;
+  List<Contact> get contacts => state.contacts;
+  List<Deal> get deals => state.deals;
+
+  String _money(double v) => '₹ ${v.toStringAsFixed(0)}';
 
   @override
   Widget build(BuildContext context) {
+    // Fields the backend has no model for yet come back null — show a clear
+    // "not available" placeholder, never a fake "0".
+    const naPlaceholder = 'Not available yet';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Row(
@@ -325,14 +352,16 @@ class _OverviewTab extends StatelessWidget {
                     children: [
                       _infoRow('Industry', account.industry ?? 'Not set'),
                       _infoRow('City', account.city ?? 'Not set'),
-                      _infoRow('Primary Owner', account.primaryOwner),
+                      _infoRow('Account Owner', account.primaryOwner),
+                      if (account.linkedinUrl != null && account.linkedinUrl!.isNotEmpty)
+                        _infoRow('LinkedIn', account.linkedinUrl!),
                       _infoRow('Description', account.description.isEmpty ? 'No description' : account.description),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 SectionCard(
-                  title: 'Primary Contacts',
+                  title: 'Key Contacts',
                   child: contacts.isEmpty
                       ? const Text('No contacts added yet')
                       : Column(
@@ -346,7 +375,15 @@ class _OverviewTab extends StatelessWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(c.fullName, style: AppTextStyles.labelLarge),
+                                      Row(
+                                        children: [
+                                          Flexible(child: Text(c.fullName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                                          if (c.isPrimary) ...[
+                                            const SizedBox(width: AppSpacing.xs),
+                                            const _PrimaryBadge(),
+                                          ],
+                                        ],
+                                      ),
                                       Text(
                                         [c.jobTitle, c.email].where((s) => s != null && s.isNotEmpty).join(' • '),
                                         style: AppTextStyles.bodySmall,
@@ -371,12 +408,27 @@ class _OverviewTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionCard(
-                  title: 'Quick Stats',
+                  title: 'Account Health',
                   child: Column(
                     children: [
+                      _statRow('Open Deal Value', _money(state.openDealValue), Icons.trending_up),
+                      const SizedBox(height: AppSpacing.md),
+                      _statRow('Total ARR', state.totalArr != null ? _money(state.totalArr!) : naPlaceholder, Icons.savings_outlined),
+                      const SizedBox(height: AppSpacing.md),
                       _statRow('Active Deals', '${deals.length}', Icons.handshake_outlined),
                       const SizedBox(height: AppSpacing.md),
                       _statRow('Total Contacts', '${contacts.length}', Icons.people_outline),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                SectionCard(
+                  title: 'Engagement',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _infoRow('Last Activity', state.lastActivity ?? naPlaceholder),
+                      _infoRow('Next Step', state.nextStep ?? naPlaceholder),
                     ],
                   ),
                 ),
@@ -419,6 +471,8 @@ class _ContactsTab extends StatelessWidget {
   final Account account;
   final List<Contact> contacts;
 
+  int get _accountId => int.tryParse(account.id) ?? 0;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -426,13 +480,28 @@ class _ContactsTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () => _showAddContactDialog(context),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Contact'),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Associated Contacts', style: AppTextStyles.h3),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Manage the people associated with this account.',
+                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showContactDialog(context),
+                icon: const Icon(Icons.person_add_alt_1, size: 16),
+                label: const Text('Add Contact'),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.lg),
           if (contacts.isEmpty)
@@ -445,38 +514,47 @@ class _ContactsTab extends StatelessWidget {
             )
           else
             Expanded(
-              child: ListView.separated(
-                itemCount: contacts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (context, index) {
-                  final c = contacts[index];
-                  return Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                      border: Border.all(color: AppColors.border),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: AppColors.border)),
+                      ),
+                      child: Row(
+                        children: [
+                          _headerCell('PRIMARY', flex: 2),
+                          _headerCell('NAME', flex: 4),
+                          _headerCell('JOB TITLE', flex: 3),
+                          _headerCell('EMAIL', flex: 4),
+                          _headerCell('PHONE', flex: 3),
+                          _headerCell('ACTIONS', flex: 2),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        InitialsAvatar(name: c.fullName.isEmpty ? (c.email ?? '?') : c.fullName, size: 36),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(c.fullName, style: AppTextStyles.labelLarge),
-                              Text(
-                                [c.jobTitle, c.email, c.phone].where((s) => s != null && s.isNotEmpty).join(' • '),
-                                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: contacts.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final c = contacts[index];
+                          return _ContactRow(
+                            contact: c,
+                            onSetPrimary: c.isPrimary ? null : () => _setPrimary(context, c),
+                            onEdit: () => _showContactDialog(context, existing: c),
+                            onDelete: () => _confirmDelete(context, c),
+                          );
+                        },
+                      ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
         ],
@@ -484,68 +562,313 @@ class _ContactsTab extends StatelessWidget {
     );
   }
 
-  void _showAddContactDialog(BuildContext context) {
+  Widget _headerCell(String label, {int flex = 1}) =>
+      Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+
+  /// Promote [target] to primary. Per the API a different existing primary
+  /// must be unset first (it 409s otherwise), so demote-then-promote.
+  Future<void> _setPrimary(BuildContext context, Contact target) async {
     final bloc = context.read<AccountDetailBloc>();
-    final firstNameController = TextEditingController();
-    final lastNameController = TextEditingController();
-    final emailController = TextEditingController();
-    final phoneController = TextEditingController();
-    final jobTitleController = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final current = contacts.where((c) => c.isPrimary && c.id != target.id);
+
+    if (current.isNotEmpty) {
+      final demote = await sl<UpsertAccountContactUseCase>()(
+        UpsertAccountContactParams(accountId: _accountId, contactId: current.first.id, isPrimary: false),
+      );
+      final demoteFailed = demote.isLeft();
+      if (demoteFailed) {
+        messenger.showSnackBar(const SnackBar(
+          content: Text('Could not update the current primary contact.'),
+          backgroundColor: AppColors.error,
+        ));
+        return;
+      }
+    }
+
+    final result = await sl<UpsertAccountContactUseCase>()(
+      UpsertAccountContactParams(accountId: _accountId, contactId: target.id, isPrimary: true),
+    );
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(content: Text('Could not set primary: ${f.message}'), backgroundColor: AppColors.error),
+      ),
+      (_) => bloc.add(AccountDetailLoadRequested(account.id)),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, Contact c) async {
+    final bloc = context.read<AccountDetailBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Contact'),
+        content: Text('Remove ${c.fullName.isEmpty ? 'this contact' : c.fullName}? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final result = await sl<DeleteContactUseCase>()(c.id);
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(content: Text('Failed to delete: ${f.message}'), backgroundColor: AppColors.error),
+      ),
+      (_) => bloc.add(AccountDetailLoadRequested(account.id)),
+    );
+  }
+
+  void _showContactDialog(BuildContext context, {Contact? existing}) {
+    final bloc = context.read<AccountDetailBloc>();
+    final firstNameController = TextEditingController(text: existing?.firstName ?? '');
+    final lastNameController = TextEditingController(text: existing?.lastName ?? '');
+    final jobTitleController = TextEditingController(text: existing?.jobTitle ?? '');
+    final emailController = TextEditingController(text: existing?.email ?? '');
+    final phoneController = TextEditingController(text: existing?.phone ?? '');
+    final altPhoneController = TextEditingController(text: existing?.alternatePhone ?? '');
+    final linkedinController = TextEditingController(text: existing?.linkedinUrl ?? '');
+    bool isPrimary = existing?.isPrimary ?? false;
+    final isEdit = existing != null;
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add Contact'),
-          content: SizedBox(
-            width: 380,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First Name')),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last Name')),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(controller: jobTitleController, decoration: const InputDecoration(labelText: 'Job Title')),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
-                ],
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            return AlertDialog(
+              title: Text(isEdit ? 'Edit Contact' : 'Add Contact'),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First Name *'))),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(child: TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last Name'))),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: jobTitleController, decoration: const InputDecoration(labelText: 'Job Title')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: altPhoneController, decoration: const InputDecoration(labelText: 'Alternate Phone')),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(controller: linkedinController, decoration: const InputDecoration(labelText: 'LinkedIn URL')),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text('Email or phone is required.', style: AppTextStyles.caption),
+                      const SizedBox(height: AppSpacing.sm),
+                      CheckboxListTile(
+                        value: isPrimary,
+                        onChanged: (v) => setState(() => isPrimary = v ?? false),
+                        title: const Text('Primary contact for this account'),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                if (firstNameController.text.trim().isEmpty) return;
-                final result = await sl<CreateContactUseCase>()(
-                  CreateContactParams(
-                    firstName: firstNameController.text.trim(),
-                    lastName: lastNameController.text.trim().isEmpty ? null : lastNameController.text.trim(),
-                    email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
-                    phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
-                    jobTitle: jobTitleController.text.trim().isEmpty ? null : jobTitleController.text.trim(),
-                    accountId: int.parse(account.id),
-                  ),
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                result.fold(
-                  (f) => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to add contact: ${f.message}'), backgroundColor: AppColors.error),
-                  ),
-                  (_) => bloc.add(AccountDetailLoadRequested(account.id)),
-                );
-              },
-              child: const Text('Save'),
-            ),
-          ],
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    if (!isEdit && firstNameController.text.trim().isEmpty) {
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('First name is required.'),
+                        backgroundColor: AppColors.error,
+                      ));
+                      return;
+                    }
+                    if (emailController.text.trim().isEmpty && phoneController.text.trim().isEmpty) {
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('Enter an email or a phone number.'),
+                        backgroundColor: AppColors.error,
+                      ));
+                      return;
+                    }
+
+                    String? val(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+
+                    // If this contact is being made primary and a different
+                    // one already is, demote that first to avoid a 409.
+                    if (isPrimary) {
+                      final other = contacts.where((c) => c.isPrimary && c.id != existing?.id);
+                      if (other.isNotEmpty) {
+                        await sl<UpsertAccountContactUseCase>()(
+                          UpsertAccountContactParams(accountId: _accountId, contactId: other.first.id, isPrimary: false),
+                        );
+                      }
+                    }
+
+                    final result = await sl<UpsertAccountContactUseCase>()(
+                      UpsertAccountContactParams(
+                        accountId: _accountId,
+                        contactId: existing?.id,
+                        firstName: val(firstNameController),
+                        lastName: val(lastNameController),
+                        jobTitle: val(jobTitleController),
+                        email: val(emailController),
+                        phone: val(phoneController),
+                        alternatePhone: val(altPhoneController),
+                        linkedinUrl: val(linkedinController),
+                        isPrimary: isPrimary,
+                      ),
+                    );
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext);
+                    result.fold(
+                      (f) => messenger.showSnackBar(
+                        SnackBar(content: Text('Failed to save contact: ${f.message}'), backgroundColor: AppColors.error),
+                      ),
+                      (_) => bloc.add(AccountDetailLoadRequested(account.id)),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
+    );
+  }
+}
+
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
+    required this.contact,
+    required this.onSetPrimary,
+    required this.onEdit,
+    required this.onDelete,
+  });
+  final Contact contact;
+  /// Null when this contact is already primary (radio shown selected).
+  final VoidCallback? onSetPrimary;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Radio<bool>(
+              value: true,
+              groupValue: contact.isPrimary,
+              onChanged: onSetPrimary == null ? null : (_) => onSetPrimary!(),
+              toggleable: false,
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                InitialsAvatar(name: contact.fullName.isEmpty ? (contact.email ?? '?') : contact.fullName, size: 32),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    contact.fullName.isEmpty ? '—' : contact.fullName,
+                    style: AppTextStyles.tableCell,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(flex: 3, child: Text(contact.jobTitle ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 4, child: Text(contact.email ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 3, child: Text(contact.phone ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit',
+                  onPressed: onEdit,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  tooltip: 'Delete',
+                  onPressed: onDelete,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryBadge extends StatelessWidget {
+  const _PrimaryBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text('PRIMARY', style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+/// The Open Deal Value / Last Activity / Next Step strip under the account
+/// header. `last_activity`/`next_step` come back null from the API today, so
+/// they show a placeholder rather than a fake value.
+class _HeaderStats extends StatelessWidget {
+  const _HeaderStats({required this.state});
+  final AccountDetailLoaded state;
+
+  @override
+  Widget build(BuildContext context) {
+    const na = 'Not available yet';
+    return Wrap(
+      spacing: AppSpacing.xxl,
+      runSpacing: AppSpacing.md,
+      children: [
+        _stat('Open Deal Value', '₹ ${state.openDealValue.toStringAsFixed(0)}', highlight: true),
+        _stat('Last Activity', state.lastActivity ?? na),
+        _stat('Next Step', state.nextStep ?? na),
+      ],
+    );
+  }
+
+  Widget _stat(String label, String value, {bool highlight = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label.toUpperCase(), style: AppTextStyles.overline),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: highlight
+              ? AppTextStyles.h3.copyWith(color: AppColors.primary)
+              : AppTextStyles.bodyMedium,
+        ),
+      ],
     );
   }
 }

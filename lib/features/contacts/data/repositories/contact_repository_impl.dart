@@ -18,46 +18,30 @@ class ContactRepositoryImpl implements ContactRepository {
   }
 
   @override
-  Future<Either<Failure, Contact>> createContact({
-    required String firstName,
-    String? lastName,
-    String? email,
-    String? phone,
-    String? jobTitle,
+  Future<Either<Failure, Contact>> upsertAccountContact({
     required int accountId,
-  }) async {
-    try {
-      final contact = await remoteDataSource.createContact(
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        phone: phone,
-        jobTitle: jobTitle,
-        accountId: accountId,
-      );
-      return Right(contact);
-    } on Exception catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Contact>> updateContact(
-    int id, {
+    int? contactId,
     String? firstName,
     String? lastName,
     String? email,
     String? phone,
+    String? alternatePhone,
     String? jobTitle,
+    String? linkedinUrl,
+    bool? isPrimary,
   }) async {
     try {
-      final contact = await remoteDataSource.updateContact(
-        id,
+      final contact = await remoteDataSource.upsertAccountContact(
+        accountId: accountId,
+        contactId: contactId,
         firstName: firstName,
         lastName: lastName,
         email: email,
         phone: phone,
+        alternatePhone: alternatePhone,
         jobTitle: jobTitle,
+        linkedinUrl: linkedinUrl,
+        isPrimary: isPrimary,
       );
       return Right(contact);
     } on Exception catch (e) {

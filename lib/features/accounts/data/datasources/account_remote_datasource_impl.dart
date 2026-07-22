@@ -4,11 +4,11 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../contacts/data/models/contact_model.dart';
 import '../../../contacts/domain/entities/contact.dart';
-import '../../../deals/data/models/deal_model.dart';
-import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_overview.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../models/account_model.dart';
+import '../models/account_overview_model.dart';
 
 /// Real API implementation of AccountRemoteDataSource — talks to
 /// `saleshub`'s `/accounts` router. The backend supports `owner_id`, `tier`,
@@ -19,11 +19,13 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
   AccountRemoteDataSourceImpl(this._dioClient);
 
   @override
-  Future<List<Account>> getAccounts({
+  Future<({List<Account> items, int total})> getAccounts({
     String? search,
     String? industry,
     String? tier,
     int? ownerId,
+    int limit = 25,
+    int offset = 0,
   }) async {
     try {
       final response = await _dioClient.get(
@@ -34,15 +36,15 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           if (industry != null && industry.isNotEmpty && industry != 'All')
             'industry': industry,
           if (ownerId != null) 'owner_id': ownerId,
-          'limit': 100,
-          'offset': 0,
+          'limit': limit,
+          'offset': offset,
         },
       );
       final data = response.data as Map<String, dynamic>;
-      final items = data['items'] as List<dynamic>;
-      return items
+      final items = (data['items'] as List<dynamic>)
           .map((e) => AccountModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      return (items: items, total: data['total'] as int? ?? items.length);
     } on DioException catch (e) {
       throw _normalize(e);
     }
@@ -141,15 +143,12 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
   }
 
   @override
-  Future<List<Deal>> getAccountDeals(String accountId) async {
+  Future<AccountOverview> getAccountOverview(String accountId) async {
     try {
       final response = await _dioClient.get(
-        ApiEndpoints.accountDeals(accountId),
+        ApiEndpoints.accountOverview(accountId),
       );
-      final items = response.data as List<dynamic>;
-      return items
-          .map((e) => DealModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return accountOverviewFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _normalize(e);
     }

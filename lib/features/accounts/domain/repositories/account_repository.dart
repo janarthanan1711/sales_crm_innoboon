@@ -1,15 +1,17 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
-import '../../../deals/domain/entities/deal.dart';
 import '../entities/account.dart';
+import '../entities/account_overview.dart';
 
 abstract class AccountRepository {
-  Future<Either<Failure, List<Account>>> getAccounts({
+  Future<Either<Failure, ({List<Account> items, int total})>> getAccounts({
     String? search,
     String? industry,
     String? tier,
     int? ownerId,
+    int limit,
+    int offset,
   });
 
   Future<Either<Failure, Account>> getAccountById(String id);
@@ -39,15 +41,17 @@ abstract class AccountRepository {
   });
 
   Future<Either<Failure, List<Contact>>> getAccountContacts(String accountId);
-  Future<Either<Failure, List<Deal>>> getAccountDeals(String accountId);
+  Future<Either<Failure, AccountOverview>> getAccountOverview(String accountId);
 }
 
 abstract class AccountRemoteDataSource {
-  Future<List<Account>> getAccounts({
+  Future<({List<Account> items, int total})> getAccounts({
     String? search,
     String? industry,
     String? tier,
     int? ownerId,
+    int limit,
+    int offset,
   });
   Future<Account> getAccountById(String id);
   Future<Account> createAccount({
@@ -73,5 +77,5 @@ abstract class AccountRemoteDataSource {
     String? linkedinUrl,
   });
   Future<List<Contact>> getAccountContacts(String accountId);
-  Future<List<Deal>> getAccountDeals(String accountId);
+  Future<AccountOverview> getAccountOverview(String accountId);
 }

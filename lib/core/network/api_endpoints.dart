@@ -29,6 +29,8 @@ class ApiEndpoints {
   // ─── Accounts ──────────────────────────────────────────
   static const String accounts = '/accounts';
   static String accountById(String id) => '/accounts/$id';
+  static String accountOverview(String id) => '/accounts/$id/overview';
+  // GET lists contacts; POST creates-or-updates + links (contact_accounts).
   static String accountContacts(String id) => '/accounts/$id/contacts';
   static String accountDeals(String id) => '/accounts/$id/deals';
 

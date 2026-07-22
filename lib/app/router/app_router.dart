@@ -13,6 +13,7 @@ import '../../features/leads/presentation/pages/create_lead_page.dart';
 import '../../features/leads/domain/entities/lead.dart';
 import '../../features/accounts/presentation/pages/accounts_list_page.dart';
 import '../../features/accounts/presentation/pages/account_detail_page.dart';
+import '../../features/accounts/presentation/pages/create_account_page.dart';
 import '../../features/deals/presentation/pages/deals_list_page.dart';
 import '../../features/deals/presentation/pages/deal_detail_page.dart';
 
@@ -99,6 +100,11 @@ class AppRouter {
             path: RoutePaths.accounts,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: AccountsListPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.createAccount,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CreateAccountPage()),
           ),
           GoRoute(
             path: RoutePaths.accountDetail,

@@ -63,11 +63,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   }
 
   Future<void> _loadOptions() async {
-    final accountsResult = await sl<GetAccountsUseCase>()(const GetAccountsParams());
+    final accountsResult = await sl<GetAccountsUseCase>()(const GetAccountsParams(limit: 1000));
     final usersResult = await sl<GetUsersUseCase>()();
     if (!mounted) return;
     setState(() {
-      accountsResult.fold((_) {}, (a) => _accounts = a);
+      accountsResult.fold((_) {}, (page) => _accounts = page.items);
       usersResult.fold((_) {}, (u) => _users = u);
       if (widget.presetAccount != null) {
         _selectedAccount = widget.presetAccount;

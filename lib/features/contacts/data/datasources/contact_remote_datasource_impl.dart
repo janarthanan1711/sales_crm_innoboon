@@ -22,50 +22,31 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
   }
 
   @override
-  Future<Contact> createContact({
-    required String firstName,
-    String? lastName,
-    String? email,
-    String? phone,
-    String? jobTitle,
+  Future<Contact> upsertAccountContact({
     required int accountId,
-  }) async {
-    try {
-      final response = await dioClient.post(
-        ApiEndpoints.contacts,
-        data: ContactModel.toCreateJson(
-          firstName: firstName,
-          lastName: lastName,
-          email: email,
-          phone: phone,
-          jobTitle: jobTitle,
-          accountId: accountId,
-        ),
-      );
-      return ContactModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _normalize(e);
-    }
-  }
-
-  @override
-  Future<Contact> updateContact(
-    int id, {
+    int? contactId,
     String? firstName,
     String? lastName,
     String? email,
     String? phone,
+    String? alternatePhone,
     String? jobTitle,
+    String? linkedinUrl,
+    bool? isPrimary,
   }) async {
     try {
-      final response = await dioClient.patch(
-        ApiEndpoints.contactById('$id'),
-        data: ContactModel.toUpdateJson(
+      final response = await dioClient.post(
+        ApiEndpoints.accountContacts('$accountId'),
+        data: ContactModel.toUpsertJson(
+          contactId: contactId,
           firstName: firstName,
           lastName: lastName,
           email: email,
           phone: phone,
+          alternatePhone: alternatePhone,
           jobTitle: jobTitle,
+          linkedinUrl: linkedinUrl,
+          isPrimary: isPrimary,
         ),
       );
       return ContactModel.fromJson(response.data as Map<String, dynamic>);
