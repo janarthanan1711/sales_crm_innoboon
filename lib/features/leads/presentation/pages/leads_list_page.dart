@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,6 +14,9 @@ import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_enums.dart';
+import '../../domain/entities/lead_import_result.dart';
+import '../../domain/usecases/import_leads_usecase.dart';
+import '../../domain/usecases/download_import_template_usecase.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
@@ -156,10 +157,13 @@ class _LeadsListViewState extends State<_LeadsListView> {
           ),
         ),
         OutlinedButton.icon(
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => const _ImportLeadsDialog(),
-          ),
+          onPressed: () {
+            final bloc = context.read<LeadsListBloc>();
+            showDialog(
+              context: context,
+              builder: (_) => _ImportLeadsDialog(listBloc: bloc),
+            );
+          },
           icon: const Icon(Icons.upload_file_outlined, size: 18),
           label: const Text('Import Leads'),
         ),
@@ -807,19 +811,12 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
 /// ─── Import Leads Dialog ────────────────────────────────
 const List<String> _kImportAllowedExtensions = ['csv', 'xlsx'];
 
-/// Sample CSV columns mirror the Create Lead form fields exactly (see
-/// create_lead_page.dart), using the same placeholder values shown as
-/// hints there so the two stay recognizably in sync.
-const String _kSampleCsvHeader =
-    'first_name,last_name,company,company_domain,job_title,linkedin_url,'
-    'email,phone,source,status,owner_email,follow_up_note';
-const String _kSampleCsvRow =
-    'Jane,Doe,Acme Corp,acme.com,VP of Sales,linkedin.com/in/janedoe,'
-    'jane.doe@acme.com,+1 (555) 000-0000,Website,Not Contacted,'
-    'owner@example.com,Interested in the enterprise plan';
-
 class _ImportLeadsDialog extends StatefulWidget {
-  const _ImportLeadsDialog();
+  const _ImportLeadsDialog({required this.listBloc});
+
+  /// The list bloc from the page, so a successful import can refresh the
+  /// leads table (the dialog is shown outside that bloc's provider subtree).
+  final LeadsListBloc listBloc;
 
   @override
   State<_ImportLeadsDialog> createState() => _ImportLeadsDialogState();
@@ -828,6 +825,8 @@ class _ImportLeadsDialog extends StatefulWidget {
 class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
   PlatformFile? _pickedFile;
   bool _picking = false;
+  bool _importing = false;
+  String? _downloadingFormat;
 
   Future<void> _pickFile() async {
     setState(() => _picking = true);
@@ -845,10 +844,66 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
     }
   }
 
-  Future<void> _downloadSample() async {
-    final csv = '$_kSampleCsvHeader\n$_kSampleCsvRow\n';
-    final bytes = Uint8List.fromList(utf8.encode(csv));
-    await downloadBytes(bytes, 'leads_import_sample.csv');
+  Future<void> _downloadTemplate(String format) async {
+    setState(() => _downloadingFormat = format);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await sl<DownloadImportTemplateUseCase>()(format: format);
+      if (!mounted) return;
+      await result.fold(
+        (f) async => messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to download template: ${f.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        ),
+        (bytes) async =>
+            downloadBytes(bytes, 'lead_import_template.$format'),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingFormat = null);
+    }
+  }
+
+  Future<void> _upload() async {
+    final file = _pickedFile;
+    if (file == null || file.bytes == null) return;
+    setState(() => _importing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final result = await sl<ImportLeadsUseCase>()(
+      ImportLeadsParams(bytes: file.bytes!, filename: file.name),
+    );
+    if (!mounted) return;
+    setState(() => _importing = false);
+
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Import failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (summary) {
+        // Refresh the table so newly-created leads appear.
+        widget.listBloc.add(const LeadsListLoadRequested());
+        navigator.pop();
+        if (summary.hasErrors) {
+          showDialog<void>(
+            context: navigator.context,
+            builder: (_) => _ImportResultDialog(result: summary),
+          );
+        } else {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Imported ${summary.created} lead(s) successfully.'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      },
+    );
   }
 
   String _formatSize(int bytes) {
@@ -939,7 +994,8 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Only .csv and .xlsx files are supported.',
+              'Only .csv and .xlsx files are supported. Columns must match '
+              'the template.',
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -949,25 +1005,58 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      'Need a template? Download a sample CSV with a dummy lead.',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: AppColors.primary,
                       ),
-                    ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Need a starting point? Download a template with '
+                          'the exact columns and an example row.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: _downloadSample,
-                    child: const Text('Sample Import'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _downloadingFormat == null
+                            ? () => _downloadTemplate('xlsx')
+                            : null,
+                        icon: _downloadingFormat == 'xlsx'
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.grid_on, size: 16),
+                        label: const Text('Excel (.xlsx)'),
+                      ),
+                      TextButton.icon(
+                        onPressed: _downloadingFormat == null
+                            ? () => _downloadTemplate('csv')
+                            : null,
+                        icon: _downloadingFormat == 'csv'
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.description_outlined, size: 16),
+                        label: const Text('CSV (.csv)'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -977,21 +1066,79 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _importing ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: _pickedFile == null
-              ? null
-              : () {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final fileName = _pickedFile!.name;
-                  Navigator.pop(context);
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('$fileName selected.')),
-                  );
-                },
-          child: const Text('Upload'),
+          onPressed: (_pickedFile == null || _importing) ? null : _upload,
+          child: _importing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Upload'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown after an import that had one or more per-row failures — lists which
+/// spreadsheet rows were skipped and why (the created rows still went in).
+class _ImportResultDialog extends StatelessWidget {
+  const _ImportResultDialog({required this.result});
+  final LeadImportResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Import Completed'),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.check_circle_outline, size: 18, color: AppColors.success),
+                const SizedBox(width: AppSpacing.sm),
+                Text('${result.created} lead(s) created', style: AppTextStyles.labelLarge),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+                const SizedBox(width: AppSpacing.sm),
+                Text('${result.errors.length} row(s) skipped', style: AppTextStyles.labelLarge),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: result.errors
+                      .map((e) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                            child: Text(
+                              'Row ${e.row}: ${e.error}',
+                              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Done'),
         ),
       ],
     );

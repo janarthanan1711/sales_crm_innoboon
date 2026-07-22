@@ -15,20 +15,16 @@ class AccountRepositoryImpl implements AccountRepository {
     String? search,
     String? industry,
     String? tier,
-    String? owner,
+    int? ownerId,
   }) async {
     try {
       final accounts = await remoteDataSource.getAccounts(
         search: search,
         industry: industry,
         tier: tier,
-        owner: owner,
+        ownerId: ownerId,
       );
-      // The backend has no server-side industry filter — applied here.
-      final filtered = (industry == null || industry.isEmpty || industry == 'All')
-          ? accounts
-          : accounts.where((a) => a.industry == industry).toList();
-      return Right(filtered);
+      return Right(accounts);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -54,6 +50,7 @@ class AccountRepositoryImpl implements AccountRepository {
     String? city,
     String? description,
     String? linkedinUrl,
+    List<AccountContactDraft>? contacts,
   }) async {
     try {
       final created = await remoteDataSource.createAccount(
@@ -65,6 +62,7 @@ class AccountRepositoryImpl implements AccountRepository {
         city: city,
         description: description,
         linkedinUrl: linkedinUrl,
+        contacts: contacts,
       );
       return Right(created);
     } on Exception catch (e) {

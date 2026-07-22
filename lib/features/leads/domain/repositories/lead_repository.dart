@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/lead.dart';
+import '../entities/lead_import_result.dart';
 import '../usecases/lead_upsert_params.dart';
 
 /// Lead repository interface — domain layer
@@ -49,6 +51,17 @@ abstract class LeadRepository {
   });
 
   Future<Either<Failure, void>> deleteActivity(int leadId, int activityId);
+
+  /// Bulk-import leads from an uploaded `.csv`/`.xlsx` file. Returns a
+  /// summary — HTTP is always 200, so partial failures live in the result.
+  Future<Either<Failure, LeadImportResult>> importLeads({
+    required Uint8List bytes,
+    required String filename,
+  });
+
+  /// Downloads the sample import template as raw bytes. [format] is
+  /// `'xlsx'` (default) or `'csv'`.
+  Future<Either<Failure, Uint8List>> downloadImportTemplate({String format});
 }
 
 /// Datasource interface for the data layer
@@ -80,4 +93,9 @@ abstract class LeadRemoteDataSource {
     String? note,
   });
   Future<void> deleteActivity(int leadId, int activityId);
+  Future<LeadImportResult> importLeads({
+    required Uint8List bytes,
+    required String filename,
+  });
+  Future<Uint8List> downloadImportTemplate({String format});
 }

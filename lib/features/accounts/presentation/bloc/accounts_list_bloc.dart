@@ -52,7 +52,6 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
         search: _search,
         industry: _industryFilter,
         tier: _tierFilter,
-        owner: _ownerFilter,
       ),
     );
 

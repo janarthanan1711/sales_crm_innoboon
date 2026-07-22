@@ -22,6 +22,9 @@ class ApiEndpoints {
   static String leadById(String id) => '/leads/$id';
   static String convertLead(String id) => '/leads/$id/convert';
   static String leadActivities(String id) => '/leads/$id/activities';
+  // Bulk import: download a sample template, then POST a filled .csv/.xlsx.
+  static const String leadsImport = '/leads/import';
+  static const String leadsImportTemplate = '/leads/import/template';
 
   // ─── Accounts ──────────────────────────────────────────
   static const String accounts = '/accounts';

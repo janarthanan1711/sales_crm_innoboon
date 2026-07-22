@@ -147,6 +147,7 @@ class _AccountsListView extends StatelessWidget {
     String tier = leadTierLabels.keys.first;
     String? industry;
     int? ownerId;
+    final List<_ContactControllers> contactRows = [];
     List<OwnerUser> users = [];
     final usersResult = await sl<GetUsersUseCase>()();
     usersResult.fold((_) {}, (u) => users = u);
@@ -161,7 +162,7 @@ class _AccountsListView extends StatelessWidget {
             return AlertDialog(
               title: const Text('New Account'),
               content: SizedBox(
-                width: 420,
+                width: 460,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -203,6 +204,31 @@ class _AccountsListView extends StatelessWidget {
                         items: users.map((u) => DropdownMenuItem<int?>(value: u.id, child: Text(u.displayName))).toList(),
                         onChanged: (v) => setState(() => ownerId = v),
                       ),
+                      const SizedBox(height: AppSpacing.lg),
+                      // ── Inline contacts (optional) ─────────────────
+                      Row(
+                        children: [
+                          Text('Contacts', style: AppTextStyles.labelLarge),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text('(optional)', style: AppTextStyles.caption),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => setState(() => contactRows.add(_ContactControllers())),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Contact'),
+                          ),
+                        ],
+                      ),
+                      for (int i = 0; i < contactRows.length; i++) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        _ContactDraftCard(
+                          index: i,
+                          controllers: contactRows[i],
+                          onRemove: () => setState(() {
+                            contactRows.removeAt(i).dispose();
+                          }),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -211,7 +237,30 @@ class _AccountsListView extends StatelessWidget {
                 TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
                 ElevatedButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     if (companyController.text.trim().isEmpty) return;
+
+                    // Validate any filled-in contact rows against the API's
+                    // rules before sending.
+                    final filled = contactRows.where((c) => !c.isEmpty).toList();
+                    for (var i = 0; i < filled.length; i++) {
+                      final c = filled[i];
+                      if (i == 0 && c.firstName.text.trim().isEmpty) {
+                        messenger.showSnackBar(const SnackBar(
+                          content: Text('The first contact needs a first name.'),
+                          backgroundColor: AppColors.error,
+                        ));
+                        return;
+                      }
+                      if (c.email.text.trim().isEmpty && c.phone.text.trim().isEmpty) {
+                        messenger.showSnackBar(SnackBar(
+                          content: Text('Contact ${i + 1} needs an email or a phone.'),
+                          backgroundColor: AppColors.error,
+                        ));
+                        return;
+                      }
+                    }
+
                     final result = await sl<CreateAccountUseCase>()(
                       AccountUpsertParams(
                         company: companyController.text.trim(),
@@ -222,12 +271,13 @@ class _AccountsListView extends StatelessWidget {
                         city: cityController.text.trim().isEmpty ? null : cityController.text.trim(),
                         description: descriptionController.text.trim(),
                         linkedinUrl: linkedinController.text.trim().isEmpty ? null : linkedinController.text.trim(),
+                        contacts: filled.isEmpty ? null : filled.map((c) => c.toDraft()).toList(),
                       ),
                     );
                     if (!dialogContext.mounted) return;
                     Navigator.pop(dialogContext);
                     result.fold(
-                      (f) => ScaffoldMessenger.of(context).showSnackBar(
+                      (f) => messenger.showSnackBar(
                         SnackBar(content: Text('Failed to create account: ${f.message}'), backgroundColor: AppColors.error),
                       ),
                       (account) {
@@ -243,6 +293,97 @@ class _AccountsListView extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Holds the text controllers for one inline contact row in the create-account
+/// dialog.
+class _ContactControllers {
+  final firstName = TextEditingController();
+  final lastName = TextEditingController();
+  final email = TextEditingController();
+  final phone = TextEditingController();
+  final jobTitle = TextEditingController();
+
+  bool get isEmpty =>
+      firstName.text.trim().isEmpty &&
+      lastName.text.trim().isEmpty &&
+      email.text.trim().isEmpty &&
+      phone.text.trim().isEmpty &&
+      jobTitle.text.trim().isEmpty;
+
+  AccountContactDraft toDraft() => AccountContactDraft(
+        firstName: firstName.text.trim().isEmpty ? null : firstName.text.trim(),
+        lastName: lastName.text.trim().isEmpty ? null : lastName.text.trim(),
+        email: email.text.trim().isEmpty ? null : email.text.trim(),
+        phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
+        jobTitle: jobTitle.text.trim().isEmpty ? null : jobTitle.text.trim(),
+      );
+
+  void dispose() {
+    firstName.dispose();
+    lastName.dispose();
+    email.dispose();
+    phone.dispose();
+    jobTitle.dispose();
+  }
+}
+
+class _ContactDraftCard extends StatelessWidget {
+  const _ContactDraftCard({
+    required this.index,
+    required this.controllers,
+    required this.onRemove,
+  });
+  final int index;
+  final _ContactControllers controllers;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Contact ${index + 1}', style: AppTextStyles.labelMedium),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                tooltip: 'Remove contact',
+                onPressed: onRemove,
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: controllers.firstName, decoration: const InputDecoration(labelText: 'First Name'))),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: TextField(controller: controllers.lastName, decoration: const InputDecoration(labelText: 'Last Name'))),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(controller: controllers.jobTitle, decoration: const InputDecoration(labelText: 'Job Title')),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: controllers.email, decoration: const InputDecoration(labelText: 'Email'))),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: TextField(controller: controllers.phone, decoration: const InputDecoration(labelText: 'Phone'))),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Email or phone required', style: AppTextStyles.caption),
+        ],
+      ),
     );
   }
 }

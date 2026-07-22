@@ -144,12 +144,12 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           labelStyle: AppTextStyles.labelLarge,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Contacts'),
-            Tab(text: 'Deals'),
-            Tab(text: 'Pre-Sales Checklist'),
-            Tab(text: 'Activity Log'),
+          tabs: [
+            const Tab(text: 'Overview'),
+            Tab(text: 'Contacts${_countSuffix(account.contactCount, state.contacts.length)}'),
+            Tab(text: 'Deals${_countSuffix(account.dealCount, state.deals.length)}'),
+            const Tab(text: 'Pre-Sales Checklist'),
+            const Tab(text: 'Activity Log'),
           ],
         ),
 
@@ -180,6 +180,14 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
         ),
       ],
     );
+  }
+
+  /// A " (N)" badge for a tab label. Prefers the loaded list length (what's
+  /// actually rendered); falls back to the account's server-reported count
+  /// before the list resolves. Empty string when there's nothing to show.
+  String _countSuffix(int accountCount, int loadedLength) {
+    final n = loadedLength > 0 ? loadedLength : accountCount;
+    return n > 0 ? ' ($n)' : '';
   }
 
   Future<void> _showEditAccountDialog(BuildContext context, Account account) async {

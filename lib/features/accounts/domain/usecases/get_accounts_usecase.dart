@@ -8,26 +8,26 @@ class GetAccountsParams {
   final String? search;
   final String? industry;
   final String? tier;
-  final String? owner;
+  final int? ownerId;
 
   const GetAccountsParams({
     this.search,
     this.industry,
     this.tier,
-    this.owner,
+    this.ownerId,
   });
 }
 
 class GetAccountsUseCase implements UseCase<List<Account>, GetAccountsParams> {
   final AccountRepository repository;
   GetAccountsUseCase(this.repository);
-  
+
   @override
-  Future<Either<Failure, List<Account>>> call(GetAccountsParams params) => 
+  Future<Either<Failure, List<Account>>> call(GetAccountsParams params) =>
       repository.getAccounts(
         search: params.search,
         industry: params.industry,
         tier: params.tier,
-        owner: params.owner,
+        ownerId: params.ownerId,
       );
 }

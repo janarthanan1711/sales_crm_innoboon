@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/lead.dart';
+import '../../domain/entities/lead_import_result.dart';
 import '../../domain/repositories/lead_repository.dart';
 import '../../domain/usecases/lead_upsert_params.dart';
 
@@ -158,6 +160,36 @@ class LeadRepositoryImpl implements LeadRepository {
     try {
       await remoteDataSource.deleteActivity(leadId, activityId);
       return const Right(null);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LeadImportResult>> importLeads({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    try {
+      final result = await remoteDataSource.importLeads(
+        bytes: bytes,
+        filename: filename,
+      );
+      return Right(result);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> downloadImportTemplate({
+    String format = 'xlsx',
+  }) async {
+    try {
+      final bytes = await remoteDataSource.downloadImportTemplate(
+        format: format,
+      );
+      return Right(bytes);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

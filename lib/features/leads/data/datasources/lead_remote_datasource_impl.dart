@@ -1,11 +1,14 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/lead.dart';
+import '../../domain/entities/lead_import_result.dart';
 import '../../domain/repositories/lead_repository.dart';
 import '../../domain/usecases/lead_upsert_params.dart';
 import '../models/lead_model.dart';
+import '../models/lead_import_result_model.dart';
 
 /// Real API implementation of LeadRemoteDataSource — talks to
 /// `saleshub`'s `/leads` router (see app/api/v1/leads.py).
@@ -177,6 +180,39 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       await dioClient.delete(
         '${ApiEndpoints.leadActivities('$leadId')}/$activityId',
       );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<LeadImportResult> importLeads({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await dioClient.post(
+        ApiEndpoints.leadsImport,
+        data: form,
+      );
+      return leadImportResultFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> downloadImportTemplate({String format = 'xlsx'}) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.leadsImportTemplate,
+        queryParameters: {'format': format},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _normalize(e);
     }

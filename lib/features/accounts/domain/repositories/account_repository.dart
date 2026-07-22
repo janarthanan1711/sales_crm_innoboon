@@ -9,7 +9,7 @@ abstract class AccountRepository {
     String? search,
     String? industry,
     String? tier,
-    String? owner,
+    int? ownerId,
   });
 
   Future<Either<Failure, Account>> getAccountById(String id);
@@ -23,6 +23,7 @@ abstract class AccountRepository {
     String? city,
     String? description,
     String? linkedinUrl,
+    List<AccountContactDraft>? contacts,
   });
 
   Future<Either<Failure, Account>> updateAccount(
@@ -46,7 +47,7 @@ abstract class AccountRemoteDataSource {
     String? search,
     String? industry,
     String? tier,
-    String? owner,
+    int? ownerId,
   });
   Future<Account> getAccountById(String id);
   Future<Account> createAccount({
@@ -58,6 +59,7 @@ abstract class AccountRemoteDataSource {
     String? city,
     String? description,
     String? linkedinUrl,
+    List<AccountContactDraft>? contacts,
   });
   Future<Account> updateAccount(
     String id, {

@@ -11,10 +11,8 @@ import '../../domain/repositories/account_repository.dart';
 import '../models/account_model.dart';
 
 /// Real API implementation of AccountRemoteDataSource — talks to
-/// `saleshub`'s `/accounts` router. Note the backend has no server-side
-/// `industry` filter (only `owner_id`/`tier`/`search`/pagination) — the
-/// industry dropdown in the accounts list is applied client-side by the
-/// bloc after this fetch.
+/// `saleshub`'s `/accounts` router. The backend supports `owner_id`, `tier`,
+/// `industry`, `search` and pagination as server-side query params.
 class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
   final DioClient _dioClient;
 
@@ -25,7 +23,7 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     String? search,
     String? industry,
     String? tier,
-    String? owner,
+    int? ownerId,
   }) async {
     try {
       final response = await _dioClient.get(
@@ -33,6 +31,9 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
         queryParameters: {
           if (search != null && search.isNotEmpty) 'search': search,
           if (tier != null && tier.isNotEmpty && tier != 'All') 'tier': tier,
+          if (industry != null && industry.isNotEmpty && industry != 'All')
+            'industry': industry,
+          if (ownerId != null) 'owner_id': ownerId,
           'limit': 100,
           'offset': 0,
         },
@@ -67,11 +68,12 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     String? city,
     String? description,
     String? linkedinUrl,
+    List<AccountContactDraft>? contacts,
   }) async {
     try {
       final response = await _dioClient.post(
         ApiEndpoints.accounts,
-        data: AccountModel.toJson(
+        data: AccountModel.toCreateJson(
           company: company,
           domain: domain,
           tier: tier,
@@ -80,6 +82,7 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           city: city,
           description: description,
           linkedinUrl: linkedinUrl,
+          contacts: contacts,
         ),
       );
       return AccountModel.fromJson(response.data as Map<String, dynamic>);

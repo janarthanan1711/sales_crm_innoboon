@@ -12,6 +12,9 @@ class AccountUpsertParams {
   final String? city;
   final String? description;
   final String? linkedinUrl;
+  /// Inline contacts to create alongside a new account. Ignored on update
+  /// (the update endpoint doesn't accept a contacts array).
+  final List<AccountContactDraft>? contacts;
 
   const AccountUpsertParams({
     required this.company,
@@ -22,6 +25,7 @@ class AccountUpsertParams {
     this.city,
     this.description,
     this.linkedinUrl,
+    this.contacts,
   });
 }
 
@@ -39,6 +43,7 @@ class CreateAccountUseCase {
       city: params.city,
       description: params.description,
       linkedinUrl: params.linkedinUrl,
+      contacts: params.contacts,
     );
   }
 }

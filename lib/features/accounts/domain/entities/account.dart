@@ -1,24 +1,50 @@
 import 'package:equatable/equatable.dart';
 
+/// A contact to create inline with a new account (the `contacts[]` array on
+/// `POST /accounts`). Per the API, `firstName` is only required on the first
+/// contact — every later contact inherits the first's name automatically, so
+/// only its email/phone are needed.
+class AccountContactDraft extends Equatable {
+  final String? firstName;
+  final String? lastName;
+  final String? email;
+  final String? phone;
+  final String? jobTitle;
+
+  const AccountContactDraft({
+    this.firstName,
+    this.lastName,
+    this.email,
+    this.phone,
+    this.jobTitle,
+  });
+
+  @override
+  List<Object?> get props => [firstName, lastName, email, phone, jobTitle];
+}
+
 /// Account entity — mirrors the backend's `AccountRead` shape (see
-/// `POST/GET/PATCH /accounts`). The API has no embedded contacts list or
-/// active-deals count — those are fetched separately via the dedicated
+/// `POST/GET/PATCH /accounts`). The API has no embedded contacts list; the
+/// full contact/deal rows are fetched separately via the dedicated
 /// `GET /accounts/{id}/contacts` / `GET /accounts/{id}/deals` endpoints
-/// (see [AccountRepository.getAccountContacts]/[getAccountDeals]).
+/// (see [AccountRepository.getAccountContacts]/[getAccountDeals]), but the
+/// account itself carries `contact_count`/`deal_count` for tab badges.
 class Account extends Equatable {
   final String id;
   final String companyName;
   final String? domain;
   final String tier;
   final int? ownerId;
-  /// Display fallback (e.g. "Owner 12"/"Unassigned") — the API doesn't
-  /// return an owner name on the account object, only `owner_id`.
+  /// Owner's display name — from the API's `owner_name`, falling back to
+  /// "Owner {id}"/"Unassigned" when the server didn't resolve a name.
   final String primaryOwner;
   final String? industry;
   final String? city;
   final String description;
   final String? linkedinUrl;
   final int? sourceLeadId;
+  final int contactCount;
+  final int dealCount;
 
   const Account({
     required this.id,
@@ -32,6 +58,8 @@ class Account extends Equatable {
     this.description = '',
     this.linkedinUrl,
     this.sourceLeadId,
+    this.contactCount = 0,
+    this.dealCount = 0,
   });
 
   Account copyWith({
@@ -46,6 +74,8 @@ class Account extends Equatable {
     String? description,
     String? linkedinUrl,
     int? sourceLeadId,
+    int? contactCount,
+    int? dealCount,
   }) {
     return Account(
       id: id ?? this.id,
@@ -59,6 +89,8 @@ class Account extends Equatable {
       description: description ?? this.description,
       linkedinUrl: linkedinUrl ?? this.linkedinUrl,
       sourceLeadId: sourceLeadId ?? this.sourceLeadId,
+      contactCount: contactCount ?? this.contactCount,
+      dealCount: dealCount ?? this.dealCount,
     );
   }
 
@@ -75,5 +107,7 @@ class Account extends Equatable {
     description,
     linkedinUrl,
     sourceLeadId,
+    contactCount,
+    dealCount,
   ];
 }
