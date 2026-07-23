@@ -269,7 +269,7 @@ class _LoginForm extends StatefulWidget {
 class _LoginFormState extends State<_LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(text: 'owner@innoboon.com');
-  final _passwordController = TextEditingController(text: 'admin-password-123');
+  final _passwordController = TextEditingController(text: 'admin-pass-123');
   bool _obscurePassword = true;
 
   @override

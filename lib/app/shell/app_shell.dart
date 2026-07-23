@@ -479,17 +479,17 @@ class _DesktopTopBar extends StatelessWidget {
           // Action buttons
           const NotificationBell(),
           const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search),
-            tooltip: 'Global Search',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.add_circle_outline),
-            tooltip: 'Quick Create',
-          ),
+          // IconButton(
+          //   onPressed: () {},
+          //   icon: const Icon(Icons.search),
+          //   tooltip: 'Global Search',
+          // ),
+          // const SizedBox(width: AppSpacing.sm),
+          // IconButton(
+          //   onPressed: () {},
+          //   icon: const Icon(Icons.add_circle_outline),
+          //   tooltip: 'Quick Create',
+          // ),
           const SizedBox(width: AppSpacing.md),
 
           // User avatar
@@ -576,9 +576,11 @@ List<NavItem> _visibleNavItems(BuildContext context, List<NavItem> items) {
   final user = _currentUser(context);
   // Before auth resolves, only show items with no permission requirement.
   return items
-      .where((i) => user == null
-          ? i.requiredPermissions.isEmpty
-          : user.hasAnyPermission(i.requiredPermissions))
+      .where(
+        (i) => user == null
+            ? i.requiredPermissions.isEmpty
+            : user.hasAnyPermission(i.requiredPermissions),
+      )
       .toList();
 }
 
