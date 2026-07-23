@@ -10,6 +10,7 @@ import '../router/route_paths.dart';
 import '../../features/notifications/presentation/widgets/notification_bell.dart';
 import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/domain/entities/user.dart';
 
 /// Navigation item definition
 class NavItem {
@@ -18,11 +19,16 @@ class NavItem {
   final IconData activeIcon;
   final String path;
 
+  /// Permission codes that grant visibility — the item shows if the user
+  /// holds ANY of them. Empty ⇒ visible to any authenticated user.
+  final List<String> requiredPermissions;
+
   const NavItem({
     required this.label,
     required this.icon,
     required this.activeIcon,
     required this.path,
+    this.requiredPermissions = const [],
   });
 }
 
@@ -39,12 +45,14 @@ const List<NavItem> _mainNavItems = [
     icon: Icons.people_outline,
     activeIcon: Icons.people,
     path: RoutePaths.leads,
+    requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
     label: 'Deals',
     icon: Icons.handshake_outlined,
     activeIcon: Icons.handshake,
     path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
     label: 'Analytics',
@@ -57,6 +65,7 @@ const List<NavItem> _mainNavItems = [
     icon: Icons.settings_outlined,
     activeIcon: Icons.settings,
     path: RoutePaths.settings,
+    requiredPermissions: ['users.manage', 'roles.manage'],
   ),
 ];
 
@@ -73,12 +82,14 @@ const List<NavItem> _sidebarMainItems = [
     icon: Icons.people_outline,
     activeIcon: Icons.people,
     path: RoutePaths.leads,
+    requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
     label: 'Deals',
     icon: Icons.handshake_outlined,
     activeIcon: Icons.handshake,
     path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
     label: 'Staff Augmentation',
@@ -322,8 +333,8 @@ class _WebSidebar extends StatelessWidget {
             ),
           ),
 
-          // ── Main Nav Items ───────────────
-          ..._sidebarMainItems.map(
+          // ── Main Nav Items (filtered by permissions) ─────
+          ..._visibleNavItems(context, _sidebarMainItems).map(
             (item) => _SidebarNavItem(
               item: item,
               isActive: currentPath == item.path,
@@ -547,17 +558,32 @@ void _onNavTap(BuildContext context, String path) {
 /// Only users whose role can manage users/roles see the Admin Settings
 /// entry point (top-level nav item, sidebar item, or "Settings" tab).
 bool _hasAdminAccess(BuildContext context) {
-  final state = context.watch<AuthBloc>().state;
-  final user = state is AuthAuthenticated ? state.user : null;
+  final user = _currentUser(context);
   if (user == null) return false;
   return user.hasPermission('users.manage') ||
       user.hasPermission('roles.manage');
 }
 
-List<NavItem> _visibleMainNavItems(BuildContext context) {
-  if (_hasAdminAccess(context)) return _mainNavItems;
-  return _mainNavItems.where((i) => i.path != RoutePaths.settings).toList();
+/// The authenticated user, or null if not signed in.
+User? _currentUser(BuildContext context) {
+  final state = context.watch<AuthBloc>().state;
+  return state is AuthAuthenticated ? state.user : null;
 }
+
+/// Filters [items] to those the current user is permitted to see, based on
+/// the login-response permission codes on [User.permissions].
+List<NavItem> _visibleNavItems(BuildContext context, List<NavItem> items) {
+  final user = _currentUser(context);
+  // Before auth resolves, only show items with no permission requirement.
+  return items
+      .where((i) => user == null
+          ? i.requiredPermissions.isEmpty
+          : user.hasAnyPermission(i.requiredPermissions))
+      .toList();
+}
+
+List<NavItem> _visibleMainNavItems(BuildContext context) =>
+    _visibleNavItems(context, _mainNavItems);
 
 class _UserProfileDropdown extends StatelessWidget {
   final double radius;

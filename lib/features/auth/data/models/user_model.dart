@@ -18,6 +18,7 @@ class UserModel {
   final String status;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
+  final List<String> permissions;
   final String? accessToken;
   final String? refreshToken;
 
@@ -33,6 +34,7 @@ class UserModel {
     this.status = 'active',
     this.createdAt,
     this.lastLoginAt,
+    this.permissions = const [],
     this.accessToken,
     this.refreshToken,
   });
@@ -54,6 +56,11 @@ class UserModel {
       lastLoginAt: json['last_login_at'] != null
           ? DateTime.tryParse(json['last_login_at'] as String)
           : null,
+      // Top-level `permissions` — present on the login response and on the
+      // cached-user round-trip; absent on plain `/users/me` (⇒ empty).
+      permissions: (json['permissions'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
       accessToken: json['access_token'] as String?,
       refreshToken: json['refresh_token'] as String?,
     );
@@ -88,6 +95,7 @@ class UserModel {
       'status': status,
       'created_at': createdAt?.toIso8601String(),
       'last_login_at': lastLoginAt?.toIso8601String(),
+      'permissions': permissions,
     };
   }
 
@@ -104,6 +112,7 @@ class UserModel {
       status: status,
       createdAt: createdAt,
       lastLoginAt: lastLoginAt,
+      permissions: permissions,
     );
   }
 }

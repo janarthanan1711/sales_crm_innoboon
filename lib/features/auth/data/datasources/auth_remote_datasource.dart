@@ -33,6 +33,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final data = response.data as Map<String, dynamic>;
       final accessToken = data['access_token'] as String;
       final refreshToken = data['refresh_token'] as String;
+      // The login response carries the caller's effective permission codes;
+      // `/users/me` does not, so thread them onto the resolved user.
+      final permissions = (data['permissions'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList();
 
       final me = await dioClient.get(
         ApiEndpoints.usersMe,
@@ -41,6 +46,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       return UserModel.fromJson({
         ...me.data as Map<String, dynamic>,
+        'permissions': permissions,
         'access_token': accessToken,
         'refresh_token': refreshToken,
       });

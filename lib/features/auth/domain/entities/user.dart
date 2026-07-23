@@ -18,6 +18,12 @@ class User extends Equatable {
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
 
+  /// The caller's effective permission codes, from the login response's
+  /// top-level `permissions` array. This — NOT `role.permissions` (which the
+  /// `/users/me` response returns empty) — is the authoritative source used
+  /// for gating UI (e.g. the sidebar).
+  final List<String> permissions;
+
   const User({
     required this.id,
     required this.email,
@@ -30,12 +36,18 @@ class User extends Equatable {
     this.status = 'active',
     this.createdAt,
     this.lastLoginAt,
+    this.permissions = const [],
   });
 
   String get name =>
       [firstName, lastName].where((p) => p != null && p.isNotEmpty).join(' ');
 
-  bool hasPermission(String code) => role.hasPermission(code);
+  bool hasPermission(String code) =>
+      permissions.contains(code) || role.hasPermission(code);
+
+  /// True if the user holds any one of [codes] (empty ⇒ always true).
+  bool hasAnyPermission(List<String> codes) =>
+      codes.isEmpty || codes.any(hasPermission);
 
   @override
   List<Object?> get props => [
@@ -50,5 +62,6 @@ class User extends Equatable {
     status,
     createdAt,
     lastLoginAt,
+    permissions,
   ];
 }
