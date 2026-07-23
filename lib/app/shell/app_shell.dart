@@ -8,6 +8,7 @@ import '../../core/utils/responsive.dart';
 import '../../core/constants/app_constants.dart';
 import '../router/route_paths.dart';
 import '../../features/notifications/presentation/widgets/notification_bell.dart';
+import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 /// Navigation item definition
@@ -460,31 +461,8 @@ class _DesktopTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Search bar
-          SizedBox(
-            width: AppSpacing.searchBarWidth,
-            height: 40,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search deals, leads...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                filled: true,
-                fillColor: AppColors.background,
-              ),
-              style: AppTextStyles.bodyMedium,
-            ),
-          ),
+          // Global search
+          GlobalSearchField(width: AppSpacing.searchBarWidth),
           const Spacer(),
 
           // Action buttons

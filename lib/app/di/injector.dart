@@ -111,6 +111,11 @@ import '../../features/documents/data/datasources/document_mock_datasource.dart'
 import '../../features/documents/data/repositories/document_repository_impl.dart';
 import '../../features/documents/domain/repositories/document_repository.dart';
 import '../../features/documents/domain/usecases/get_account_documents_usecase.dart';
+import '../../features/search/data/datasources/search_remote_datasource_impl.dart';
+import '../../features/search/data/repositories/search_repository_impl.dart';
+import '../../features/search/domain/repositories/search_repository.dart';
+import '../../features/search/domain/usecases/global_search_usecase.dart';
+import '../../features/search/presentation/bloc/search_bloc.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -361,4 +366,14 @@ Future<void> initDependencies() async {
     () => DocumentRepositoryImpl(dataSource: sl()),
   );
   sl.registerLazySingleton(() => GetAccountDocumentsUseCase(sl()));
+
+  // ─── Search Feature ─────────────────────────────────
+  sl.registerLazySingleton<SearchRemoteDataSource>(
+    () => SearchRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<SearchRepository>(
+    () => SearchRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GlobalSearchUseCase(sl()));
+  sl.registerFactory(() => SearchBloc(globalSearchUseCase: sl()));
 }

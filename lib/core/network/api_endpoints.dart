@@ -59,6 +59,9 @@ class ApiEndpoints {
   static const String notificationsReadAll = '/notifications/read-all';
   static String markNotificationRead(String id) => '/notifications/$id/read';
 
+  // ─── Search ────────────────────────────────────────────
+  static const String search = '/search';
+
   // ─── Dashboard ─────────────────────────────────────────
   static const String dashboardPerformance = '/dashboard/performance';
   static const String dashboardStats = '/dashboard/stats';
