@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
@@ -106,11 +107,12 @@ class _DealDetailView extends StatelessWidget {
                           const SizedBox(height: AppSpacing.xs),
                           Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
                           const SizedBox(height: AppSpacing.md),
-                          ElevatedButton.icon(
-                            onPressed: () => _openEditDealDialog(context, deal),
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: const Text('Edit Deal'),
-                          ),
+                          if (context.can(Perms.dealsManage))
+                            ElevatedButton.icon(
+                              onPressed: () => _openEditDealDialog(context, deal),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: const Text('Edit Deal'),
+                            ),
                         ],
                       )
                     : Row(
@@ -153,11 +155,12 @@ class _DealDetailView extends StatelessWidget {
                               const SizedBox(height: AppSpacing.xs),
                               Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
                               const SizedBox(height: AppSpacing.md),
-                              ElevatedButton.icon(
-                                onPressed: () => _openEditDealDialog(context, deal),
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Edit Deal'),
-                              ),
+                              if (context.can(Perms.dealsManage))
+                                ElevatedButton.icon(
+                                  onPressed: () => _openEditDealDialog(context, deal),
+                                  icon: const Icon(Icons.edit, size: 16),
+                                  label: const Text('Edit Deal'),
+                                ),
                             ],
                           ),
                         ],

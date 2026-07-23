@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
@@ -231,37 +232,40 @@ class _Header extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () {
-                context.push(
-                  RoutePaths.editLead.replaceFirst(':id', '${lead.id}'),
-                  extra: lead,
-                );
-              },
-              icon: const Icon(Icons.edit, size: 16),
-              label: const Text('Edit Lead'),
-            ),
-            if (!lead.isConverted)
-              ElevatedButton.icon(
-                onPressed: () => _showConvertDialog(context, lead),
-                icon: const Icon(Icons.swap_horiz, size: 16),
-                label: const Text('Convert to Account'),
+        // Edit / Convert / Delete require `leads.access` (manage). View-only
+        // users (`leads.view_all`) don't see these actions.
+        if (context.can(Perms.leadsManage))
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.push(
+                    RoutePaths.editLead.replaceFirst(':id', '${lead.id}'),
+                    extra: lead,
+                  );
+                },
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit Lead'),
               ),
-            OutlinedButton.icon(
-              onPressed: () => _confirmDelete(context, lead.id),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
+              if (!lead.isConverted)
+                ElevatedButton.icon(
+                  onPressed: () => _showConvertDialog(context, lead),
+                  icon: const Icon(Icons.swap_horiz, size: 16),
+                  label: const Text('Convert to Account'),
+                ),
+              OutlinedButton.icon(
+                onPressed: () => _confirmDelete(context, lead.id),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  side: const BorderSide(color: AppColors.error),
+                ),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Delete'),
               ),
-              icon: const Icon(Icons.delete_outline, size: 16),
-              label: const Text('Delete'),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }
@@ -470,7 +474,7 @@ class _RelatedRecordsCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           ),
-          if (!lead.isConverted) ...[
+          if (!lead.isConverted && context.can(Perms.leadsManage)) ...[
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
@@ -510,7 +514,7 @@ class _OverviewCenter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!lead.isConverted)
+        if (!lead.isConverted && context.can(Perms.leadsManage))
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -675,15 +679,17 @@ class _ActivityCenterState extends State<_ActivityCenter> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton.icon(
-            onPressed: () => _showLogActivityDialog(context, state.lead.id),
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('Log Activity'),
+        if (context.can(Perms.leadsManage))
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () => _showLogActivityDialog(context, state.lead.id),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Log Activity'),
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.md),
+        if (context.can(Perms.leadsManage))
+          const SizedBox(height: AppSpacing.md),
         Wrap(
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,

@@ -8,6 +8,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
@@ -116,8 +117,12 @@ class _LeadsListViewState extends State<_LeadsListView> {
                         icon: Icons.people_outline,
                         title: 'No leads found',
                         subtitle: 'Create your first lead to get started',
-                        actionLabel: '+ Add New Lead',
-                        onAction: () => context.go(RoutePaths.createLead),
+                        actionLabel: context.can(Perms.leadsManage)
+                            ? '+ Add New Lead'
+                            : null,
+                        onAction: context.can(Perms.leadsManage)
+                            ? () => context.go(RoutePaths.createLead)
+                            : null,
                       );
                     }
                     return ResponsiveBuilder(
@@ -139,40 +144,69 @@ class _LeadsListViewState extends State<_LeadsListView> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Leads', style: AppTextStyles.h1),
-              const SizedBox(height: 4),
-              Text(
-                'Manage and qualify your sales leads',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
+        Text('Leads', style: AppTextStyles.h1),
+        const SizedBox(height: 4),
+        Text(
+          'Manage and qualify your sales leads',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: () {
-            final bloc = context.read<LeadsListBloc>();
-            showDialog(
-              context: context,
-              builder: (_) => _ImportLeadsDialog(listBloc: bloc),
-            );
-          },
-          icon: const Icon(Icons.upload_file_outlined, size: 18),
-          label: const Text('Import Leads'),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        ElevatedButton.icon(
-          onPressed: () => context.go(RoutePaths.createLead),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New Lead'),
-        ),
+      ],
+    );
+
+    // Create/manage actions are gated on `leads.access` (manage). Users
+    // with only `leads.view_all` see the list read-only.
+    final canManage = context.can(Perms.leadsManage);
+    final importButton = OutlinedButton.icon(
+      onPressed: () {
+        final bloc = context.read<LeadsListBloc>();
+        showDialog(
+          context: context,
+          builder: (_) => _ImportLeadsDialog(listBloc: bloc),
+        );
+      },
+      icon: const Icon(Icons.upload_file_outlined, size: 18),
+      label: const Text('Import Leads'),
+    );
+    final newLeadButton = ElevatedButton.icon(
+      onPressed: () => context.go(RoutePaths.createLead),
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text('New Lead'),
+    );
+
+    // On phones, stack the actions under the title so the buttons don't
+    // overflow the row; on wider screens keep them inline on the right.
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          title,
+          if (canManage) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(child: importButton),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: newLeadButton),
+              ],
+            ),
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: title),
+        if (canManage) ...[
+          importButton,
+          const SizedBox(width: AppSpacing.sm),
+          newLeadButton,
+        ],
       ],
     );
   }

@@ -80,9 +80,18 @@ Future<_MoveResult?> _showMoveDialog(
 }
 
 class KanbanBoard extends StatelessWidget {
-  const KanbanBoard({super.key, required this.deals, required this.stages});
+  const KanbanBoard({
+    super.key,
+    required this.deals,
+    required this.stages,
+    this.canManage = true,
+  });
   final List<Deal> deals;
   final List<DealStageDef> stages;
+
+  /// When false (user lacks `deals.access`), cards are not draggable and
+  /// drop targets reject moves — the board is view-only.
+  final bool canManage;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +101,11 @@ class KanbanBoard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: stages.map((stage) {
           final stageDeals = deals.where((d) => d.stageId == stage.id).toList();
-          return _KanbanColumn(stage: stage, deals: stageDeals);
+          return _KanbanColumn(
+            stage: stage,
+            deals: stageDeals,
+            canManage: canManage,
+          );
         }).toList(),
       ),
     );
@@ -100,16 +113,22 @@ class KanbanBoard extends StatelessWidget {
 }
 
 class _KanbanColumn extends StatelessWidget {
-  const _KanbanColumn({required this.stage, required this.deals});
+  const _KanbanColumn({
+    required this.stage,
+    required this.deals,
+    required this.canManage,
+  });
   final DealStageDef stage;
   final List<Deal> deals;
+  final bool canManage;
 
   @override
   Widget build(BuildContext context) {
     final double totalValue = deals.fold(0, (sum, deal) => sum + deal.value);
 
     return DragTarget<Deal>(
-      onWillAcceptWithDetails: (details) => details.data.stageId != stage.id,
+      onWillAcceptWithDetails: (details) =>
+          canManage && details.data.stageId != stage.id,
       onAcceptWithDetails: (details) async {
         final bloc = context.read<DealsListBloc>();
         final move = await _showMoveDialog(context, details.data, stage);
@@ -188,6 +207,7 @@ class _KanbanColumn extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final deal = deals[index];
+                    if (!canManage) return _DealCard(deal: deal);
                     return Draggable<Deal>(
                       data: deal,
                       feedback: Material(

@@ -191,6 +191,7 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
                           _group(context, 'ACCOUNTS', state.ofType(SearchResultType.account)),
                           _group(context, 'DEALS', state.ofType(SearchResultType.deal)),
                           _group(context, 'CONTACTS', state.ofType(SearchResultType.contact)),
+                          _group(context, 'OTHER', state.ofType(SearchResultType.unknown)),
                         ],
                       ),
                     );

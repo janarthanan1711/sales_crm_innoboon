@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
 import '../../../users/domain/entities/owner_user.dart';
@@ -106,6 +107,7 @@ class _DealsListViewState extends State<_DealsListView> {
                         ? KanbanBoard(
                             deals: state.deals,
                             stages: state.stages.isNotEmpty ? state.stages : _stages,
+                            canManage: context.can(Perms.dealsManage),
                           )
                         : _DealsTable(deals: state.deals);
                   }
@@ -162,11 +164,12 @@ class _DealsListViewState extends State<_DealsListView> {
                   ],
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () => _openCreateDealDialog(context),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New Deal'),
-              ),
+              if (context.can(Perms.dealsManage))
+                ElevatedButton.icon(
+                  onPressed: () => _openCreateDealDialog(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('New Deal'),
+                ),
             ],
           ),
         ],
@@ -208,15 +211,14 @@ class _DealsListViewState extends State<_DealsListView> {
             ],
           ),
         ),
-        const SizedBox(width: AppSpacing.md),
-        ElevatedButton.icon(
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => const CreateDealDialog(),
+        if (context.can(Perms.dealsManage)) ...[
+          const SizedBox(width: AppSpacing.md),
+          ElevatedButton.icon(
+            onPressed: () => _openCreateDealDialog(context),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('New Deal'),
           ),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New Deal'),
-        ),
+        ],
       ],
     );
   }

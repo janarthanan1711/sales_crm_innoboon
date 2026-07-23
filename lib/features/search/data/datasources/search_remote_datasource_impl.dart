@@ -18,13 +18,47 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
         ApiEndpoints.search,
         queryParameters: {'q': query},
       );
-      final data = response.data as List<dynamic>;
-      return data
-          .map((e) => searchResultFromJson(e as Map<String, dynamic>))
-          .toList();
+      return _parse(response.data);
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  /// Accepts any of the shapes the backend might return:
+  ///  - a raw list: `[ {type,id,label}, ... ]`
+  ///  - an envelope: `{ "items"|"results"|"data": [ ... ] }`
+  ///  - grouped by type: `{ "leads": [...], "accounts": [...], ... }`
+  List<SearchResult> _parse(dynamic data) {
+    if (data is List) {
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map((e) => searchResultFromJson(e))
+          .toList();
+    }
+    if (data is Map<String, dynamic>) {
+      // Envelope with a single list under a common key.
+      for (final key in const ['items', 'results', 'data', 'hits']) {
+        final v = data[key];
+        if (v is List) {
+          return v
+              .whereType<Map<String, dynamic>>()
+              .map((e) => searchResultFromJson(e))
+              .toList();
+        }
+      }
+      // Grouped-by-type object: each key names a type, value is a list.
+      final out = <SearchResult>[];
+      data.forEach((key, value) {
+        if (value is List) {
+          final hint = searchResultTypeFromWire(key);
+          out.addAll(value
+              .whereType<Map<String, dynamic>>()
+              .map((e) => searchResultFromJson(e, typeHint: hint)));
+        }
+      });
+      return out;
+    }
+    return const [];
   }
 
   Exception _normalize(DioException e) {

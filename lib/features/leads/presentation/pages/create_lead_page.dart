@@ -6,6 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../app/router/route_paths.dart';
 
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_enums.dart';
@@ -197,8 +198,15 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   }
 
   void _safePop() {
+    // Reached via `context.go(...)`, so the stack can't always pop — fall
+    // back to the leads list (or the edited lead's detail) so Cancel/Save
+    // always navigates away instead of appearing to do nothing.
     if (GoRouter.of(context).canPop()) {
       context.pop();
+    } else if (isEdit) {
+      context.go('${RoutePaths.leads}/${widget.lead!.id}');
+    } else {
+      context.go(RoutePaths.leads);
     }
   }
 
