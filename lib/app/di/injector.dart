@@ -77,6 +77,7 @@ import '../../features/deals/domain/usecases/create_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
+import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
 
@@ -278,9 +279,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateDealUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
+  sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
   sl.registerFactory(
     () => DealsListBloc(
       getDealsUseCase: sl(),
+      getDealStagesUseCase: sl(),
       updateDealStageUseCase: sl(),
       getAccountsUseCase: sl(),
       getUsersUseCase: sl(),
@@ -289,6 +292,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => DealDetailBloc(
       getDealByIdUseCase: sl(),
+      getDealStagesUseCase: sl(),
       updateDealStageUseCase: sl(),
       getDealStageHistoryUseCase: sl(),
       getAccountByIdUseCase: sl(),

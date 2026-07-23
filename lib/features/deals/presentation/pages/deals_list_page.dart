@@ -11,6 +11,8 @@ import '../../../../app/di/injector.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
+import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
 import 'create_deal_page.dart';
@@ -37,17 +39,25 @@ class _DealsListView extends StatefulWidget {
 class _DealsListViewState extends State<_DealsListView> {
   bool _isKanbanView = true;
   List<OwnerUser> _users = [];
+  List<DealStageDef> _stages = [];
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _loadStages();
   }
 
   Future<void> _loadUsers() async {
     final result = await sl<GetUsersUseCase>()();
     if (!mounted) return;
     result.fold((_) {}, (u) => setState(() => _users = u));
+  }
+
+  Future<void> _loadStages() async {
+    final result = await sl<GetDealStagesUseCase>()();
+    if (!mounted) return;
+    result.fold((_) {}, (s) => setState(() => _stages = s));
   }
 
   @override
@@ -93,7 +103,10 @@ class _DealsListViewState extends State<_DealsListView> {
                       );
                     }
                     return _isKanbanView
-                        ? KanbanBoard(deals: state.deals)
+                        ? KanbanBoard(
+                            deals: state.deals,
+                            stages: state.stages.isNotEmpty ? state.stages : _stages,
+                          )
                         : _DealsTable(deals: state.deals);
                   }
                   return const SizedBox.shrink();
@@ -231,16 +244,16 @@ class _DealsListViewState extends State<_DealsListView> {
           const SizedBox(width: AppSpacing.sm),
           _FilterDropdown(
             label: 'Stage',
-            options: ['All', ...DealStage.values.map((s) => s.name)],
+            options: ['All', ..._stages.map((s) => s.name)],
             onSelected: (v) {
               final bloc = context.read<DealsListBloc>();
               if (v == 'All') {
                 bloc.add(const DealsListFilterChanged(clearStage: true));
                 return;
               }
-              final stage = DealStage.values.where((s) => s.name == v);
+              final stage = _stages.where((s) => s.name == v);
               if (stage.isNotEmpty) {
-                bloc.add(DealsListFilterChanged(stage: stage.first));
+                bloc.add(DealsListFilterChanged(stageId: stage.first.id));
               }
             },
           ),
@@ -342,7 +355,7 @@ class _DealRowState extends State<_DealRow> {
                       color: AppColors.border,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(widget.deal.stage.name, style: AppTextStyles.caption),
+                    child: Text(widget.deal.stageName, style: AppTextStyles.caption),
                   ),
                 ),
               ),

@@ -2,7 +2,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/get_deals_usecase.dart';
+import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/update_deal_stage_usecase.dart';
 import 'deals_list_event.dart';
 import 'deals_list_state.dart';
@@ -11,15 +13,18 @@ export 'deals_list_state.dart';
 
 class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
   final GetDealsUseCase getDealsUseCase;
+  final GetDealStagesUseCase getDealStagesUseCase;
   final UpdateDealStageUseCase updateDealStageUseCase;
   final GetAccountsUseCase getAccountsUseCase;
   final GetUsersUseCase getUsersUseCase;
 
   int? _ownerId;
-  DealStageFilterHolder? _stage;
+  int? _stageId;
+  List<DealStageDef> _stages = const [];
 
   DealsListBloc({
     required this.getDealsUseCase,
+    required this.getDealStagesUseCase,
     required this.updateDealStageUseCase,
     required this.getAccountsUseCase,
     required this.getUsersUseCase,
@@ -47,9 +52,9 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
       _ownerId = event.ownerId;
     }
     if (event.clearStage) {
-      _stage = null;
-    } else if (event.stage != null) {
-      _stage = DealStageFilterHolder(event.stage!);
+      _stageId = null;
+    } else if (event.stageId != null) {
+      _stageId = event.stageId;
     }
     await _loadDeals(emit);
   }
@@ -62,58 +67,89 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
     final currentState = state as DealsListLoaded;
     final previousDeals = currentState.deals;
 
+    final newStage = _stageById(event.newStageId);
     // Optimistic update so the drag feels instant.
     final optimisticDeals = previousDeals
-        .map((d) => d.id == event.dealId ? d.copyWith(stage: event.newStage) : d)
+        .map((d) => d.id == event.dealId
+            ? d.copyWith(
+                stageId: event.newStageId,
+                stageName: newStage?.name ?? d.stageName,
+                stageIsCold: newStage?.isCold ?? d.stageIsCold,
+              )
+            : d)
         .toList();
     emit(DealsListLoaded(
       deals: optimisticDeals,
+      stages: currentState.stages,
       ownerIdFilter: currentState.ownerIdFilter,
-      stageFilter: currentState.stageFilter,
+      stageIdFilter: currentState.stageIdFilter,
     ));
 
     final result = await updateDealStageUseCase(
-      UpdateDealStageParams(id: event.dealId, stage: event.newStage, note: event.note),
+      UpdateDealStageParams(
+        id: event.dealId,
+        stageId: event.newStageId,
+        note: event.note,
+        coldReason: event.coldReason,
+      ),
     );
 
     result.fold(
       (failure) => emit(DealsListLoaded(
         deals: previousDeals,
+        stages: currentState.stages,
         ownerIdFilter: currentState.ownerIdFilter,
-        stageFilter: currentState.stageFilter,
+        stageIdFilter: currentState.stageIdFilter,
         actionError: 'Failed to move deal: ${failure.message}',
       )),
       (updatedDeal) => emit(DealsListLoaded(
-        // Preserve the client-resolved account/owner display names — the
-        // server response only carries account_id/owner_id, not names.
         deals: optimisticDeals
             .map((d) => d.id == updatedDeal.id
-                ? updatedDeal.copyWith(accountName: d.accountName, owner: d.owner)
+                ? _resolveStage(updatedDeal).copyWith(accountName: d.accountName, owner: d.owner)
                 : d)
             .toList(),
+        stages: currentState.stages,
         ownerIdFilter: currentState.ownerIdFilter,
-        stageFilter: currentState.stageFilter,
+        stageIdFilter: currentState.stageIdFilter,
       )),
     );
   }
 
   Future<void> _loadDeals(Emitter<DealsListState> emit) async {
+    if (_stages.isEmpty) {
+      final stagesResult = await getDealStagesUseCase();
+      stagesResult.fold((_) {}, (s) => _stages = s);
+    }
     final result = await getDealsUseCase(
-      GetDealsParams(ownerId: _ownerId, stage: _stage?.stage),
+      GetDealsParams(ownerId: _ownerId, stageId: _stageId),
     );
     await result.fold(
       (f) async => emit(DealsListError(f.message)),
       (deals) async {
         final enriched = await _enrichDeals(deals);
-        emit(
-          DealsListLoaded(deals: enriched, ownerIdFilter: _ownerId, stageFilter: _stage?.stage),
-        );
+        emit(DealsListLoaded(
+          deals: enriched,
+          stages: _stages,
+          ownerIdFilter: _ownerId,
+          stageIdFilter: _stageId,
+        ));
       },
     );
   }
 
-  /// The `/deals` endpoints only return `account_id`/`owner_id` — resolve
-  /// display names client-side so the table/kanban don't show blanks.
+  DealStageDef? _stageById(int id) {
+    final matches = _stages.where((s) => s.id == id);
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  Deal _resolveStage(Deal d) {
+    final s = _stageById(d.stageId);
+    if (s == null) return d;
+    return d.copyWith(stageName: s.name, stageIsCold: s.isCold);
+  }
+
+  /// The `/deals` endpoints only return ids — resolve account/owner/stage
+  /// display values client-side so the table/kanban don't show blanks.
   Future<List<Deal>> _enrichDeals(List<Deal> deals) async {
     final accountsResult = await getAccountsUseCase(const GetAccountsParams(limit: 1000));
     final usersResult = await getUsersUseCase();
@@ -129,18 +165,14 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
         ownerNames[u.id] = u.displayName;
       }
     });
-    return deals
-        .map((d) => d.copyWith(
-              accountName: accountNames[d.accountId] ?? d.accountName,
-              owner: d.ownerId != null ? (ownerNames[d.ownerId] ?? d.owner) : d.owner,
-            ))
-        .toList();
+    return deals.map((d) {
+      final s = _stageById(d.stageId);
+      return d.copyWith(
+        accountName: accountNames[d.accountId] ?? d.accountName,
+        owner: d.ownerId != null ? (ownerNames[d.ownerId] ?? d.owner) : d.owner,
+        stageName: s?.name ?? d.stageName,
+        stageIsCold: s?.isCold ?? d.stageIsCold,
+      );
+    }).toList();
   }
-}
-
-/// Distinguishes "no stage filter set" from "filter explicitly holds a
-/// stage value" without needing a sentinel enum member.
-class DealStageFilterHolder {
-  final DealStage stage;
-  const DealStageFilterHolder(this.stage);
 }

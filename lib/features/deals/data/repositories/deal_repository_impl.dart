@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/entities/deal_stage_history.dart';
 import '../../domain/repositories/deal_repository.dart';
 
@@ -13,14 +14,14 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals({
     int? ownerId,
     String? accountId,
-    DealStage? stage,
+    int? stageId,
     String? search,
   }) async {
     try {
       final deals = await remoteDataSource.getDeals(
         ownerId: ownerId,
         accountId: accountId,
-        stage: stage,
+        stageId: stageId,
         search: search,
       );
       return Right(deals);
@@ -32,8 +33,7 @@ class DealRepositoryImpl implements DealRepository {
   @override
   Future<Either<Failure, Deal>> getDealById(String id) async {
     try {
-      final deal = await remoteDataSource.getDealById(id);
-      return Right(deal);
+      return Right(await remoteDataSource.getDealById(id));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -46,7 +46,10 @@ class DealRepositoryImpl implements DealRepository {
     required double value,
     String currency = 'INR',
     DateTime? expectedCloseDate,
-    required DealStage stage,
+    required int stageId,
+    List<int>? contactIds,
+    String? tier,
+    String? coldReason,
     int? ownerId,
   }) async {
     try {
@@ -56,7 +59,10 @@ class DealRepositoryImpl implements DealRepository {
         value: value,
         currency: currency,
         expectedCloseDate: expectedCloseDate,
-        stage: stage,
+        stageId: stageId,
+        contactIds: contactIds,
+        tier: tier,
+        coldReason: coldReason,
         ownerId: ownerId,
       );
       return Right(deal);
@@ -72,7 +78,8 @@ class DealRepositoryImpl implements DealRepository {
     double? value,
     String? currency,
     DateTime? expectedCloseDate,
-    DealStage? stage,
+    int? stageId,
+    List<int>? contactIds,
     String? coldReason,
     int? ownerId,
     String? note,
@@ -84,7 +91,8 @@ class DealRepositoryImpl implements DealRepository {
         value: value,
         currency: currency,
         expectedCloseDate: expectedCloseDate,
-        stage: stage,
+        stageId: stageId,
+        contactIds: contactIds,
         coldReason: coldReason,
         ownerId: ownerId,
         note: note,
@@ -96,11 +104,18 @@ class DealRepositoryImpl implements DealRepository {
   }
 
   @override
-  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
-    String id,
-  ) async {
+  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(String id) async {
     try {
       return Right(await remoteDataSource.getStageHistory(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<DealStageDef>>> getDealStages() async {
+    try {
+      return Right(await remoteDataSource.getDealStages());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

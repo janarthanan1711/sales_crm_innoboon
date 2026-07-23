@@ -42,8 +42,19 @@ class ApiEndpoints {
   // Stage changes go through the same PATCH /deals/{id} used for any other
   // deal update — the backend has no separate /stage sub-route.
   static const String deals = '/deals';
+  static const String dealsExport = '/deals/export';
   static String dealById(String id) => '/deals/$id';
   static String dealStageHistory(String id) => '/deals/$id/stage-history';
+  static String dealActivities(String id) => '/deals/$id/activities';
+  static String dealActivityById(String dealId, String activityId) =>
+      '/deals/$dealId/activities/$activityId';
+  static String dealDocuments(String id) => '/deals/$id/documents';
+  static String dealDocumentById(String dealId, String documentId) =>
+      '/deals/$dealId/documents/$documentId';
+
+  // ─── Deal Stages (dynamic, admin-configurable pipeline) ─
+  static const String dealStages = '/deal-stages';
+  static String dealStageById(String id) => '/deal-stages/$id';
 
   // ─── Checklist ─────────────────────────────────────────
   static String checklistByAccount(String accountId) => '/checklist/$accountId';

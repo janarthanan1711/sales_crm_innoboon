@@ -1,13 +1,14 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/deal.dart';
+import '../entities/deal_stage_def.dart';
 import '../entities/deal_stage_history.dart';
 
 abstract class DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals({
     int? ownerId,
     String? accountId,
-    DealStage? stage,
+    int? stageId,
     String? search,
   });
   Future<Either<Failure, Deal>> getDealById(String id);
@@ -17,7 +18,10 @@ abstract class DealRepository {
     required double value,
     String currency = 'INR',
     DateTime? expectedCloseDate,
-    required DealStage stage,
+    required int stageId,
+    List<int>? contactIds,
+    String? tier,
+    String? coldReason,
     int? ownerId,
   });
   Future<Either<Failure, Deal>> updateDeal(
@@ -26,21 +30,21 @@ abstract class DealRepository {
     double? value,
     String? currency,
     DateTime? expectedCloseDate,
-    DealStage? stage,
+    int? stageId,
+    List<int>? contactIds,
     String? coldReason,
     int? ownerId,
     String? note,
   });
-  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
-    String id,
-  );
+  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(String id);
+  Future<Either<Failure, List<DealStageDef>>> getDealStages();
 }
 
 abstract class DealRemoteDataSource {
   Future<List<Deal>> getDeals({
     int? ownerId,
     String? accountId,
-    DealStage? stage,
+    int? stageId,
     String? search,
   });
   Future<Deal> getDealById(String id);
@@ -50,7 +54,10 @@ abstract class DealRemoteDataSource {
     required double value,
     String currency = 'INR',
     DateTime? expectedCloseDate,
-    required DealStage stage,
+    required int stageId,
+    List<int>? contactIds,
+    String? tier,
+    String? coldReason,
     int? ownerId,
   });
   Future<Deal> updateDeal(
@@ -59,10 +66,12 @@ abstract class DealRemoteDataSource {
     double? value,
     String? currency,
     DateTime? expectedCloseDate,
-    DealStage? stage,
+    int? stageId,
+    List<int>? contactIds,
     String? coldReason,
     int? ownerId,
     String? note,
   });
   Future<List<DealStageHistoryEntry>> getStageHistory(String id);
+  Future<List<DealStageDef>> getDealStages();
 }

@@ -1263,7 +1263,7 @@ class _DealsTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(deal.name, style: AppTextStyles.tableCellLink),
-                        Text(deal.stage.name, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        Text(deal.stageName, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
                       ],
                     ),
                   ),

@@ -1,21 +1,22 @@
 import '../../domain/entities/deal.dart';
 
-/// Deal model with JSON serialization — maps to the backend's `DealRead`
-/// shape (see `POST/GET/PATCH /deals`). The API has no `account_name`,
-/// `contact_*`, `tier`, or `description` fields — those stay on the
-/// [Deal] entity for UI convenience but are populated by the caller (e.g.
-/// from the account/user already in context), not from this JSON.
+/// Maps the backend's `DealRead` shape (see `POST/GET/PATCH /deals`). The API
+/// carries `stage_id` (int, dynamic — see `/deal-stages`) and `contact_ids`
+/// (a list). It has no `account_name`/`owner`/`tier`-name/`stage_name` —
+/// those are resolved client-side by the caller, not from this JSON.
 class DealModel extends Deal {
   const DealModel({
     required super.id,
     required super.name,
     required super.accountId,
     super.accountName = '',
-    super.contactId,
+    super.contactIds,
     super.contactName,
     required super.value,
     required super.currency,
-    required super.stage,
+    required super.stageId,
+    super.stageName,
+    super.stageIsCold,
     super.expectedCloseDate,
     super.ownerId,
     required super.owner,
@@ -29,20 +30,22 @@ class DealModel extends Deal {
   factory DealModel.fromJson(Map<String, dynamic> json) {
     return DealModel(
       id: '${json['id']}',
-      name: json['deal_name'] as String,
+      name: json['deal_name'] as String? ?? '',
       accountId: '${json['account_id']}',
-      value: (json['value'] as num).toDouble(),
+      contactIds: (json['contact_ids'] as List<dynamic>? ?? const [])
+          .map((e) => e as int)
+          .toList(),
+      value: (json['value'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? 'INR',
-      stage: dealStageFromWire(json['stage'] as String),
+      stageId: json['stage_id'] as int? ?? 0,
       expectedCloseDate: json['expected_close_date'] != null
           ? DateTime.tryParse(json['expected_close_date'] as String)
           : null,
       ownerId: json['owner_id'] as int?,
       owner: json['owner_id'] != null ? 'Owner ${json['owner_id']}' : 'Unassigned',
       coldReason: json['cold_reason'] as String?,
-      // Not in the API — best-effort placeholder so existing sort-by-date
-      // UI doesn't crash; real chronology comes from `expectedCloseDate`
-      // or the stage-history endpoint, not this field, for API-sourced deals.
+      tier: json['tier'] as String? ?? '',
+      // Not in the API — placeholder so sort-by-date UI doesn't crash.
       createdAt: DateTime.now(),
     );
   }
@@ -54,7 +57,10 @@ class DealModel extends Deal {
     required double value,
     required String currency,
     required DateTime? expectedCloseDate,
-    required DealStage stage,
+    required int stageId,
+    List<int>? contactIds,
+    String? tier,
+    String? coldReason,
     required int? ownerId,
   }) {
     return {
@@ -64,19 +70,24 @@ class DealModel extends Deal {
       'currency': currency,
       if (expectedCloseDate != null)
         'expected_close_date': _formatDate(expectedCloseDate),
-      'stage': stage.wireValue,
+      'stage_id': stageId,
+      if (contactIds != null && contactIds.isNotEmpty) 'contact_ids': contactIds,
+      if (tier != null && tier.isNotEmpty) 'tier': tier,
+      if (coldReason != null && coldReason.isNotEmpty) 'cold_reason': coldReason,
       if (ownerId != null) 'owner_id': ownerId,
     };
   }
 
-  /// Request body for `PATCH /deals/{id}` (any subset of fields, plus the
-  /// write-only `note` recorded on the resulting stage-history row).
+  /// Request body for `PATCH /deals/{id}` (any subset, plus the write-only
+  /// `note` recorded on the resulting stage-history row when `stage_id`
+  /// changes). `contact_ids`, if supplied, fully replaces the deal's links.
   static Map<String, dynamic> toUpdateJson({
     String? dealName,
     double? value,
     String? currency,
     DateTime? expectedCloseDate,
-    DealStage? stage,
+    int? stageId,
+    List<int>? contactIds,
     String? coldReason,
     int? ownerId,
     String? note,
@@ -87,7 +98,8 @@ class DealModel extends Deal {
       if (currency != null) 'currency': currency,
       if (expectedCloseDate != null)
         'expected_close_date': _formatDate(expectedCloseDate),
-      if (stage != null) 'stage': stage.wireValue,
+      if (stageId != null) 'stage_id': stageId,
+      if (contactIds != null) 'contact_ids': contactIds,
       if (coldReason != null) 'cold_reason': coldReason,
       if (ownerId != null) 'owner_id': ownerId,
       if (note != null) 'note': note,

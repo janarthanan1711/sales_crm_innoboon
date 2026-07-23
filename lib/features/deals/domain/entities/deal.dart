@@ -1,65 +1,25 @@
 import 'package:equatable/equatable.dart';
 import 'stakeholder.dart';
 
-enum DealStage {
-  receivedRequirements,
-  qualifiedToBuy,
-  evaluation,
-  proposals,
-  contracts,
-  closedWon,
-  closedLost,
-  coldDeals
-}
-
-extension DealStageExtension on DealStage {
-  String get name {
-    switch (this) {
-      case DealStage.receivedRequirements: return 'Received Requirements';
-      case DealStage.qualifiedToBuy: return 'Qualified to Buy';
-      case DealStage.evaluation: return 'Evaluation';
-      case DealStage.proposals: return 'Proposals';
-      case DealStage.contracts: return 'Contracts';
-      case DealStage.closedWon: return 'Closed Won';
-      case DealStage.closedLost: return 'Closed Lost';
-      case DealStage.coldDeals: return 'Cold Deals';
-    }
-  }
-
-  /// Backend wire value — see `saleshub`'s deal-stage enum.
-  String get wireValue {
-    switch (this) {
-      case DealStage.receivedRequirements: return 'received_requirements';
-      case DealStage.qualifiedToBuy: return 'qualified_to_buy';
-      case DealStage.evaluation: return 'evaluation';
-      case DealStage.proposals: return 'proposals';
-      case DealStage.contracts: return 'contracts';
-      case DealStage.closedWon: return 'closed_won';
-      case DealStage.closedLost: return 'closed_lost';
-      case DealStage.coldDeals: return 'cold_deals';
-    }
-  }
-}
-
-/// Backend wire value -> [DealStage]; falls back to [DealStage.receivedRequirements]
-/// if the backend ever sends an unrecognized value.
-DealStage dealStageFromWire(String wire) {
-  return DealStage.values.firstWhere(
-    (s) => s.wireValue == wire,
-    orElse: () => DealStage.receivedRequirements,
-  );
-}
-
+/// Deal entity — mirrors the backend's `DealRead` shape. Stages are dynamic
+/// (`stage_id` referencing `/deal-stages`), so this holds the numeric
+/// [stageId] plus a client-resolved [stageName]/[stageIsCold] for display.
+///
+/// Fields the API does not carry ([description], [stakeholders],
+/// [paymentStatus], [contactName], [createdAt]) are kept for UI convenience
+/// and default to empty — they are populated by the caller, not the wire.
 class Deal extends Equatable {
   final String id;
   final String name;
   final String accountId;
   final String accountName;
-  final String? contactId;
+  final List<int> contactIds;
   final String? contactName;
   final double value;
   final String currency;
-  final DealStage stage;
+  final int stageId;
+  final String stageName;
+  final bool stageIsCold;
   final DateTime? expectedCloseDate;
   final int? ownerId;
   final String owner;
@@ -75,16 +35,18 @@ class Deal extends Equatable {
     required this.name,
     required this.accountId,
     required this.accountName,
-    this.contactId,
+    this.contactIds = const [],
     this.contactName,
     required this.value,
     this.currency = 'INR',
-    required this.stage,
+    required this.stageId,
+    this.stageName = '',
+    this.stageIsCold = false,
     this.expectedCloseDate,
     this.ownerId,
     required this.owner,
     this.coldReason,
-    required this.tier,
+    this.tier = '',
     this.description = '',
     this.stakeholders = const [],
     this.paymentStatus = 'Pending',
@@ -96,11 +58,13 @@ class Deal extends Equatable {
     String? name,
     String? accountId,
     String? accountName,
-    String? contactId,
+    List<int>? contactIds,
     String? contactName,
     double? value,
     String? currency,
-    DealStage? stage,
+    int? stageId,
+    String? stageName,
+    bool? stageIsCold,
     DateTime? expectedCloseDate,
     int? ownerId,
     String? owner,
@@ -116,11 +80,13 @@ class Deal extends Equatable {
       name: name ?? this.name,
       accountId: accountId ?? this.accountId,
       accountName: accountName ?? this.accountName,
-      contactId: contactId ?? this.contactId,
+      contactIds: contactIds ?? this.contactIds,
       contactName: contactName ?? this.contactName,
       value: value ?? this.value,
       currency: currency ?? this.currency,
-      stage: stage ?? this.stage,
+      stageId: stageId ?? this.stageId,
+      stageName: stageName ?? this.stageName,
+      stageIsCold: stageIsCold ?? this.stageIsCold,
       expectedCloseDate: expectedCloseDate ?? this.expectedCloseDate,
       ownerId: ownerId ?? this.ownerId,
       owner: owner ?? this.owner,
@@ -139,11 +105,13 @@ class Deal extends Equatable {
         name,
         accountId,
         accountName,
-        contactId,
+        contactIds,
         contactName,
         value,
         currency,
-        stage,
+        stageId,
+        stageName,
+        stageIsCold,
         expectedCloseDate,
         ownerId,
         owner,

@@ -9,7 +9,10 @@ class CreateDealParams {
   final double value;
   final String currency;
   final DateTime? expectedCloseDate;
-  final DealStage stage;
+  final int stageId;
+  final List<int>? contactIds;
+  final String? tier;
+  final String? coldReason;
   final int? ownerId;
 
   const CreateDealParams({
@@ -18,7 +21,10 @@ class CreateDealParams {
     required this.value,
     this.currency = 'INR',
     this.expectedCloseDate,
-    required this.stage,
+    required this.stageId,
+    this.contactIds,
+    this.tier,
+    this.coldReason,
     this.ownerId,
   });
 }
@@ -34,7 +40,10 @@ class CreateDealUseCase {
       value: params.value,
       currency: params.currency,
       expectedCloseDate: params.expectedCloseDate,
-      stage: params.stage,
+      stageId: params.stageId,
+      contactIds: params.contactIds,
+      tier: params.tier,
+      coldReason: params.coldReason,
       ownerId: params.ownerId,
     );
   }

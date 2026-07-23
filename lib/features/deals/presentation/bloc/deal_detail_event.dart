@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/deal.dart';
 
 abstract class DealDetailEvent extends Equatable {
   const DealDetailEvent();
@@ -16,13 +15,15 @@ class DealDetailLoadRequested extends DealDetailEvent {
 
 class DealDetailStageUpdateRequested extends DealDetailEvent {
   final String id;
-  final DealStage stage;
+  final int stageId;
   final String? note;
+  final String? coldReason;
   const DealDetailStageUpdateRequested({
     required this.id,
-    required this.stage,
+    required this.stageId,
     this.note,
+    this.coldReason,
   });
   @override
-  List<Object?> get props => [id, stage, note];
+  List<Object?> get props => [id, stageId, note, coldReason];
 }

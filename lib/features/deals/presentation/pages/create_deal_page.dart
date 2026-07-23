@@ -7,8 +7,10 @@ import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/create_deal_usecase.dart';
 import '../../domain/usecases/update_deal_usecase.dart';
+import '../../domain/usecases/get_deal_stages_usecase.dart';
 
 /// Create/edit deal dialog — wired to the real `/deals` endpoints.
 /// Returns the created/updated [Deal] via `Navigator.pop` on success.
@@ -32,7 +34,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   late final TextEditingController _valueController;
   late final TextEditingController _closeDateController;
 
-  DealStage _stage = DealStage.receivedRequirements;
+  int? _stageId;
   DateTime? _closeDate;
   Account? _selectedAccount;
   int? _selectedOwnerId;
@@ -40,6 +42,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
 
   List<Account> _accounts = [];
   List<OwnerUser> _users = [];
+  List<DealStageDef> _stages = [];
   bool get isEdit => widget.deal != null;
 
   @override
@@ -56,7 +59,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
           : '',
     );
     if (isEdit) {
-      _stage = widget.deal!.stage;
+      _stageId = widget.deal!.stageId;
       _selectedOwnerId = widget.deal!.ownerId;
     }
     _loadOptions();
@@ -65,10 +68,14 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   Future<void> _loadOptions() async {
     final accountsResult = await sl<GetAccountsUseCase>()(const GetAccountsParams(limit: 1000));
     final usersResult = await sl<GetUsersUseCase>()();
+    final stagesResult = await sl<GetDealStagesUseCase>()();
     if (!mounted) return;
     setState(() {
       accountsResult.fold((_) {}, (page) => _accounts = page.items);
       usersResult.fold((_) {}, (u) => _users = u);
+      stagesResult.fold((_) {}, (s) => _stages = s);
+      // Default to the first pipeline stage on create.
+      if (_stageId == null && _stages.isNotEmpty) _stageId = _stages.first.id;
       if (widget.presetAccount != null) {
         _selectedAccount = widget.presetAccount;
       } else if (widget.deal != null) {
@@ -97,6 +104,14 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     setState(() => _saving = true);
     final value = double.tryParse(_valueController.text.trim()) ?? 0;
 
+    if (_stageId == null) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a stage.')),
+      );
+      return;
+    }
+
     final result = isEdit
         ? await sl<UpdateDealUseCase>()(
             UpdateDealParams(
@@ -104,7 +119,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               dealName: _nameController.text.trim(),
               value: value,
               expectedCloseDate: _closeDate,
-              stage: _stage,
+              stageId: _stageId,
               ownerId: _selectedOwnerId,
             ),
           )
@@ -114,7 +129,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               accountId: _selectedAccount!.id,
               value: value,
               expectedCloseDate: _closeDate,
-              stage: _stage,
+              stageId: _stageId!,
               ownerId: _selectedOwnerId,
             ),
           );
@@ -252,11 +267,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                             child: _buildField(
                               'Stage',
                               false,
-                              DropdownButtonFormField<DealStage>(
-                                value: _stage,
-                                decoration: _inputDecoration(''),
-                                items: DealStage.values.map((s) => DropdownMenuItem(value: s, child: Text(s.name))).toList(),
-                                onChanged: (v) => setState(() => _stage = v!),
+                              DropdownButtonFormField<int>(
+                                value: _stageId,
+                                decoration: _inputDecoration('Select stage'),
+                                items: _stages.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                                onChanged: (v) => setState(() => _stageId = v),
                               ),
                             ),
                           ),

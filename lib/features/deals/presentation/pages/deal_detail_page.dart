@@ -40,14 +40,21 @@ class _DealDetailView extends StatelessWidget {
         builder: (context, state) {
           if (state is DealDetailLoading) return const AppLoadingIndicator(message: 'Loading deal...');
           if (state is DealDetailError) return ErrorState(message: state.message, onRetry: () {});
-          if (state is DealDetailLoaded) return _buildContent(context, state.deal, state.stageHistory);
+          if (state is DealDetailLoaded) return _buildContent(context, state);
           return const SizedBox.shrink();
         },
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, Deal deal, List<DealStageHistoryEntry> stageHistory) {
+  Widget _buildContent(BuildContext context, DealDetailLoaded state) {
+    final deal = state.deal;
+    final stageHistory = state.stageHistory;
+    final stages = state.stages;
+    final currentSort = stages
+        .where((s) => s.id == deal.stageId)
+        .map((s) => s.sortOrder)
+        .fold<int?>(null, (_, v) => v);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,7 +92,7 @@ class _DealDetailView extends StatelessWidget {
                                         color: AppColors.primaryLight,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: Text(deal.stage.name, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+                                      child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
                                     ),
                                   ],
                                 ),
@@ -130,7 +137,7 @@ class _DealDetailView extends StatelessWidget {
                                         color: AppColors.primaryLight,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: Text(deal.stage.name, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+                                      child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
                                     ),
                                   ],
                                 ),
@@ -157,39 +164,40 @@ class _DealDetailView extends StatelessWidget {
                       ),
                 
                 const SizedBox(height: AppSpacing.xl),
-                // Stage Progress Bar (simplified)
-                Row(
-                  children: DealStage.values.map((s) {
-                    final isCompleted = s.index < deal.stage.index;
-                    final isCurrent = s.index == deal.stage.index;
-                    
-                    return Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isCurrent 
-                              ? AppColors.primary 
-                              : isCompleted ? AppColors.primaryLight : AppColors.border,
-                          borderRadius: BorderRadius.horizontal(
-                            left: s == DealStage.values.first ? const Radius.circular(4) : Radius.zero,
-                            right: s == DealStage.values.last ? const Radius.circular(4) : Radius.zero,
+                // Stage Progress Bar — built from the dynamic pipeline stages.
+                if (stages.isNotEmpty)
+                  Row(
+                    children: stages.map((s) {
+                      final isCurrent = s.id == deal.stageId;
+                      final isCompleted = currentSort != null && s.sortOrder < currentSort;
+
+                      return Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? AppColors.primary
+                                : isCompleted ? AppColors.primaryLight : AppColors.border,
+                            borderRadius: BorderRadius.horizontal(
+                              left: s == stages.first ? const Radius.circular(4) : Radius.zero,
+                              right: s == stages.last ? const Radius.circular(4) : Radius.zero,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            s.name,
+                            style: AppTextStyles.caption.copyWith(
+                              color: isCurrent ? Colors.white : (isCompleted ? AppColors.primary : AppColors.textMuted),
+                              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
                           ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          s.name,
-                          style: AppTextStyles.caption.copyWith(
-                            color: isCurrent ? Colors.white : (isCompleted ? AppColors.primary : AppColors.textMuted),
-                            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),
@@ -255,7 +263,7 @@ class _DealDetailView extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xl),
                       SectionCard(
                         title: 'Stage History',
-                        child: _StageHistoryList(history: stageHistory),
+                        child: _StageHistoryList(history: stageHistory, state: state),
                       ),
                     ],
                   )
@@ -327,7 +335,7 @@ class _DealDetailView extends StatelessWidget {
                             const SizedBox(height: AppSpacing.xl),
                             SectionCard(
                               title: 'Stage History',
-                              child: _StageHistoryList(history: stageHistory),
+                              child: _StageHistoryList(history: stageHistory, state: state),
                             ),
                           ],
                         ),
@@ -367,8 +375,9 @@ class _DealDetailView extends StatelessWidget {
 }
 
 class _StageHistoryList extends StatelessWidget {
-  const _StageHistoryList({required this.history});
+  const _StageHistoryList({required this.history, required this.state});
   final List<DealStageHistoryEntry> history;
+  final DealDetailLoaded state;
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +387,8 @@ class _StageHistoryList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: history.map((h) {
+        final toName = state.stageName(h.toStageId);
+        final fromName = state.stageName(h.fromStageId);
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: Column(
@@ -387,7 +398,7 @@ class _StageHistoryList extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      h.fromStage != null ? '${h.fromStage!.name} → ${h.toStage.name}' : 'Set to ${h.toStage.name}',
+                      h.fromStageId != null ? '$fromName → $toName' : 'Set to $toName',
                       style: AppTextStyles.labelMedium,
                     ),
                   ),

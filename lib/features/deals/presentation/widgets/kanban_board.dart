@@ -5,29 +5,51 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
 import '../bloc/deals_list_bloc.dart';
 
-/// Sentinel distinguishing "user cancelled the note dialog" from "user left
-/// the note blank and confirmed" (a legitimate `null` note).
 const String _cancelled = '__cancelled__';
 
-Future<String?> _showStageChangeNoteDialog(
+/// Result of the move dialog: cancelled, or a confirmed (note, coldReason).
+class _MoveResult {
+  final String? note;
+  final String? coldReason;
+  const _MoveResult({this.note, this.coldReason});
+}
+
+Future<_MoveResult?> _showMoveDialog(
   BuildContext context,
   Deal deal,
-  DealStage newStage,
+  DealStageDef target,
 ) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
+  final noteController = TextEditingController();
+  final coldController = TextEditingController();
+  final result = await showDialog<Object>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text('Move "${deal.name}" to ${newStage.name}?'),
-      content: TextField(
-        controller: controller,
-        maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Note (optional)',
-          border: OutlineInputBorder(),
-        ),
+      title: Text('Move "${deal.name}" to ${target.name}?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (target.isCold)
+            TextField(
+              controller: coldController,
+              decoration: const InputDecoration(
+                labelText: 'Cold reason *',
+                helperText: 'Required when moving to a cold stage',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          if (target.isCold) const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: noteController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Note (optional)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -35,21 +57,32 @@ Future<String?> _showStageChangeNoteDialog(
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(dialogContext).pop(
-            controller.text.trim().isEmpty ? '' : controller.text.trim(),
-          ),
+          onPressed: () {
+            if (target.isCold && coldController.text.trim().isEmpty) return;
+            Navigator.of(dialogContext).pop(
+              _MoveResult(
+                note: noteController.text.trim().isEmpty
+                    ? null
+                    : noteController.text.trim(),
+                coldReason: coldController.text.trim().isEmpty
+                    ? null
+                    : coldController.text.trim(),
+              ),
+            );
+          },
           child: const Text('Move'),
         ),
       ],
     ),
   );
-  if (result == null || result == _cancelled) return _cancelled;
-  return result.isEmpty ? null : result;
+  if (result == null || result == _cancelled) return null;
+  return result as _MoveResult;
 }
 
 class KanbanBoard extends StatelessWidget {
-  const KanbanBoard({super.key, required this.deals});
+  const KanbanBoard({super.key, required this.deals, required this.stages});
   final List<Deal> deals;
+  final List<DealStageDef> stages;
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +90,8 @@ class KanbanBoard extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: DealStage.values.map((stage) {
-          final stageDeals = deals.where((d) => d.stage == stage).toList();
+        children: stages.map((stage) {
+          final stageDeals = deals.where((d) => d.stageId == stage.id).toList();
           return _KanbanColumn(stage: stage, deals: stageDeals);
         }).toList(),
       ),
@@ -68,7 +101,7 @@ class KanbanBoard extends StatelessWidget {
 
 class _KanbanColumn extends StatelessWidget {
   const _KanbanColumn({required this.stage, required this.deals});
-  final DealStage stage;
+  final DealStageDef stage;
   final List<Deal> deals;
 
   @override
@@ -76,24 +109,27 @@ class _KanbanColumn extends StatelessWidget {
     final double totalValue = deals.fold(0, (sum, deal) => sum + deal.value);
 
     return DragTarget<Deal>(
+      onWillAcceptWithDetails: (details) => details.data.stageId != stage.id,
       onAcceptWithDetails: (details) async {
-        if (details.data.stage == stage) return;
         final bloc = context.read<DealsListBloc>();
-        final note = await _showStageChangeNoteDialog(context, details.data, stage);
-        if (note == _cancelled) return;
-        bloc.add(DealsListStageUpdated(
-          dealId: details.data.id,
-          newStage: stage,
-          note: note,
-        ));
+        final move = await _showMoveDialog(context, details.data, stage);
+        if (move == null) return;
+        bloc.add(
+          DealsListStageUpdated(
+            dealId: details.data.id,
+            newStageId: stage.id,
+            note: move.note,
+            coldReason: move.coldReason,
+          ),
+        );
       },
       builder: (context, candidateData, rejectedData) {
         return Container(
           width: 300,
           margin: const EdgeInsets.only(right: AppSpacing.lg),
           decoration: BoxDecoration(
-            color: candidateData.isNotEmpty 
-                ? AppColors.primaryLight 
+            color: candidateData.isNotEmpty
+                ? AppColors.primaryLight
                 : AppColors.background,
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             border: Border.all(color: AppColors.border),
@@ -106,38 +142,59 @@ class _KanbanColumn extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(stage.name, style: AppTextStyles.labelLarge),
+                    Flexible(
+                      child: Text(
+                        stage.name,
+                        style: AppTextStyles.labelLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.border,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('${deals.length}', style: AppTextStyles.caption),
+                      child: Text(
+                        '${deals.length}',
+                        style: AppTextStyles.caption,
+                      ),
                     ),
                   ],
                 ),
               ),
               if (deals.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md).copyWith(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ).copyWith(bottom: AppSpacing.md),
                   child: Text(
                     CurrencyFormatter.formatINR(totalValue),
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
+              // A fixed-height scroll area so empty columns are still valid
+              // drop targets.
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   itemCount: deals.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final deal = deals[index];
                     return Draggable<Deal>(
                       data: deal,
                       feedback: Material(
                         elevation: 8,
-                        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.cardRadius,
+                        ),
                         child: SizedBox(
                           width: 280,
                           child: _DealCard(deal: deal),
@@ -183,11 +240,22 @@ class _DealCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(deal.name, style: AppTextStyles.labelLarge, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(
+            deal.name,
+            style: AppTextStyles.labelLarge,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 4),
-          Text(deal.accountName, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+          Text(
+            deal.accountName,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+          ),
           const SizedBox(height: AppSpacing.md),
-          Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.labelMedium),
+          Text(
+            CurrencyFormatter.formatINR(deal.value),
+            style: AppTextStyles.labelMedium,
+          ),
         ],
       ),
     );
