@@ -107,6 +107,10 @@ import '../../features/notifications/data/repositories/notification_repository_i
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/domain/usecases/notification_usecases.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
+import '../../features/documents/data/datasources/document_mock_datasource.dart';
+import '../../features/documents/data/repositories/document_repository_impl.dart';
+import '../../features/documents/domain/repositories/document_repository.dart';
+import '../../features/documents/domain/usecases/get_account_documents_usecase.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -348,4 +352,13 @@ Future<void> initDependencies() async {
       deleteNotificationsUseCase: sl(),
     ),
   );
+
+  // ─── Documents Feature (mock-backed) ────────────────
+  sl.registerLazySingleton<DocumentDataSource>(
+    () => DocumentMockDataSource(),
+  );
+  sl.registerLazySingleton<DocumentRepository>(
+    () => DocumentRepositoryImpl(dataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetAccountDocumentsUseCase(sl()));
 }
