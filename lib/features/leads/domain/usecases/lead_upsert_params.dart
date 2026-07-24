@@ -17,7 +17,10 @@ class LeadUpsertParams {
   final int? ownerId;
   final DateTime? nextFollowUpDate;
   final String? followUpNote;
-  final List<String>? additionalEmails;
+
+  /// Extra contacts collected on the create/edit form. Each can carry an
+  /// email and/or a phone number (at least one).
+  final List<LeadContactDraft>? additionalContacts;
 
   const LeadUpsertParams({
     required this.firstName,
@@ -33,6 +36,17 @@ class LeadUpsertParams {
     this.ownerId,
     this.nextFollowUpDate,
     this.followUpNote,
-    this.additionalEmails,
+    this.additionalContacts,
   });
+}
+
+/// A single extra contact entered on the lead create/edit form. Both fields
+/// are optional individually but a draft should carry at least one.
+class LeadContactDraft {
+  final String? email;
+  final String? phone;
+  const LeadContactDraft({this.email, this.phone});
+
+  bool get isEmpty =>
+      (email == null || email!.isEmpty) && (phone == null || phone!.isEmpty);
 }

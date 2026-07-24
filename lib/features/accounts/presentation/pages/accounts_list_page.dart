@@ -204,7 +204,7 @@ class _AccountsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allSelected = accounts.isNotEmpty && accounts.every((a) => selected.contains(a.id));
-    return Container(
+    final table = Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -250,6 +250,22 @@ class _AccountsTable extends StatelessWidget {
         ],
       ),
     );
+
+    // On phones the 7-column table can't fit — let it scroll horizontally
+    // at a sensible minimum width instead of squeezing/overflowing cells.
+    if (context.isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 900),
+          child: SizedBox(
+            width: 900,
+            child: table,
+          ),
+        ),
+      );
+    }
+    return table;
   }
 
   Widget _header(String label, {int flex = 1}) {

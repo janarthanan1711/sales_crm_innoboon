@@ -60,6 +60,15 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   }
 
   @override
+  Future<void> markAsUnread(int notificationId) async {
+    try {
+      await dioClient.patch(ApiEndpoints.markNotificationUnread('$notificationId'));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
   Future<int> markManyAsRead(List<int>? notificationIds) async {
     try {
       final response = await dioClient.post(

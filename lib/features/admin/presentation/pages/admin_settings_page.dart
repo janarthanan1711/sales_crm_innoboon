@@ -166,7 +166,12 @@ class _UsersTabState extends State<_UsersTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Wrap (not Row) so the filters + action flow onto multiple lines
+          // on narrow screens instead of overflowing.
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               SizedBox(
                 width: 280,
@@ -178,7 +183,6 @@ class _UsersTabState extends State<_UsersTab> {
                   },
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
               _Dropdown<int?>(
                 label: 'All Roles',
                 value: _roleFilter,
@@ -191,7 +195,6 @@ class _UsersTabState extends State<_UsersTab> {
                   _load();
                 },
               ),
-              const SizedBox(width: AppSpacing.sm),
               _Dropdown<String?>(
                 label: 'All Status',
                 value: _statusFilter,
@@ -206,7 +209,6 @@ class _UsersTabState extends State<_UsersTab> {
                   _load();
                 },
               ),
-              const Spacer(),
               ElevatedButton.icon(
                 onPressed: () => _showInviteDialog(context),
                 icon: const Icon(Icons.add, size: 18),

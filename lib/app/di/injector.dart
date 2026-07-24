@@ -138,7 +138,8 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: "http://192.168.0.187:8000/api/v1",
+      defaultValue: "https://dollar-starry-worry.ngrok-free.dev/api/v1",
+      //  "http://192.168.0.187:8000/api/v1",
       // 'https://api.saleshub.example.com/api/v1',
     ),
     authInterceptor: authInterceptor,
@@ -348,6 +349,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));
   sl.registerLazySingleton(() => GetUnreadCountUseCase(sl()));
   sl.registerLazySingleton(() => MarkNotificationReadUseCase(sl()));
+  sl.registerLazySingleton(() => MarkNotificationUnreadUseCase(sl()));
   sl.registerLazySingleton(() => MarkAllNotificationsReadUseCase(sl()));
   sl.registerLazySingleton(() => MarkManyNotificationsReadUseCase(sl()));
   sl.registerLazySingleton(() => DeleteNotificationsUseCase(sl()));
@@ -356,6 +358,7 @@ Future<void> initDependencies() async {
       getNotificationsUseCase: sl(),
       getUnreadCountUseCase: sl(),
       markNotificationReadUseCase: sl(),
+      markNotificationUnreadUseCase: sl(),
       markAllNotificationsReadUseCase: sl(),
       markManyNotificationsReadUseCase: sl(),
       deleteNotificationsUseCase: sl(),
@@ -363,9 +366,7 @@ Future<void> initDependencies() async {
   );
 
   // ─── Documents Feature (mock-backed) ────────────────
-  sl.registerLazySingleton<DocumentDataSource>(
-    () => DocumentMockDataSource(),
-  );
+  sl.registerLazySingleton<DocumentDataSource>(() => DocumentMockDataSource());
   sl.registerLazySingleton<DocumentRepository>(
     () => DocumentRepositoryImpl(dataSource: sl()),
   );

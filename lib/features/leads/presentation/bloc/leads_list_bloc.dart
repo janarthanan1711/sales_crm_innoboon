@@ -18,6 +18,18 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
     on<LeadsListLoadRequested>(_onLoadRequested);
     on<LeadsListSearchChanged>(_onSearchChanged);
     on<LeadsListFilterChanged>(_onFilterChanged);
+    on<LeadsListCleared>(_onCleared);
+  }
+
+  Future<void> _onCleared(
+    LeadsListCleared event,
+    Emitter<LeadsListState> emit,
+  ) async {
+    _search = null;
+    _statusFilter = null;
+    _sourceFilter = null;
+    _ownerIdFilter = null;
+    await _loadLeads(emit);
   }
 
   Future<void> _onLoadRequested(

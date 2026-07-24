@@ -11,6 +11,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   final GetNotificationsUseCase getNotificationsUseCase;
   final GetUnreadCountUseCase getUnreadCountUseCase;
   final MarkNotificationReadUseCase markNotificationReadUseCase;
+  final MarkNotificationUnreadUseCase markNotificationUnreadUseCase;
   final MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase;
   final MarkManyNotificationsReadUseCase markManyNotificationsReadUseCase;
   final DeleteNotificationsUseCase deleteNotificationsUseCase;
@@ -21,6 +22,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     required this.getNotificationsUseCase,
     required this.getUnreadCountUseCase,
     required this.markNotificationReadUseCase,
+    required this.markNotificationUnreadUseCase,
     required this.markAllNotificationsReadUseCase,
     required this.markManyNotificationsReadUseCase,
     required this.deleteNotificationsUseCase,
@@ -28,6 +30,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<NotificationLoadRequested>(_onLoadRequested);
     on<NotificationLoadMoreRequested>(_onLoadMoreRequested);
     on<NotificationMarkedRead>(_onMarkedRead);
+    on<NotificationMarkedUnread>(_onMarkedUnread);
     on<NotificationMarkedAllRead>(_onMarkedAllRead);
     on<NotificationsBulkMarkReadRequested>(_onBulkMarkedRead);
     on<NotificationsBulkDeleteRequested>(_onBulkDeleted);
@@ -62,6 +65,11 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
   Future<void> _onMarkedRead(NotificationMarkedRead event, Emitter<NotificationState> emit) async {
     await markNotificationReadUseCase(event.id);
+    await _reload(emit);
+  }
+
+  Future<void> _onMarkedUnread(NotificationMarkedUnread event, Emitter<NotificationState> emit) async {
+    await markNotificationUnreadUseCase(event.id);
     await _reload(emit);
   }
 

@@ -220,6 +220,31 @@ class _Header extends StatelessWidget {
                       StatusBadge.leadStatus(
                         labelForWireValue(leadStatusLabels, lead.status),
                       ),
+                      // Mark converted leads so it's clear this prospect is
+                      // now an account.
+                      if (lead.isConverted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.business, size: 13, color: AppColors.success),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Account',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                   Text(

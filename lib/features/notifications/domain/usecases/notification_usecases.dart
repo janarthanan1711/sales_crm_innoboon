@@ -53,6 +53,14 @@ class MarkNotificationReadUseCase implements UseCase<void, int> {
   Future<Either<Failure, void>> call(int notificationId) => repository.markAsRead(notificationId);
 }
 
+class MarkNotificationUnreadUseCase implements UseCase<void, int> {
+  final NotificationRepository repository;
+  MarkNotificationUnreadUseCase(this.repository);
+
+  @override
+  Future<Either<Failure, void>> call(int notificationId) => repository.markAsUnread(notificationId);
+}
+
 /// Marks every unread notification as read (doc §9.4 — omitted `ids`).
 class MarkAllNotificationsReadUseCase implements UseCase<int, NoParams> {
   final NotificationRepository repository;

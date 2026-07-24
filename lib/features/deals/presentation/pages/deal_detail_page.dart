@@ -83,7 +83,7 @@ class _DealDetailView extends StatelessWidget {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
+                                    Flexible(child: Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
                                     const SizedBox(width: AppSpacing.sm),
                                     const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
                                     const SizedBox(width: AppSpacing.sm),
@@ -129,7 +129,7 @@ class _DealDetailView extends StatelessWidget {
                               children: [
                                 Row(
                                   children: [
-                                    Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
+                                    Flexible(child: Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
                                     const SizedBox(width: AppSpacing.sm),
                                     const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
                                     const SizedBox(width: AppSpacing.sm),

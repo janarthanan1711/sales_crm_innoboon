@@ -12,6 +12,12 @@ import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/domain/entities/user.dart';
 
+/// Whether the sidebar "Quick Action" button is shown. Hidden for now
+/// (the quick-action menu isn't built yet); flip to true to re-enable.
+/// Intentionally non-const so the retained button code isn't flagged as
+/// dead code by the analyzer.
+final bool _kShowQuickAction = false;
+
 /// Navigation item definition
 class NavItem {
   final String label;
@@ -55,6 +61,13 @@ const List<NavItem> _mainNavItems = [
     requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
+    label: 'Accounts',
+    icon: Icons.business_outlined,
+    activeIcon: Icons.business,
+    path: RoutePaths.accounts,
+    requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
     label: 'Analytics',
     icon: Icons.analytics_outlined,
     activeIcon: Icons.analytics,
@@ -90,6 +103,13 @@ const List<NavItem> _sidebarMainItems = [
     activeIcon: Icons.handshake,
     path: RoutePaths.deals,
     requiredPermissions: ['deals.access', 'deals.view_all'],
+  ),
+  NavItem(
+    label: 'Accounts',
+    icon: Icons.business_outlined,
+    activeIcon: Icons.business,
+    path: RoutePaths.accounts,
+    requiredPermissions: ['accounts.access', 'accounts.view_all'],
   ),
   NavItem(
     label: 'Staff Augmentation',
@@ -306,20 +326,25 @@ class _WebSidebar extends StatelessWidget {
           ),
 
           // ── Quick Action Button ──────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Quick action menu
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Quick Action'),
+          // Hidden until the quick-action menu is built (kept, not removed).
+          // Flip [_kShowQuickAction] to re-enable.
+          if (_kShowQuickAction) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Quick action menu
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Quick Action'),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+          if (!_kShowQuickAction) const SizedBox(height: AppSpacing.xl),
 
           // ── Main Menu Label ──────────────
           Padding(

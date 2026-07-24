@@ -186,8 +186,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        width: 600,
+      // Cap at 600 on wide screens but shrink to fit phones so the dialog
+      // never overflows horizontally.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -369,6 +372,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -83,10 +83,14 @@ class _StageCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Stage ${stage.stageOrder}: ${stage.stageName}',
-                  style: AppTextStyles.h3,
+                Flexible(
+                  child: Text(
+                    'Stage ${stage.stageOrder}: ${stage.stageName}',
+                    style: AppTextStyles.h3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${stage.completedCount} / ${stage.totalCount} Complete',
                   style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
@@ -131,11 +135,13 @@ class _ChecklistItemRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      item.itemText,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        decoration: item.isCompleted ? TextDecoration.lineThrough : null,
-                        color: item.isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        item.itemText,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          decoration: item.isCompleted ? TextDecoration.lineThrough : null,
+                          color: item.isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),

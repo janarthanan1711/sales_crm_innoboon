@@ -11,6 +11,7 @@ abstract class NotificationRepository {
   });
   Future<Either<Failure, int>> getUnreadCount();
   Future<Either<Failure, void>> markAsRead(int notificationId);
+  Future<Either<Failure, void>> markAsUnread(int notificationId);
 
   /// Marks `notificationIds` as read, or every unread notification when
   /// `notificationIds` is null/omitted. Returns the number updated.
@@ -29,6 +30,7 @@ abstract class NotificationRemoteDataSource {
   });
   Future<int> getUnreadCount();
   Future<void> markAsRead(int notificationId);
+  Future<void> markAsUnread(int notificationId);
   Future<int> markManyAsRead(List<int>? notificationIds);
   Future<int> deleteNotifications(List<int> notificationIds);
 }

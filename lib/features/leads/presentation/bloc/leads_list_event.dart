@@ -28,3 +28,10 @@ class LeadsListFilterChanged extends LeadsListEvent {
   @override
   List<Object?> get props => [status, source, ownerId];
 }
+
+/// Clears the search text and every filter in a single event, so the list
+/// reloads exactly once with a clean slate (dispatching separate search +
+/// filter events can race and leave a stale filter applied).
+class LeadsListCleared extends LeadsListEvent {
+  const LeadsListCleared();
+}

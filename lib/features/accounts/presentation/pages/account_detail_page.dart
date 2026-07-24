@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
@@ -94,53 +95,56 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => context.go('/accounts'),
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  InitialsAvatar(name: account.companyName, size: 48),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(child: Text(account.companyName, style: AppTextStyles.h1, overflow: TextOverflow.ellipsis)),
-                            const SizedBox(width: AppSpacing.md),
-                            TierBadge(tier: account.tier),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            if (account.domain != null && account.domain!.isNotEmpty) ...[
-                              Text(account.domain!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
-                              const SizedBox(width: AppSpacing.md),
-                            ],
-                            const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(account.primaryOwner, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      ],
+              Builder(builder: (context) {
+                final identity = Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => context.go('/accounts'),
+                      icon: const Icon(Icons.arrow_back),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.md),
+                    InitialsAvatar(name: account.companyName, size: 48),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(child: Text(account.companyName, style: AppTextStyles.h1, overflow: TextOverflow.ellipsis)),
+                              const SizedBox(width: AppSpacing.md),
+                              TierBadge(tier: account.tier),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              if (account.domain != null && account.domain!.isNotEmpty) ...[
+                                Flexible(child: Text(account.domain!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
+                                const SizedBox(width: AppSpacing.md),
+                              ],
+                              const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
+                              const SizedBox(width: 4),
+                              Flexible(child: Text(account.primaryOwner, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+
+                final actions = [
                   OutlinedButton.icon(
                     onPressed: () => _showEditAccountDialog(context, account),
                     icon: const Icon(Icons.edit, size: 16),
                     label: const Text('Edit Account'),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
                   OutlinedButton.icon(
                     onPressed: () => _tabController.animateTo(1),
                     icon: const Icon(Icons.person_add_alt_1, size: 16),
                     label: const Text('New Contact'),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
                   ElevatedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,8 +154,33 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('New Deal'),
                   ),
-                ],
-              ),
+                ];
+
+                // On phones the three action buttons won't fit beside the
+                // title — stack them into a Wrap underneath instead.
+                if (context.isMobile) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      identity,
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: actions),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: identity),
+                    const SizedBox(width: AppSpacing.md),
+                    ...[
+                      for (int i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(width: AppSpacing.sm),
+                        actions[i],
+                      ],
+                    ],
+                  ],
+                );
+              }),
               const SizedBox(height: AppSpacing.lg),
               _HeaderStats(state: state),
             ],
@@ -520,7 +549,9 @@ class _ContactsTab extends StatelessWidget {
             )
           else
             Expanded(
-              child: Container(
+              child: _mobileScrollTable(
+                context,
+                Container(
                 decoration: BoxDecoration(
                   color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -562,6 +593,7 @@ class _ContactsTab extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
             ),
         ],
       ),
@@ -570,6 +602,9 @@ class _ContactsTab extends StatelessWidget {
 
   Widget _headerCell(String label, {int flex = 1}) =>
       Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+
+  Widget _mobileScrollTable(BuildContext context, Widget table, {double width = 820}) =>
+      accountTableMobileScroll(context, table, width: width);
 
   /// Promote [target] to primary. Per the API a different existing primary
   /// must be unset first (it 409s otherwise), so demote-then-promote.
@@ -1009,7 +1044,9 @@ class _DocumentsTabState extends State<_DocumentsTab> {
             )
           else
             Expanded(
-              child: Container(
+              child: accountTableMobileScroll(
+                context,
+                Container(
                 decoration: BoxDecoration(
                   color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -1054,6 +1091,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           if (filtered.isNotEmpty)
@@ -1276,4 +1314,15 @@ class _DealsTab extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wraps a fixed-column table so it scrolls horizontally on phones (where the
+/// columns can't fit) instead of overflowing. On wider screens the table is
+/// returned unchanged.
+Widget accountTableMobileScroll(BuildContext context, Widget table, {double width = 820}) {
+  if (!context.isMobile) return table;
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: SizedBox(width: width, child: table),
+  );
 }

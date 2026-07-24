@@ -104,8 +104,15 @@ class LeadModel extends Lead {
           ? _formatDate(params.nextFollowUpDate!)
           : null,
       'follow_up_note': params.followUpNote,
-      if (params.additionalEmails != null && params.additionalEmails!.isNotEmpty)
-        'contacts': params.additionalEmails!.map((e) => {'email': e}).toList(),
+      if (params.additionalContacts != null &&
+          params.additionalContacts!.any((c) => !c.isEmpty))
+        'contacts': params.additionalContacts!
+            .where((c) => !c.isEmpty)
+            .map((c) => {
+                  if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
+                  if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
+                })
+            .toList(),
     };
   }
 

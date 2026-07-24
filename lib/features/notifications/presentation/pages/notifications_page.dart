@@ -23,9 +23,9 @@ class NotificationsPage extends StatelessWidget {
   }
 }
 
-// The doc's notification types have no "mentions" concept — the third tab
-// filters to the real `task_overdue` type instead.
-enum _NotificationTab { all, unread, overdue }
+// "Overdue Tasks" is reachable via the "Filter by Type" dropdown, so it's not
+// duplicated as a tab here.
+enum _NotificationTab { all, unread }
 
 class _NotificationsView extends StatefulWidget {
   const _NotificationsView();
@@ -43,7 +43,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
     _selectedIds.clear();
     context.read<NotificationBloc>().add(NotificationLoadRequested(
           unreadOnly: _tab == _NotificationTab.unread,
-          typeFilter: _tab == _NotificationTab.overdue ? NotificationType.taskOverdue : _typeFilter,
+          typeFilter: _typeFilter,
         ));
   }
 
@@ -92,32 +92,48 @@ class _NotificationsViewState extends State<_NotificationsView> {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<_NotificationTab>(
-                    segments: const [
-                      ButtonSegment(value: _NotificationTab.all, label: Text('All Notifications')),
-                      ButtonSegment(value: _NotificationTab.unread, label: Text('Unread Only')),
-                      ButtonSegment(value: _NotificationTab.overdue, label: Text('Overdue Tasks')),
-                    ],
-                    selected: {_tab},
-                    onSelectionChanged: (s) => setState(() {
-                      _tab = s.first;
-                      _applyFilters();
-                    }),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _TypeFilterDropdown(
-                  value: _typeFilter,
-                  onChanged: (v) => setState(() {
-                    _typeFilter = v;
-                    _applyFilters();
-                  }),
-                ),
-              ],
-            ),
+            Builder(builder: (context) {
+              final segmented = SegmentedButton<_NotificationTab>(
+                segments: const [
+                  ButtonSegment(value: _NotificationTab.all, label: Text('All Notifications')),
+                  ButtonSegment(value: _NotificationTab.unread, label: Text('Unread Only')),
+                ],
+                selected: {_tab},
+                onSelectionChanged: (s) => setState(() {
+                  _tab = s.first;
+                  _applyFilters();
+                }),
+              );
+              final typeFilter = _TypeFilterDropdown(
+                value: _typeFilter,
+                onChanged: (v) => setState(() {
+                  _typeFilter = v;
+                  _applyFilters();
+                }),
+              );
+              // Stack on phones so the segmented control + type filter don't
+              // overflow a narrow row.
+              if (context.isMobile) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: segmented,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(alignment: Alignment.centerLeft, child: typeFilter),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: segmented),
+                  const SizedBox(width: AppSpacing.sm),
+                  typeFilter,
+                ],
+              );
+            }),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: BlocConsumer<NotificationBloc, NotificationState>(
@@ -419,14 +435,25 @@ class _NotificationCard extends StatelessWidget {
               ],
             ),
           ),
-          if (!notification.isRead && !notification.isComputed) ...[
+          // Toggle read/unread. Computed `task_overdue` entries aren't stored
+          // rows, so they can't be toggled.
+          if (!notification.isComputed) ...[
             const SizedBox(width: AppSpacing.md),
             IconButton(
               onPressed: () {
-                context.read<NotificationBloc>().add(NotificationMarkedRead(notification.id));
+                final bloc = context.read<NotificationBloc>();
+                if (notification.isRead) {
+                  bloc.add(NotificationMarkedUnread(notification.id));
+                } else {
+                  bloc.add(NotificationMarkedRead(notification.id));
+                }
               },
-              icon: const Icon(Icons.circle, size: 12, color: AppColors.primary),
-              tooltip: 'Mark as read',
+              icon: Icon(
+                notification.isRead ? Icons.circle_outlined : Icons.circle,
+                size: 12,
+                color: notification.isRead ? AppColors.textMuted : AppColors.primary,
+              ),
+              tooltip: notification.isRead ? 'Mark as unread' : 'Mark as read',
             ),
           ],
         ],

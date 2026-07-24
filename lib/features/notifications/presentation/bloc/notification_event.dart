@@ -26,6 +26,13 @@ class NotificationMarkedRead extends NotificationEvent {
   List<Object?> get props => [id];
 }
 
+class NotificationMarkedUnread extends NotificationEvent {
+  final int id;
+  const NotificationMarkedUnread(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
 class NotificationMarkedAllRead extends NotificationEvent {
   const NotificationMarkedAllRead();
 }

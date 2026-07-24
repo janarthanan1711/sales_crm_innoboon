@@ -71,8 +71,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _sourceFilter = null;
       _ownerIdFilter = null;
     });
-    context.read<LeadsListBloc>().add(const LeadsListSearchChanged(''));
-    context.read<LeadsListBloc>().add(const LeadsListFilterChanged());
+    context.read<LeadsListBloc>().add(const LeadsListCleared());
   }
 
   @override
@@ -523,11 +522,15 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Status
+              // Status — left-aligned so the badge background hugs the text
+              // (a static, content-sized width) instead of filling the column.
               Expanded(
                 flex: 2,
-                child: StatusBadge.leadStatus(
-                  labelForWireValue(leadStatusLabels, lead.status),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: StatusBadge.leadStatus(
+                    labelForWireValue(leadStatusLabels, lead.status),
+                  ),
                 ),
               ),
               // Owner
