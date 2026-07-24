@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/formatters.dart' show DateFormatter;
+import '../../../../core/widgets/shared_widgets.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../bloc/deals_list_bloc.dart';
@@ -207,7 +210,8 @@ class _KanbanColumn extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final deal = deals[index];
-                    if (!canManage) return _DealCard(deal: deal);
+                    void open() => context.go('/deals/${deal.id}');
+                    if (!canManage) return _DealCard(deal: deal, onTap: open);
                     return Draggable<Deal>(
                       data: deal,
                       feedback: Material(
@@ -224,7 +228,7 @@ class _KanbanColumn extends StatelessWidget {
                         opacity: 0.5,
                         child: _DealCard(deal: deal),
                       ),
-                      child: _DealCard(deal: deal),
+                      child: _DealCard(deal: deal, onTap: open),
                     );
                   },
                 ),
@@ -238,17 +242,35 @@ class _KanbanColumn extends StatelessWidget {
 }
 
 class _DealCard extends StatelessWidget {
-  const _DealCard({required this.deal});
+  const _DealCard({required this.deal, this.onTap});
   final Deal deal;
+  final VoidCallback? onTap;
+
+  /// True when the deal is due within the next 10 days (or already overdue) —
+  /// surfaced as a red left border to flag deals needing attention.
+  bool get _dueSoon {
+    final close = deal.expectedCloseDate;
+    if (close == null) return false;
+    return close.difference(DateTime.now()).inDays <= 10;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final side = BorderSide(color: AppColors.border);
+    final card = Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+        border: Border(
+          top: side,
+          right: side,
+          bottom: side,
+          left: BorderSide(
+            color: _dueSoon ? AppColors.error : AppColors.border,
+            width: _dueSoon ? 4 : 1,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -260,24 +282,68 @@ class _DealCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Tier badge
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TierBadge(tier: deal.tier),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             deal.name,
             style: AppTextStyles.labelLarge,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             deal.accountName,
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             CurrencyFormatter.formatINR(deal.value),
             style: AppTextStyles.labelMedium,
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 13, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  deal.owner,
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (deal.expectedCloseDate != null) ...[
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Icon(Icons.event_outlined, size: 13,
+                    color: _dueSoon ? AppColors.error : AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(
+                  DateFormatter.shortDate(deal.expectedCloseDate!),
+                  style: AppTextStyles.caption.copyWith(
+                    color: _dueSoon ? AppColors.error : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: card,
     );
   }
 }

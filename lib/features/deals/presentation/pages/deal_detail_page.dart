@@ -14,6 +14,8 @@ import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_history.dart';
 import '../bloc/deal_detail_bloc.dart';
 import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
+import '../../../../features/activity/presentation/widgets/activity_timeline_view.dart';
+import '../../../../core/utils/link_launcher.dart';
 
 import 'create_deal_page.dart';
 
@@ -39,8 +41,12 @@ class _DealDetailView extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: BlocBuilder<DealDetailBloc, DealDetailState>(
         builder: (context, state) {
-          if (state is DealDetailLoading) return const AppLoadingIndicator(message: 'Loading deal...');
-          if (state is DealDetailError) return ErrorState(message: state.message, onRetry: () {});
+          if (state is DealDetailLoading) {
+            return const AppLoadingIndicator(message: 'Loading deal...');
+          }
+          if (state is DealDetailError) {
+            return ErrorState(message: state.message, onRetry: () {});
+          }
           if (state is DealDetailLoaded) return _buildContent(context, state);
           return const SizedBox.shrink();
         },
@@ -50,301 +56,450 @@ class _DealDetailView extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, DealDetailLoaded state) {
     final deal = state.deal;
-    final stageHistory = state.stageHistory;
+    return DefaultTabController(
+      length: 6,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context, state),
+          Material(
+            color: AppColors.cardBackground,
+            child: const TabBar(
+              isScrollable: true,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                Tab(text: 'Deal Info'),
+                Tab(text: 'Stakeholders'),
+                Tab(text: 'Contact'),
+                Tab(text: 'Checklist'),
+                Tab(text: 'Documents'),
+                Tab(text: 'Activity'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _dealInfoTab(deal),
+                _stakeholdersTab(deal),
+                _contactTab(deal),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xxl),
+                  child: ChecklistView(dealId: deal.id),
+                ),
+                _documentsTab(context),
+                _activityTab(context, state),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, DealDetailLoaded state) {
+    final deal = state.deal;
     final stages = state.stages;
     final currentSort = stages
         .where((s) => s.id == deal.stageId)
         .map((s) => s.sortOrder)
         .fold<int?>(null, (_, v) => v);
-    return SingleChildScrollView(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      decoration: const BoxDecoration(
+        color: AppColors.cardBackground,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header Card ──────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            decoration: const BoxDecoration(
-              color: AppColors.cardBackground,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                context.isMobile
-                    ? Column(
+          context.isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => context.go('/deals'),
+                          icon: const Icon(Icons.arrow_back),
+                        ),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  deal.accountName,
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              // Text('•', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted)),
+                              // const SizedBox(width: AppSpacing.sm),
+                              // Container(
+                              //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              //   decoration: BoxDecoration(
+                              //     color: AppColors.primaryLight,
+                              //     borderRadius: BorderRadius.circular(4),
+                              //   ),
+                              //   child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+                              // ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(deal.name, style: AppTextStyles.h1),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      CurrencyFormatter.formatINR(deal.value),
+                      style: AppTextStyles.h2,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Owner: ${deal.owner}',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    if (context.can(Perms.dealsManage))
+                      ElevatedButton.icon(
+                        onPressed: () => _openEditDealDialog(context, deal),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit Deal'),
+                      ),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      onPressed: () => context.go('/deals'),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              IconButton(
-                                onPressed: () => context.go('/deals'),
-                                icon: const Icon(Icons.arrow_back),
+                              Flexible(
+                                child: Text(
+                                  deal.accountName,
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Flexible(child: Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryLight,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-                                    ),
-                                  ],
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                '•',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  deal.stageName,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(deal.name, style: AppTextStyles.h1),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.h2),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
-                          const SizedBox(height: AppSpacing.md),
-                          if (context.can(Perms.dealsManage))
-                            ElevatedButton.icon(
-                              onPressed: () => _openEditDealDialog(context, deal),
-                              icon: const Icon(Icons.edit, size: 16),
-                              label: const Text('Edit Deal'),
-                            ),
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IconButton(
-                            onPressed: () => context.go('/deals'),
-                            icon: const Icon(Icons.arrow_back),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(child: Text(deal.accountName, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    const Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryLight,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(deal.name, style: AppTextStyles.h1),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(CurrencyFormatter.formatINR(deal.value), style: AppTextStyles.h2),
-                              const SizedBox(height: AppSpacing.xs),
-                              Text('Owner: ${deal.owner}', style: AppTextStyles.bodySmall),
-                              const SizedBox(height: AppSpacing.md),
-                              if (context.can(Perms.dealsManage))
-                                ElevatedButton.icon(
-                                  onPressed: () => _openEditDealDialog(context, deal),
-                                  icon: const Icon(Icons.edit, size: 16),
-                                  label: const Text('Edit Deal'),
-                                ),
-                            ],
-                          ),
                         ],
                       ),
-                
-                const SizedBox(height: AppSpacing.xl),
-                // Stage Progress Bar — built from the dynamic pipeline stages.
-                if (stages.isNotEmpty)
-                  Row(
-                    children: stages.map((s) {
-                      final isCurrent = s.id == deal.stageId;
-                      final isCompleted = currentSort != null && s.sortOrder < currentSort;
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          CurrencyFormatter.formatINR(deal.value),
+                          style: AppTextStyles.h2,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Owner: ${deal.owner}',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        if (context.can(Perms.dealsManage))
+                          ElevatedButton.icon(
+                            onPressed: () => _openEditDealDialog(context, deal),
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('Edit Deal'),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
 
-                      return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isCurrent
-                                ? AppColors.primary
-                                : isCompleted ? AppColors.primaryLight : AppColors.border,
-                            borderRadius: BorderRadius.horizontal(
-                              left: s == stages.first ? const Radius.circular(4) : Radius.zero,
-                              right: s == stages.last ? const Radius.circular(4) : Radius.zero,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            s.name,
-                            style: AppTextStyles.caption.copyWith(
-                              color: isCurrent ? Colors.white : (isCompleted ? AppColors.primary : AppColors.textMuted),
-                              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+          const SizedBox(height: AppSpacing.xl),
+          // Stage Progress Bar — built from the dynamic pipeline stages.
+          if (stages.isNotEmpty)
+            Row(
+              children: stages.map((s) {
+                final isCurrent = s.id == deal.stageId;
+                final isCompleted =
+                    currentSort != null && s.sortOrder < currentSort;
+
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? AppColors.primary
+                          : isCompleted
+                          ? AppColors.primaryLight
+                          : AppColors.border,
+                      borderRadius: BorderRadius.horizontal(
+                        left: s == stages.first
+                            ? const Radius.circular(4)
+                            : Radius.zero,
+                        right: s == stages.last
+                            ? const Radius.circular(4)
+                            : Radius.zero,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      s.name,
+                      style: AppTextStyles.caption.copyWith(
+                        color: isCurrent
+                            ? Colors.white
+                            : (isCompleted
+                                  ? AppColors.primary
+                                  : AppColors.textMuted),
+                        fontWeight: isCurrent
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                    ),
                   ),
-              ],
+                );
+              }).toList(),
             ),
-          ),
-          
-          // ── Main Content Grid ──────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: context.isMobile
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionCard(
-                        title: 'Deal Information',
-                        child: Column(
+        ],
+      ),
+    );
+  }
+
+  // ── Tab views ──────────────────────────────────────────
+  Widget _dealInfoTab(Deal deal) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: SectionCard(
+        title: 'Deal Information',
+        child: Column(
+          children: [
+            _infoRow('Account', deal.accountName),
+            _infoRow('Stage', deal.stageName),
+            _infoRow('Value', CurrencyFormatter.formatINR(deal.value)),
+            _infoRow('Tier', deal.tier),
+            _infoRow('Owner', deal.owner),
+            _infoRow('Description', deal.description),
+            _infoRow('Payment Status', deal.paymentStatus),
+            _infoRow(
+              'Expected Close',
+              deal.expectedCloseDate != null
+                  ? DateFormatter.displayDate(deal.expectedCloseDate!)
+                  : 'N/A',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _stakeholdersTab(Deal deal) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: SectionCard(
+        title: 'Stakeholders',
+        child: deal.stakeholders.isEmpty
+            ? Text(
+                'No stakeholders added yet.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              )
+            : Column(
+                children: deal.stakeholders
+                    .map(
+                      (s) => Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: Row(
                           children: [
-                            _infoRow('Description', deal.description),
-                            _infoRow('Payment Status', deal.paymentStatus),
-                            _infoRow('Expected Close', deal.expectedCloseDate != null ? '${deal.expectedCloseDate!.toLocal()}'.split(' ')[0] : 'N/A'),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionCard(
-                        title: 'Stakeholders',
-                        child: Column(
-                          children: deal.stakeholders.map((s) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: Row(
-                              children: [
-                                InitialsAvatar(name: s.name, size: 36),
-                                const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(s.name, style: AppTextStyles.labelLarge),
-                                      Text('${s.role} • ${s.email}', style: AppTextStyles.bodySmall),
-                                    ],
-                                  ),
-                                ),
-                                if (s.isPrimary)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryLight,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text('Primary', style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-                                  ),
-                              ],
-                            ),
-                          )).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionCard(
-                        title: 'Pre-Sales Checklist',
-                        child: SizedBox(
-                          height: 400,
-                          child: ChecklistView(dealId: deal.id),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionCard(
-                        title: 'Stage History',
-                        child: _StageHistoryList(history: stageHistory, state: state),
-                      ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 7,
-                        child: Column(
-                          children: [
-                            SectionCard(
-                              title: 'Deal Information',
+                            InitialsAvatar(name: s.name, size: 36),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _infoRow('Description', deal.description),
-                                  _infoRow('Payment Status', deal.paymentStatus),
-                                  _infoRow('Expected Close', deal.expectedCloseDate != null ? '${deal.expectedCloseDate!.toLocal()}'.split(' ')[0] : 'N/A'),
+                                  Text(s.name, style: AppTextStyles.labelLarge),
+                                  Text(
+                                    '${s.role} • ${s.email}',
+                                    style: AppTextStyles.bodySmall,
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: AppSpacing.xl),
-                            SectionCard(
-                              title: 'Stakeholders',
-                              child: Column(
-                                children: deal.stakeholders.map((s) => Padding(
-                                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                                  child: Row(
-                                    children: [
-                                      InitialsAvatar(name: s.name, size: 36),
-                                      const SizedBox(width: AppSpacing.md),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(s.name, style: AppTextStyles.labelLarge),
-                                            Text('${s.role} • ${s.email}', style: AppTextStyles.bodySmall),
-                                          ],
-                                        ),
-                                      ),
-                                      if (s.isPrimary)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primaryLight,
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text('Primary', style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-                                        ),
-                                    ],
+                            if (s.isPrimary)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Primary',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.primary,
                                   ),
-                                )).toList(),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.xxl),
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          children: [
-                            SectionCard(
-                              title: 'Pre-Sales Checklist',
-                              child: SizedBox(
-                                height: 400,
-                                child: ChecklistView(dealId: deal.id),
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xl),
-                            SectionCard(
-                              title: 'Stage History',
-                              child: _StageHistoryList(history: stageHistory, state: state),
-                            ),
-                          ],
-                        ),
+                    )
+                    .toList(),
+              ),
+      ),
+    );
+  }
+
+  Widget _contactTab(Deal deal) {
+    final primary = deal.stakeholders.where((s) => s.isPrimary).toList();
+    final name = primary.isNotEmpty
+        ? primary.first.name
+        : (deal.contactName ?? '');
+    final role = primary.isNotEmpty ? primary.first.role : '';
+    final email = primary.isNotEmpty ? primary.first.email : '';
+    if (name.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.xxl),
+        child: EmptyState(
+          icon: Icons.person_outline,
+          title: 'No primary contact',
+          subtitle: 'Set a primary stakeholder to see it here.',
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: SectionCard(
+        title: 'Primary Contact',
+        child: Row(
+          children: [
+            InitialsAvatar(name: name, size: 44),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: AppTextStyles.labelLarge),
+                  if (role.isNotEmpty)
+                    Text(
+                      role,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
                       ),
-                    ],
-                  ),
+                    ),
+                  if (email.isNotEmpty)
+                    LinkText(text: email, email: email, maxLines: 1),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _documentsTab(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: SectionCard(
+        title: 'Documents',
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          ),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.insert_drive_file_outlined,
+                size: 40,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'No documents uploaded yet.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Upload proposals, NDAs, or contracts here — wiring lands with the documents API.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _activityTab(BuildContext context, DealDetailLoaded state) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionCard(
+            title: 'Stage History',
+            child: _StageHistoryList(history: state.stageHistory, state: state),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          SectionCard(
+            title: 'Activity Timeline',
+            child: ActivityTimelineView(
+              entityType: 'Deal',
+              entityId: state.deal.id,
+            ),
           ),
         ],
       ),
@@ -353,7 +508,10 @@ class _DealDetailView extends StatelessWidget {
 
   void _openEditDealDialog(BuildContext context, Deal deal) {
     final bloc = context.read<DealDetailBloc>();
-    showDialog(context: context, builder: (_) => CreateDealDialog(deal: deal)).then((result) {
+    showDialog(
+      context: context,
+      builder: (_) => CreateDealDialog(deal: deal),
+    ).then((result) {
       if (result != null) bloc.add(DealDetailLoadRequested(deal.id));
     });
   }
@@ -366,11 +524,14 @@ class _DealDetailView extends StatelessWidget {
         children: [
           SizedBox(
             width: 140,
-            child: Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary)),
+            child: Text(
+              label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
-          Expanded(
-            child: Text(value, style: AppTextStyles.bodyMedium),
-          ),
+          Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
         ],
       ),
     );
@@ -385,7 +546,12 @@ class _StageHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (history.isEmpty) {
-      return Text('No stage changes recorded yet.', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary));
+      return Text(
+        'No stage changes recorded yet.',
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,16 +567,26 @@ class _StageHistoryList extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      h.fromStageId != null ? '$fromName → $toName' : 'Set to $toName',
+                      h.fromStageId != null
+                          ? '$fromName → $toName'
+                          : 'Set to $toName',
                       style: AppTextStyles.labelMedium,
                     ),
                   ),
-                  Text(DateFormatter.relativeTime(h.createdAt), style: AppTextStyles.caption),
+                  Text(
+                    DateFormatter.relativeTime(h.createdAt),
+                    style: AppTextStyles.caption,
+                  ),
                 ],
               ),
               if (h.note != null && h.note!.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(h.note!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                Text(
+                  h.note!,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ],
             ],
           ),

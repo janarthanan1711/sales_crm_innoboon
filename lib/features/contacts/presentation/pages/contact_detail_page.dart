@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/link_launcher.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
 import '../../domain/entities/contact.dart';
@@ -165,10 +166,10 @@ class _ContactInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row('Email', contact.email),
-          _row('Phone', contact.phone),
-          _row('Alternate Phone', contact.alternatePhone),
-          _row('Social', contact.linkedinUrl),
+          _row('Email', contact.email, email: contact.email),
+          _row('Phone', contact.phone, phone: contact.phone),
+          _row('Alternate Phone', contact.alternatePhone, phone: contact.alternatePhone),
+          _row('Social', contact.linkedinUrl, url: contact.linkedinUrl),
           _row('Account', contact.accountName),
           _row('Owner', contact.ownerName),
         ],
@@ -176,7 +177,9 @@ class _ContactInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String? value) {
+  Widget _row(String label, String? value, {String? email, String? url, String? phone}) {
+    final hasValue = value != null && value.isNotEmpty;
+    final isLink = hasValue && (email != null || url != null || phone != null);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
@@ -184,10 +187,10 @@ class _ContactInfoCard extends StatelessWidget {
         children: [
           Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
           const SizedBox(height: 2),
-          Text(
-            value == null || value.isEmpty ? '—' : value,
-            style: AppTextStyles.bodyMedium,
-          ),
+          if (isLink)
+            LinkText(text: value, email: email, url: url, phone: phone, maxLines: 1)
+          else
+            Text(hasValue ? value : '—', style: AppTextStyles.bodyMedium),
         ],
       ),
     );

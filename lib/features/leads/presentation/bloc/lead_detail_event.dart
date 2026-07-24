@@ -62,12 +62,12 @@ class LeadDetailActivityLogRequested extends LeadDetailEvent {
 class LeadDetailActivityUpdateRequested extends LeadDetailEvent {
   final int leadId;
   final int activityId;
-  final String type;
+  final String? type;
   final String note;
   const LeadDetailActivityUpdateRequested(
     this.leadId,
     this.activityId, {
-    required this.type,
+    this.type,
     required this.note,
   });
   @override

@@ -535,6 +535,8 @@ class _PasswordFormState extends State<_PasswordForm> {
       return;
     }
     setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final authBloc = context.read<AuthBloc>();
     final result = await sl<ChangePasswordUseCase>()(
       ChangePasswordParams(
         currentPassword: _currentController.text,
@@ -544,19 +546,30 @@ class _PasswordFormState extends State<_PasswordForm> {
     if (!mounted) return;
     setState(() => _saving = false);
     result.fold(
-      (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update password: ${f.message}'), backgroundColor: AppColors.error),
+      (f) => messenger.showSnackBar(
+        SnackBar(content: Text(_cleanPasswordError(f.message)), backgroundColor: AppColors.error),
       ),
       (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password updated.'), backgroundColor: AppColors.success),
-        );
         _currentController.clear();
         _newController.clear();
         _confirmController.clear();
-        setState(() {});
+        // Password changes invalidate the current session — force a fresh
+        // sign-in.
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Password updated. Please sign in again.'), backgroundColor: AppColors.success),
+        );
+        authBloc.add(const AuthLogoutRequested());
       },
     );
+  }
+
+  /// Turns a raw backend/exception string into a short, user-facing message.
+  String _cleanPasswordError(String raw) {
+    final m = raw.toLowerCase();
+    if (m.contains('current password') || m.contains('incorrect') || m.contains('wrong')) {
+      return 'Current password is incorrect.';
+    }
+    return 'Could not update password. Please try again.';
   }
 
   @override

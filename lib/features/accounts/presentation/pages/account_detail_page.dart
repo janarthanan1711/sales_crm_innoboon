@@ -20,8 +20,10 @@ import '../../../contacts/domain/usecases/contact_usecases.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
-import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
 import '../../../../features/activity/presentation/widgets/activity_timeline_view.dart';
+import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
+import '../../../../core/utils/link_launcher.dart';
+import '../../../deals/presentation/pages/create_deal_page.dart';
 import '../../../documents/domain/entities/account_document.dart';
 import '../../../documents/domain/usecases/get_account_documents_usecase.dart';
 
@@ -51,7 +53,10 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {}); // header actions depend on the tab index
+    });
   }
 
   @override
@@ -134,23 +139,23 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                   ],
                 );
 
+                // "New Contact" only makes sense from the Overview / Contacts
+                // tabs (index 0 / 1).
+                final showAddContact = _tabController.index <= 1;
                 final actions = [
                   OutlinedButton.icon(
                     onPressed: () => _showEditAccountDialog(context, account),
                     icon: const Icon(Icons.edit, size: 16),
                     label: const Text('Edit Account'),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => _tabController.animateTo(1),
-                    icon: const Icon(Icons.person_add_alt_1, size: 16),
-                    label: const Text('New Contact'),
-                  ),
+                  if (showAddContact)
+                    OutlinedButton.icon(
+                      onPressed: () => _tabController.animateTo(1),
+                      icon: const Icon(Icons.person_add_alt_1, size: 16),
+                      label: const Text('New Contact'),
+                    ),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Deal creation from an account is coming soon.')),
-                      );
-                    },
+                    onPressed: () => _openNewDeal(context, account),
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('New Deal'),
                   ),
@@ -201,7 +206,6 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
             Tab(text: 'Contacts${_countSuffix(account.contactCount, state.contacts.length)}'),
             Tab(text: 'Deals${_countSuffix(account.dealCount, state.deals.length)}'),
             const Tab(text: 'Documents'),
-            const Tab(text: 'Pre-Sales Checklist'),
             const Tab(text: 'Activity Log'),
           ],
         ),
@@ -215,16 +219,6 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
               _ContactsTab(account: account, contacts: state.contacts),
               _DealsTab(deals: state.deals),
               _DocumentsTab(accountId: account.id),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: state.deals.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.checklist_outlined,
-                        title: 'No deal yet',
-                        subtitle: 'The pre-sales checklist becomes available once this account has a deal.',
-                      )
-                    : ChecklistView(dealId: state.deals.first.id),
-              ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.xxl),
                 child: ActivityTimelineView(entityType: 'Account', entityId: account.id),
@@ -242,6 +236,17 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
   String _countSuffix(int accountCount, int loadedLength) {
     final n = loadedLength > 0 ? loadedLength : accountCount;
     return n > 0 ? ' ($n)' : '';
+  }
+
+  Future<void> _openNewDeal(BuildContext context, Account account) async {
+    final bloc = context.read<AccountDetailBloc>();
+    final created = await showDialog<dynamic>(
+      context: context,
+      builder: (_) => CreateDealDialog(presetAccount: account),
+    );
+    // The dialog pops non-null on a successful save — refresh so the new deal
+    // shows in the Deals tab and count.
+    if (created != null) bloc.add(AccountDetailLoadRequested(account.id));
   }
 
   Future<void> _showEditAccountDialog(BuildContext context, Account account) async {
@@ -365,138 +370,163 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fields the backend has no model for yet come back null — show a clear
-    // "not available" placeholder, never a fake "0".
-    const naPlaceholder = 'Not available yet';
+    // Left: Account Information + Pre-Sales Checklist (figma).
+    final left = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionCard(
+          title: 'Account Information',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _labeled(
+                      'Domain',
+                      (account.domain != null && account.domain!.isNotEmpty)
+                          ? LinkText(text: account.domain!, url: account.domain, maxLines: 1)
+                          : Text('Not set', style: AppTextStyles.bodyMedium),
+                    ),
+                  ),
+                  Expanded(
+                    child: _labeled('Industry', Text(account.industry ?? 'Not set', style: AppTextStyles.bodyMedium)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _labeled(
+                'Description',
+                Text(
+                  account.description.isEmpty ? 'No description' : account.description,
+                  style: AppTextStyles.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SectionCard(
+          title: 'Pre-Sales Checklist',
+          child: deals.isEmpty
+              ? Text(
+                  'The pre-sales checklist becomes available once this account has a deal.',
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                )
+              : SizedBox(height: 420, child: ChecklistView(dealId: deals.first.id)),
+        ),
+      ],
+    );
+
+    // Right: Key Contacts + Active Deals (figma).
+    final right = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionCard(
+          title: 'Key Contacts',
+          child: contacts.isEmpty
+              ? Text('No contacts added yet', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary))
+              : Column(children: contacts.take(6).map(_keyContactRow).toList()),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SectionCard(
+          title: 'Active Deals',
+          child: deals.isEmpty
+              ? Text('No active deals', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary))
+              : Column(children: deals.map((d) => _activeDealRow(context, d)).toList()),
+        ),
+      ],
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left column (Main info)
-          Expanded(
-            flex: 7,
-            child: Column(
+      child: context.isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [left, const SizedBox(height: AppSpacing.xl), right],
+            )
+          : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionCard(
-                  title: 'Account Information',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _infoRow('Industry', account.industry ?? 'Not set'),
-                      _infoRow('City', account.city ?? 'Not set'),
-                      _infoRow('Account Owner', account.primaryOwner),
-                      if (account.linkedinUrl != null && account.linkedinUrl!.isNotEmpty)
-                        _infoRow('LinkedIn', account.linkedinUrl!),
-                      _infoRow('Description', account.description.isEmpty ? 'No description' : account.description),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                SectionCard(
-                  title: 'Key Contacts',
-                  child: contacts.isEmpty
-                      ? const Text('No contacts added yet')
-                      : Column(
-                          children: contacts.map((c) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                            child: Row(
-                              children: [
-                                InitialsAvatar(name: c.fullName.isEmpty ? (c.email ?? '?') : c.fullName, size: 36),
-                                const SizedBox(width: AppSpacing.md),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Flexible(child: Text(c.fullName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
-                                          if (c.isPrimary) ...[
-                                            const SizedBox(width: AppSpacing.xs),
-                                            const _PrimaryBadge(),
-                                          ],
-                                        ],
-                                      ),
-                                      Text(
-                                        [c.jobTitle, c.email].where((s) => s != null && s.isNotEmpty).join(' • '),
-                                        style: AppTextStyles.bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )).toList(),
-                        ),
-                ),
+                Expanded(flex: 7, child: left),
+                const SizedBox(width: AppSpacing.xxl),
+                Expanded(flex: 3, child: right),
               ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.xxl),
-
-          // Right column (Side panels)
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionCard(
-                  title: 'Account Health',
-                  child: Column(
-                    children: [
-                      _statRow('Open Deal Value', _money(state.openDealValue), Icons.trending_up),
-                      const SizedBox(height: AppSpacing.md),
-                      _statRow('Total ARR', state.totalArr != null ? _money(state.totalArr!) : naPlaceholder, Icons.savings_outlined),
-                      const SizedBox(height: AppSpacing.md),
-                      _statRow('Active Deals', '${deals.length}', Icons.handshake_outlined),
-                      const SizedBox(height: AppSpacing.md),
-                      _statRow('Total Contacts', '${contacts.length}', Icons.people_outline),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                SectionCard(
-                  title: 'Engagement',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _infoRow('Last Activity', state.lastActivity ?? naPlaceholder),
-                      _infoRow('Next Step', state.nextStep ?? naPlaceholder),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _labeled(String label, Widget value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 4),
+        value,
+      ],
+    );
+  }
+
+  Widget _keyContactRow(Contact c) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary))),
-          Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
+          InitialsAvatar(name: c.fullName.isEmpty ? (c.email ?? '?') : c.fullName, size: 36),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(child: Text(c.fullName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                    if (c.isPrimary) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      const _PrimaryBadge(),
+                    ],
+                  ],
+                ),
+                Text(
+                  [c.jobTitle, c.email].where((s) => s != null && s.isNotEmpty).join(' • '),
+                  style: AppTextStyles.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _statRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.sm),
-        Text(label, style: AppTextStyles.bodyMedium),
-        const Spacer(),
-        Text(value, style: AppTextStyles.h3),
-      ],
+  Widget _activeDealRow(BuildContext context, Deal d) {
+    return InkWell(
+      onTap: () => context.go('/deals/${d.id}'),
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(d.name, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: AppSpacing.sm),
+                Text(_money(d.value), style: AppTextStyles.labelMedium),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(d.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -929,7 +959,6 @@ class _DocumentsTabState extends State<_DocumentsTab> {
   static const _pageSize = 3;
 
   final List<AccountDocument> _all = [];
-  final Set<String> _expanded = {};
   String _filter = '';
   int _page = 0;
   bool _loading = true;
@@ -1062,7 +1091,6 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                       child: Row(
                         children: [
                           _header('NAME', flex: 5),
-                          _header('VERSION', flex: 2),
                           _header('UPLOADED BY', flex: 3),
                           _header('DATE', flex: 2),
                           _header('ACTIONS', flex: 2),
@@ -1075,17 +1103,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final doc = pageItems[index];
-                          return _DocumentRow(
-                            document: doc,
-                            expanded: _expanded.contains(doc.id),
-                            onToggleExpand: doc.hasHistory
-                                ? () => setState(() {
-                                      _expanded.contains(doc.id)
-                                          ? _expanded.remove(doc.id)
-                                          : _expanded.add(doc.id);
-                                    })
-                                : null,
-                          );
+                          return _DocumentRow(document: doc);
                         },
                       ),
                     ),
@@ -1126,11 +1144,8 @@ class _DocumentsTabState extends State<_DocumentsTab> {
 }
 
 class _DocumentRow extends StatelessWidget {
-  const _DocumentRow({required this.document, required this.expanded, required this.onToggleExpand});
+  const _DocumentRow({required this.document});
   final AccountDocument document;
-  final bool expanded;
-  /// Null when there's no version history to expand.
-  final VoidCallback? onToggleExpand;
 
   String _size(int bytes) {
     if (bytes >= 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
@@ -1159,9 +1174,7 @@ class _DocumentRow extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     return Column(
       children: [
-        InkWell(
-          onTap: onToggleExpand,
-          child: Padding(
+        Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
             child: Row(
               children: [
@@ -1169,11 +1182,6 @@ class _DocumentRow extends StatelessWidget {
                   flex: 5,
                   child: Row(
                     children: [
-                      if (onToggleExpand != null)
-                        Icon(expanded ? Icons.expand_more : Icons.chevron_right, size: 18, color: AppColors.textMuted)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: AppSpacing.xs),
                       Icon(_icon(document.extension), size: 22, color: AppColors.primary),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -1188,7 +1196,6 @@ class _DocumentRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                Expanded(flex: 2, child: Text(document.version, style: AppTextStyles.tableCell.copyWith(color: AppColors.primary))),
                 Expanded(
                   flex: 3,
                   child: Row(
@@ -1221,39 +1228,6 @@ class _DocumentRow extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-        if (expanded && document.hasHistory)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, 0, AppSpacing.lg, AppSpacing.md),
-            color: AppColors.background,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.history, size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text('Version History', style: AppTextStyles.labelMedium),
-                    ],
-                  ),
-                ),
-                ...document.versions.map((v) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                      child: Row(
-                        children: [
-                          SizedBox(width: 60, child: Text(v.version, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600))),
-                          SizedBox(width: 140, child: Text(v.modifiedByName, style: AppTextStyles.bodySmall)),
-                          SizedBox(width: 120, child: Text(DateFormat('MMM d, yyyy').format(v.date), style: AppTextStyles.bodySmall)),
-                          Expanded(child: Text(v.notes, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
-                        ],
-                      ),
-                    )),
               ],
             ),
           ),

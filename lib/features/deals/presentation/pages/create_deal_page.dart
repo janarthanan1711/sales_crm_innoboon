@@ -11,6 +11,10 @@ import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/create_deal_usecase.dart';
 import '../../domain/usecases/update_deal_usecase.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
+import '../../../contacts/domain/entities/contact.dart';
+import '../../../contacts/domain/usecases/contact_usecases.dart';
+
+const List<String> _kDealTiers = ['diamond', 'gold', 'silver', 'bronze'];
 
 /// Create/edit deal dialog — wired to the real `/deals` endpoints.
 /// Returns the created/updated [Deal] via `Navigator.pop` on success.
@@ -38,6 +42,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   DateTime? _closeDate;
   Account? _selectedAccount;
   int? _selectedOwnerId;
+  String? _tier;
+  int? _contactId;
+  List<Contact> _contacts = [];
   bool _saving = false;
 
   List<Account> _accounts = [];
@@ -58,11 +65,25 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
           ? '${_closeDate!.month.toString().padLeft(2, '0')}/${_closeDate!.day.toString().padLeft(2, '0')}/${_closeDate!.year}'
           : '',
     );
+    _tier = widget.deal?.tier;
     if (isEdit) {
       _stageId = widget.deal!.stageId;
       _selectedOwnerId = widget.deal!.ownerId;
+      _contactId = widget.deal!.contactIds.isNotEmpty ? widget.deal!.contactIds.first : null;
     }
     _loadOptions();
+  }
+
+  Future<void> _loadContacts() async {
+    final acc = _selectedAccount;
+    final id = acc == null ? null : int.tryParse(acc.id);
+    if (id == null) {
+      setState(() => _contacts = []);
+      return;
+    }
+    final res = await sl<GetContactsUseCase>()(GetContactsParams(accountId: id, limit: 100));
+    if (!mounted) return;
+    res.fold((_) {}, (page) => setState(() => _contacts = page.items));
   }
 
   Future<void> _loadOptions() async {
@@ -83,6 +104,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
         _selectedAccount = matches.isEmpty ? null : matches.first;
       }
     });
+    if (_selectedAccount != null) _loadContacts();
   }
 
   @override
@@ -121,6 +143,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId,
               ownerId: _selectedOwnerId,
+              contactIds: _contactId != null ? [_contactId!] : null,
             ),
           )
         : await sl<CreateDealUseCase>()(
@@ -131,6 +154,8 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId!,
               ownerId: _selectedOwnerId,
+              tier: _tier,
+              contactIds: _contactId != null ? [_contactId!] : null,
             ),
           );
 
@@ -238,7 +263,14 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                                     .toList(),
                                 onChanged: widget.presetAccount != null
                                     ? null
-                                    : (v) => setState(() => _selectedAccount = v),
+                                    : (v) {
+                                        setState(() {
+                                          _selectedAccount = v;
+                                          _contactId = null;
+                                          _contacts = [];
+                                        });
+                                        _loadContacts();
+                                      },
                               ),
                             ),
                           ),
@@ -330,6 +362,44 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                           items: _users.map((u) => DropdownMenuItem<int?>(value: u.id, child: Text(u.displayName))).toList(),
                           onChanged: (v) => setState(() => _selectedOwnerId = v),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildField(
+                              'Tier',
+                              false,
+                              DropdownButtonFormField<String>(
+                                value: _tier,
+                                decoration: _inputDecoration('Select tier'),
+                                items: _kDealTiers
+                                    .map((t) => DropdownMenuItem(
+                                        value: t,
+                                        child: Text('${t[0].toUpperCase()}${t.substring(1)}')))
+                                    .toList(),
+                                onChanged: (v) => setState(() => _tier = v),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildField(
+                              'Contact',
+                              false,
+                              DropdownButtonFormField<int?>(
+                                value: _contacts.any((c) => c.id == _contactId) ? _contactId : null,
+                                decoration: _inputDecoration(
+                                  _selectedAccount == null ? 'Select an account first' : 'Select contact',
+                                ),
+                                items: _contacts
+                                    .map((c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.fullName, overflow: TextOverflow.ellipsis)))
+                                    .toList(),
+                                onChanged: _contacts.isEmpty ? null : (v) => setState(() => _contactId = v),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

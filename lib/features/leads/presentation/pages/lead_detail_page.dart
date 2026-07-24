@@ -8,6 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/auth/permissions.dart';
+import '../../../../core/utils/link_launcher.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
@@ -265,11 +266,14 @@ class _Header extends StatelessWidget {
             runSpacing: AppSpacing.sm,
             children: [
               OutlinedButton.icon(
-                onPressed: () {
-                  context.push(
+                onPressed: () async {
+                  final bloc = context.read<LeadDetailBloc>();
+                  await context.push(
                     RoutePaths.editLead.replaceFirst(':id', '${lead.id}'),
                     extra: lead,
                   );
+                  // Refresh so edits show without navigating away and back.
+                  bloc.add(LeadDetailLoadRequested(lead.id));
                 },
                 icon: const Icon(Icons.edit, size: 16),
                 label: const Text('Edit Lead'),
@@ -410,14 +414,16 @@ class _ContactInfoCard extends StatelessWidget {
           _linkText(lead.email),
           const SizedBox(height: AppSpacing.md),
           _label('Phone'),
-          Text(lead.phone ?? 'Not provided', style: AppTextStyles.bodyMedium),
+          (lead.phone != null && lead.phone!.isNotEmpty)
+              ? LinkText(text: lead.phone!, phone: lead.phone)
+              : Text('Not provided', style: AppTextStyles.bodyMedium),
           const Divider(height: AppSpacing.xl * 1.2),
           if (lead.domain != null) ...[
             Row(
               children: [
                 const Icon(Icons.language, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: AppSpacing.xs),
-                Expanded(child: Text(lead.domain!, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary))),
+                Expanded(child: LinkText(text: lead.domain!, url: lead.domain, maxLines: 1)),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -427,13 +433,7 @@ class _ContactInfoCard extends StatelessWidget {
               children: [
                 const Icon(Icons.link, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    lead.linkedinUrl!,
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                Expanded(child: LinkText(text: lead.linkedinUrl!, url: lead.linkedinUrl, maxLines: 1)),
               ],
             ),
           const Divider(height: AppSpacing.xl * 1.2),
@@ -472,8 +472,7 @@ class _ContactInfoCard extends StatelessWidget {
   Widget _label(String text) =>
       Text(text, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary));
 
-  Widget _linkText(String text) =>
-      Text(text, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary));
+  Widget _linkText(String text) => LinkText(text: text, email: text);
 }
 
 class _RelatedRecordsCard extends StatelessWidget {
@@ -532,9 +531,10 @@ class _OverviewCenter extends StatelessWidget {
     final lead = state.lead;
     final activityCount = lead.activityCount ?? (lead.activities?.length ?? 0);
     final lastActivity = _mostRecentActivity(lead);
-    final daysInSystem = lead.createdAt != null
-        ? DateTime.now().difference(lead.createdAt!).inDays
+    final inSystem = lead.createdAt != null
+        ? DateTime.now().difference(lead.createdAt!)
         : null;
+    final inSystemLabel = inSystem == null ? null : _formatDuration(inSystem);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,8 +560,8 @@ class _OverviewCenter extends StatelessWidget {
                       Text('Ready to convert?', style: AppTextStyles.labelLarge),
                       const SizedBox(height: 2),
                       Text(
-                        daysInSystem != null
-                            ? 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'} over $daysInSystem day${daysInSystem == 1 ? '' : 's'}.'
+                        inSystemLabel != null
+                            ? 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'} over $inSystemLabel.'
                             : 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'}.',
                         style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                       ),
@@ -590,7 +590,7 @@ class _OverviewCenter extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: _statTile(
-                daysInSystem != null ? '$daysInSystem days' : '—',
+                inSystemLabel ?? '—',
                 'In System',
               ),
             ),
@@ -612,6 +612,21 @@ class _OverviewCenter extends StatelessWidget {
     final activities = lead.activities;
     if (activities == null || activities.isEmpty) return null;
     return activities.map((a) => a.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  /// Human duration that stays consistent with "Created … ago": shows hours
+  /// (and minutes) for young leads rather than rounding down to "0 days".
+  String _formatDuration(Duration d) {
+    if (d.inDays >= 1) {
+      final days = d.inDays;
+      return '$days day${days == 1 ? '' : 's'}';
+    }
+    if (d.inHours >= 1) {
+      final hours = d.inHours;
+      return '$hours hour${hours == 1 ? '' : 's'}';
+    }
+    final mins = d.inMinutes < 1 ? 1 : d.inMinutes;
+    return '$mins minute${mins == 1 ? '' : 's'}';
   }
 
   Widget _statTile(String value, String label) {
@@ -931,69 +946,58 @@ class _ActivityRow extends StatelessWidget {
   }
 
   void _showEditDialog(BuildContext context) {
-    String type = activity.type;
     final noteController = TextEditingController(text: activity.note);
     final bloc = context.read<LeadDetailBloc>();
 
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setState) {
-            return AlertDialog(
-              title: const Text('Edit Activity'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Type'),
-                  const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
-                    value: type,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    items: leadActivityTypeLabels.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-                        .toList(),
-                    onChanged: (v) => setState(() => type = v!),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const Text('Note'),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ],
+        return AlertDialog(
+          title: const Text('Edit Activity'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // The activity type is fixed once logged — only the note can be
+              // edited. Show the type read-only for context.
+              Text(
+                labelForWireValue(leadActivityTypeLabels, activity.type),
+                style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
+              const SizedBox(height: AppSpacing.md),
+              const Text('Note'),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: noteController,
+                maxLines: 4,
+                autofocus: true,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (noteController.text.trim().isEmpty) return;
-                    bloc.add(
-                      LeadDetailActivityUpdateRequested(
-                        leadId,
-                        activity.id,
-                        type: type,
-                        note: noteController.text.trim(),
-                      ),
-                    );
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (noteController.text.trim().isEmpty) return;
+                // Send only the note — the type is immutable on edit.
+                bloc.add(
+                  LeadDetailActivityUpdateRequested(
+                    leadId,
+                    activity.id,
+                    note: noteController.text.trim(),
+                  ),
+                );
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Save'),
+            ),
+          ],
         );
       },
     );
