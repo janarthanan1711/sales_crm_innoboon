@@ -37,6 +37,8 @@ class ApiEndpoints {
   // ─── Contacts ──────────────────────────────────────────
   static const String contacts = '/contacts';
   static String contactById(String id) => '/contacts/$id';
+  static String contactOverview(String id) => '/contacts/$id/overview';
+  static String contactDeals(String id) => '/contacts/$id/deals';
 
   // ─── Deals ─────────────────────────────────────────────
   // Stage changes go through the same PATCH /deals/{id} used for any other

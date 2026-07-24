@@ -16,6 +16,8 @@ import '../../features/accounts/presentation/pages/account_detail_page.dart';
 import '../../features/accounts/presentation/pages/create_account_page.dart';
 import '../../features/deals/presentation/pages/deals_list_page.dart';
 import '../../features/deals/presentation/pages/deal_detail_page.dart';
+import '../../features/contacts/presentation/pages/contacts_list_page.dart';
+import '../../features/contacts/presentation/pages/contact_detail_page.dart';
 
 import '../../features/staff_augmentation/presentation/pages/staff_augmentation_page.dart';
 import '../../features/documents/presentation/pages/documents_page.dart';
@@ -121,6 +123,16 @@ class AppRouter {
             path: RoutePaths.dealDetail,
             builder: (context, state) =>
                 DealDetailPage(dealId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: RoutePaths.contacts,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ContactsListPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.contactDetail,
+            builder: (context, state) =>
+                ContactDetailPage(contactId: state.pathParameters['id'] ?? ''),
           ),
           GoRoute(
             path: RoutePaths.staffAugmentation,

@@ -20,6 +20,15 @@ class Contact extends Equatable {
   final bool isPrimary;
   final int? accountId;
 
+  /// Derived from the contact's "representative" account link (see the
+  /// Contacts API "Read this first" note): oldest primary link, else oldest
+  /// link overall. Null when the contact has no linked account, or on the
+  /// bare `GET /contacts/{id}` shape which omits them.
+  final String? accountName;
+  final int? ownerId;
+  final String? ownerName;
+  final String? tier;
+
   const Contact({
     required this.id,
     required this.firstName,
@@ -31,6 +40,10 @@ class Contact extends Equatable {
     this.linkedinUrl,
     this.isPrimary = false,
     this.accountId,
+    this.accountName,
+    this.ownerId,
+    this.ownerName,
+    this.tier,
   });
 
   String get fullName =>
@@ -47,6 +60,10 @@ class Contact extends Equatable {
     String? linkedinUrl,
     bool? isPrimary,
     int? accountId,
+    String? accountName,
+    int? ownerId,
+    String? ownerName,
+    String? tier,
   }) {
     return Contact(
       id: id ?? this.id,
@@ -59,6 +76,10 @@ class Contact extends Equatable {
       linkedinUrl: linkedinUrl ?? this.linkedinUrl,
       isPrimary: isPrimary ?? this.isPrimary,
       accountId: accountId ?? this.accountId,
+      accountName: accountName ?? this.accountName,
+      ownerId: ownerId ?? this.ownerId,
+      ownerName: ownerName ?? this.ownerName,
+      tier: tier ?? this.tier,
     );
   }
 
@@ -74,5 +95,68 @@ class Contact extends Equatable {
     linkedinUrl,
     isPrimary,
     accountId,
+    accountName,
+    ownerId,
+    ownerName,
+    tier,
   ];
+}
+
+/// The Contact Detail "Overview" tab payload (`GET /contacts/{id}/overview`):
+/// the contact plus its derived representative-account fields (already on
+/// [contact]) and related-record counts. Per the API, only [dealCount] is
+/// real — the rest have no backing model yet and should render as empty state.
+class ContactOverview extends Equatable {
+  final Contact contact;
+  final int dealCount;
+  final int? taskCount;
+  final int? logCount;
+  final List<String>? tags;
+  final String? about;
+  final DateTime? lastActivity;
+
+  const ContactOverview({
+    required this.contact,
+    this.dealCount = 0,
+    this.taskCount,
+    this.logCount,
+    this.tags,
+    this.about,
+    this.lastActivity,
+  });
+
+  @override
+  List<Object?> get props =>
+      [contact, dealCount, taskCount, logCount, tags, about, lastActivity];
+}
+
+/// One row of the Contact Detail "Deals" tab (`GET /contacts/{id}/deals`).
+/// A lightweight view — the deal-stage *name* isn't in this payload (only
+/// `stage_id`), so the UI shows the id-derived stage or a neutral label.
+class ContactDeal extends Equatable {
+  final int id;
+  final String dealName;
+  final int? accountId;
+  final double value;
+  final String? currency;
+  final int? stageId;
+  final String? tier;
+  final int? ownerId;
+  final DateTime? expectedCloseDate;
+
+  const ContactDeal({
+    required this.id,
+    required this.dealName,
+    this.accountId,
+    this.value = 0,
+    this.currency,
+    this.stageId,
+    this.tier,
+    this.ownerId,
+    this.expectedCloseDate,
+  });
+
+  @override
+  List<Object?> get props =>
+      [id, dealName, accountId, value, currency, stageId, tier, ownerId, expectedCloseDate];
 }

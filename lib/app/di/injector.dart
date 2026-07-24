@@ -66,6 +66,8 @@ import '../../features/contacts/data/datasources/contact_remote_datasource_impl.
 import '../../features/contacts/data/repositories/contact_repository_impl.dart';
 import '../../features/contacts/domain/repositories/contact_repository.dart';
 import '../../features/contacts/domain/usecases/contact_usecases.dart';
+import '../../features/contacts/presentation/bloc/contacts_list_bloc.dart';
+import '../../features/contacts/presentation/bloc/contact_detail_bloc.dart';
 
 // Deals feature
 import '../../features/deals/data/datasources/deal_remote_datasource_impl.dart';
@@ -266,6 +268,22 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => UpsertAccountContactUseCase(sl()));
   sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
+  sl.registerLazySingleton(() => GetContactsUseCase(sl()));
+  sl.registerLazySingleton(() => GetContactByIdUseCase(sl()));
+  sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
+  sl.registerLazySingleton(() => GetContactDealsUseCase(sl()));
+  sl.registerFactory(
+    () => ContactsListBloc(
+      getContactsUseCase: sl(),
+      deleteContactUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => ContactDetailBloc(
+      getContactOverviewUseCase: sl(),
+      getContactDealsUseCase: sl(),
+    ),
+  );
 
   // ─── Deals Feature ──────────────────────────────────
   sl.registerLazySingleton<DealRemoteDataSource>(

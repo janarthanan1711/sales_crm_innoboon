@@ -18,6 +18,8 @@ class RoutePaths {
   static const String deals = '/deals';
   static const String dealDetail = '/deals/:id';
   static const String createDeal = '/deals/create';
+  static const String contacts = '/contacts';
+  static const String contactDetail = '/contacts/:id';
   static const String staffAugmentation = '/staff-augmentation';
   static const String documents = '/documents';
   static const String activity = '/activity';

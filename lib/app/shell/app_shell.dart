@@ -68,6 +68,13 @@ const List<NavItem> _mainNavItems = [
     requiredPermissions: ['accounts.access', 'accounts.view_all'],
   ),
   NavItem(
+    label: 'Contacts',
+    icon: Icons.contacts_outlined,
+    activeIcon: Icons.contacts,
+    path: RoutePaths.contacts,
+    requiredPermissions: ['contacts.access'],
+  ),
+  NavItem(
     label: 'Analytics',
     icon: Icons.analytics_outlined,
     activeIcon: Icons.analytics,
@@ -110,6 +117,13 @@ const List<NavItem> _sidebarMainItems = [
     activeIcon: Icons.business,
     path: RoutePaths.accounts,
     requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Contacts',
+    icon: Icons.contacts_outlined,
+    activeIcon: Icons.contacts,
+    path: RoutePaths.contacts,
+    requiredPermissions: ['contacts.access'],
   ),
   NavItem(
     label: 'Staff Augmentation',

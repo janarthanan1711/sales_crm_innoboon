@@ -9,9 +9,52 @@ class ContactRepositoryImpl implements ContactRepository {
   ContactRepositoryImpl({required this.remoteDataSource});
 
   @override
+  Future<Either<Failure, ({List<Contact> items, int total})>> getContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      return Right(await remoteDataSource.getContacts(
+        ownerId: ownerId,
+        accountId: accountId,
+        tier: tier,
+        isPrimary: isPrimary,
+        search: search,
+        limit: limit,
+        offset: offset,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, Contact>> getContactById(int id) async {
     try {
       return Right(await remoteDataSource.getContactById(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ContactOverview>> getContactOverview(int id) async {
+    try {
+      return Right(await remoteDataSource.getContactOverview(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ContactDeal>>> getContactDeals(int id) async {
+    try {
+      return Right(await remoteDataSource.getContactDeals(id));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

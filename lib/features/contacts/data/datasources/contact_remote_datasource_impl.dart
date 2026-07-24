@@ -12,10 +12,66 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
   ContactRemoteDataSourceImpl({required this.dioClient});
 
   @override
+  Future<({List<Contact> items, int total})> getContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await dioClient.get(
+        ApiEndpoints.contacts,
+        queryParameters: {
+          if (ownerId != null) 'owner_id': ownerId,
+          if (accountId != null) 'account_id': accountId,
+          if (tier != null) 'tier': tier,
+          if (isPrimary != null) 'is_primary': isPrimary,
+          if (search != null && search.isNotEmpty) 'search': search,
+          'limit': limit,
+          'offset': offset,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      final items = (data['items'] as List<dynamic>)
+          .map((e) => ContactModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return (items: items, total: data['total'] as int? ?? items.length);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
   Future<Contact> getContactById(int id) async {
     try {
       final response = await dioClient.get(ApiEndpoints.contactById('$id'));
       return ContactModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<ContactOverview> getContactOverview(int id) async {
+    try {
+      final response = await dioClient.get(ApiEndpoints.contactOverview('$id'));
+      return ContactModel.overviewFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<ContactDeal>> getContactDeals(int id) async {
+    try {
+      final response = await dioClient.get(ApiEndpoints.contactDeals('$id'));
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => ContactModel.dealFromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw _normalize(e);
     }
