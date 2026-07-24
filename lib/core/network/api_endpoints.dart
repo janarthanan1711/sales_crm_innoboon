@@ -33,6 +33,12 @@ class ApiEndpoints {
   // GET lists contacts; POST creates-or-updates + links (contact_accounts).
   static String accountContacts(String id) => '/accounts/$id/contacts';
   static String accountDeals(String id) => '/accounts/$id/deals';
+  static String accountActivities(String id) => '/accounts/$id/activities';
+  static String accountActivityById(String accountId, String activityId) =>
+      '/accounts/$accountId/activities/$activityId';
+  static String accountDocuments(String id) => '/accounts/$id/documents';
+  static String accountDocumentById(String accountId, String documentId) =>
+      '/accounts/$accountId/documents/$documentId';
 
   // ─── Contacts ──────────────────────────────────────────
   static const String contacts = '/contacts';

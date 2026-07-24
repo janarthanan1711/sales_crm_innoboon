@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_activity.dart';
 import '../../domain/entities/account_overview.dart';
 import '../../domain/repositories/account_repository.dart';
 
@@ -121,6 +122,74 @@ class AccountRepositoryImpl implements AccountRepository {
   ) async {
     try {
       return Right(await remoteDataSource.getAccountOverview(accountId));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<AccountActivity>>> listActivities(
+    String accountId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      return Right(await remoteDataSource.listActivities(
+        accountId,
+        types: types,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AccountActivity>> logActivity(
+    String accountId, {
+    required String type,
+    required String note,
+  }) async {
+    try {
+      return Right(await remoteDataSource.logActivity(
+        accountId,
+        type: type,
+        note: note,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AccountActivity>> updateActivity(
+    String accountId,
+    String activityId, {
+    String? type,
+    String? note,
+  }) async {
+    try {
+      return Right(await remoteDataSource.updateActivity(
+        accountId,
+        activityId,
+        type: type,
+        note: note,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteActivity(
+    String accountId,
+    String activityId,
+  ) async {
+    try {
+      await remoteDataSource.deleteActivity(accountId, activityId);
+      return const Right(unit);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

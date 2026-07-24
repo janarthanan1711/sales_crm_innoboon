@@ -5,8 +5,10 @@ import '../../../../core/error/exceptions.dart';
 import '../../../contacts/data/models/contact_model.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_activity.dart';
 import '../../domain/entities/account_overview.dart';
 import '../../domain/repositories/account_repository.dart';
+import '../models/account_activity_model.dart';
 import '../models/account_model.dart';
 import '../models/account_overview_model.dart';
 
@@ -152,6 +154,85 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  @override
+  Future<List<AccountActivity>> listActivities(
+    String accountId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      final response = await _dioClient.get(
+        ApiEndpoints.accountActivities(accountId),
+        queryParameters: {
+          if (types != null && types.isNotEmpty) 'types': types,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
+        },
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => accountActivityFromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<AccountActivity> logActivity(
+    String accountId, {
+    required String type,
+    required String note,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        ApiEndpoints.accountActivities(accountId),
+        data: {'type': type, 'note': note},
+      );
+      return accountActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<AccountActivity> updateActivity(
+    String accountId,
+    String activityId, {
+    String? type,
+    String? note,
+  }) async {
+    try {
+      final response = await _dioClient.patch(
+        ApiEndpoints.accountActivityById(accountId, activityId),
+        data: {
+          if (type != null) 'type': type,
+          if (note != null) 'note': note,
+        },
+      );
+      return accountActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> deleteActivity(String accountId, String activityId) async {
+    try {
+      await _dioClient.delete(
+        ApiEndpoints.accountActivityById(accountId, activityId),
+      );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 
   Exception _normalize(DioException e) {

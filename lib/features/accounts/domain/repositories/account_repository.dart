@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../entities/account.dart';
+import '../entities/account_activity.dart';
 import '../entities/account_overview.dart';
 
 abstract class AccountRepository {
@@ -42,6 +43,28 @@ abstract class AccountRepository {
 
   Future<Either<Failure, List<Contact>>> getAccountContacts(String accountId);
   Future<Either<Failure, AccountOverview>> getAccountOverview(String accountId);
+
+  Future<Either<Failure, List<AccountActivity>>> listActivities(
+    String accountId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
+  Future<Either<Failure, AccountActivity>> logActivity(
+    String accountId, {
+    required String type,
+    required String note,
+  });
+  Future<Either<Failure, AccountActivity>> updateActivity(
+    String accountId,
+    String activityId, {
+    String? type,
+    String? note,
+  });
+  Future<Either<Failure, Unit>> deleteActivity(
+    String accountId,
+    String activityId,
+  );
 }
 
 abstract class AccountRemoteDataSource {
@@ -78,4 +101,23 @@ abstract class AccountRemoteDataSource {
   });
   Future<List<Contact>> getAccountContacts(String accountId);
   Future<AccountOverview> getAccountOverview(String accountId);
+
+  Future<List<AccountActivity>> listActivities(
+    String accountId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
+  Future<AccountActivity> logActivity(
+    String accountId, {
+    required String type,
+    required String note,
+  });
+  Future<AccountActivity> updateActivity(
+    String accountId,
+    String activityId, {
+    String? type,
+    String? note,
+  });
+  Future<void> deleteActivity(String accountId, String activityId);
 }

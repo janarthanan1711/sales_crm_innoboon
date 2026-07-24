@@ -58,6 +58,7 @@ import '../../features/accounts/domain/usecases/create_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_overview_usecase.dart';
+import '../../features/accounts/domain/usecases/account_activity_usecases.dart';
 import '../../features/accounts/presentation/bloc/accounts_list_bloc.dart';
 import '../../features/accounts/presentation/bloc/account_detail_bloc.dart';
 
@@ -111,10 +112,11 @@ import '../../features/notifications/data/repositories/notification_repository_i
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/domain/usecases/notification_usecases.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
-import '../../features/documents/data/datasources/document_mock_datasource.dart';
+import '../../features/documents/data/datasources/document_remote_datasource_impl.dart';
 import '../../features/documents/data/repositories/document_repository_impl.dart';
 import '../../features/documents/domain/repositories/document_repository.dart';
 import '../../features/documents/domain/usecases/get_account_documents_usecase.dart';
+import '../../features/documents/domain/usecases/document_usecases.dart';
 import '../../features/search/data/datasources/search_remote_datasource_impl.dart';
 import '../../features/search/data/repositories/search_repository_impl.dart';
 import '../../features/search/domain/repositories/search_repository.dart';
@@ -252,6 +254,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateAccountUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountOverviewUseCase(sl()));
+  sl.registerLazySingleton(() => ListAccountActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => LogAccountActivityUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateAccountActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAccountActivityUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -390,12 +396,16 @@ Future<void> initDependencies() async {
     ),
   );
 
-  // ─── Documents Feature (mock-backed) ────────────────
-  sl.registerLazySingleton<DocumentDataSource>(() => DocumentMockDataSource());
+  // ─── Documents Feature ──────────────────────────────
+  sl.registerLazySingleton<DocumentDataSource>(
+    () => DocumentRemoteDataSourceImpl(dioClient: sl()),
+  );
   sl.registerLazySingleton<DocumentRepository>(
     () => DocumentRepositoryImpl(dataSource: sl()),
   );
   sl.registerLazySingleton(() => GetAccountDocumentsUseCase(sl()));
+  sl.registerLazySingleton(() => UploadAccountDocumentUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAccountDocumentUseCase(sl()));
 
   // ─── Search Feature ─────────────────────────────────
   sl.registerLazySingleton<SearchRemoteDataSource>(
