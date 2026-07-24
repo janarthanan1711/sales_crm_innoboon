@@ -140,8 +140,9 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: "https://dollar-starry-worry.ngrok-free.dev/api/v1",
-      //  "http://192.168.0.187:8000/api/v1",
+      defaultValue:
+          //  "https://dollar-starry-worry.ngrok-free.dev/api/v1",
+          "http://192.168.0.187:8000/api/v1",
       // 'https://api.saleshub.example.com/api/v1',
     ),
     authInterceptor: authInterceptor,
@@ -273,10 +274,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
   sl.registerLazySingleton(() => GetContactDealsUseCase(sl()));
   sl.registerFactory(
-    () => ContactsListBloc(
-      getContactsUseCase: sl(),
-      deleteContactUseCase: sl(),
-    ),
+    () =>
+        ContactsListBloc(getContactsUseCase: sl(), deleteContactUseCase: sl()),
   );
   sl.registerFactory(
     () => ContactDetailBloc(
