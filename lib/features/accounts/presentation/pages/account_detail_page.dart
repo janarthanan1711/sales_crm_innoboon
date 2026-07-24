@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,23 +10,27 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/auth/permissions.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../app/di/injector.dart';
 import '../../../leads/domain/entities/lead_enums.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_activity.dart';
 import '../../domain/usecases/create_account_usecase.dart';
 import '../../domain/usecases/update_account_usecase.dart';
+import '../../domain/usecases/account_activity_usecases.dart';
 import '../bloc/account_detail_bloc.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
-import '../../../../features/activity/presentation/widgets/activity_timeline_view.dart';
 import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
 import '../../../../core/utils/link_launcher.dart';
 import '../../../deals/presentation/pages/create_deal_page.dart';
 import '../../../documents/domain/entities/account_document.dart';
 import '../../../documents/domain/usecases/get_account_documents_usecase.dart';
+import '../../../documents/domain/usecases/document_usecases.dart';
 
 class AccountDetailPage extends StatelessWidget {
   const AccountDetailPage({super.key, required this.accountId});
@@ -219,10 +224,7 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
               _ContactsTab(account: account, contacts: state.contacts),
               _DealsTab(deals: state.deals),
               _DocumentsTab(accountId: account.id),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: ActivityTimelineView(entityType: 'Account', entityId: account.id),
-              ),
+              _AccountActivityTab(accountId: account.id),
             ],
           ),
         ),
@@ -944,9 +946,20 @@ class _HeaderStats extends StatelessWidget {
   }
 }
 
-/// Account → Documents tab. Backed by a local mock datasource today (no
-/// documents API contract yet); filter + pagination + upload are all handled
-/// client-side so the flow is reviewable and easy to rewire later.
+/// Turns a relative `/media/...` document path into an absolute URL. Files are
+/// served from the server origin (not under the `/api/v1` prefix), so strip
+/// that suffix from the Dio base URL before joining.
+String _mediaUrl(String fileUrl) {
+  if (fileUrl.startsWith('http')) return fileUrl;
+  final base = sl<DioClient>().dio.options.baseUrl;
+  final origin = base.replaceFirst(RegExp(r'/api/v\d+/?$'), '');
+  final path = fileUrl.startsWith('/') ? fileUrl : '/$fileUrl';
+  return '$origin$path';
+}
+
+/// Account → Documents tab. Wired to `/accounts/{id}/documents` — list, upload
+/// (multipart), view (opens the file's `/media/...` URL) and delete. Filter +
+/// pagination stay client-side over the fetched list.
 class _DocumentsTab extends StatefulWidget {
   const _DocumentsTab({required this.accountId});
   final String accountId;
@@ -956,12 +969,14 @@ class _DocumentsTab extends StatefulWidget {
 }
 
 class _DocumentsTabState extends State<_DocumentsTab> {
-  static const _pageSize = 3;
+  static const _pageSize = 8;
 
   final List<AccountDocument> _all = [];
+  final Map<int, String> _userNames = {};
   String _filter = '';
   int _page = 0;
   bool _loading = true;
+  bool _uploading = false;
   String? _error;
 
   @override
@@ -971,9 +986,15 @@ class _DocumentsTabState extends State<_DocumentsTab> {
   }
 
   Future<void> _load() async {
-    final result = await sl<GetAccountDocumentsUseCase>()(widget.accountId);
+    final docsResult = await sl<GetAccountDocumentsUseCase>()(widget.accountId);
+    final usersResult = await sl<GetUsersUseCase>()();
     if (!mounted) return;
-    result.fold(
+    usersResult.fold((_) {}, (users) {
+      _userNames
+        ..clear()
+        ..addEntries(users.map((u) => MapEntry(u.id, u.displayName)));
+    });
+    docsResult.fold(
       (f) => setState(() {
         _loading = false;
         _error = f.message;
@@ -994,29 +1015,80 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     return _all.where((d) => d.name.toLowerCase().contains(q)).toList();
   }
 
+  String _uploaderName(int id) => _userNames[id] ?? 'User $id';
+
   Future<void> _upload() async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await FilePicker.platform.pickFiles(withData: false);
-    if (!mounted || result == null || result.files.isEmpty) return;
-    final f = result.files.first;
-    // Mock-only: prepend a local entry so the flow is visible. Real upload
-    // (POST /documents/upload) gets wired when the API contract lands.
-    setState(() {
-      _all.insert(
-        0,
-        AccountDocument(
-          id: 'local_${_all.length}_${f.name}',
-          name: f.name,
-          sizeBytes: f.size,
-          version: 'v1.0',
-          uploadedByName: 'You',
-          uploadedAt: DateTime.now(),
-        ),
-      );
-      _page = 0;
-    });
-    messenger.showSnackBar(
-      SnackBar(content: Text('“${f.name}” added locally (upload API not wired yet).')),
+    // withData: true so we get bytes for the multipart body (works on web too).
+    final picked = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
+    );
+    if (!mounted || picked == null || picked.files.isEmpty) return;
+    final f = picked.files.first;
+    final Uint8List? bytes = f.bytes;
+    if (bytes == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Could not read the selected file.'),
+        backgroundColor: AppColors.error,
+      ));
+      return;
+    }
+    setState(() => _uploading = true);
+    final result = await sl<UploadAccountDocumentUseCase>()(
+      UploadAccountDocumentParams(
+        accountId: widget.accountId,
+        bytes: bytes,
+        fileName: f.name,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    result.fold(
+      (fail) => messenger.showSnackBar(SnackBar(
+        content: Text('Upload failed: ${fail.message}'),
+        backgroundColor: AppColors.error,
+      )),
+      (_) {
+        messenger.showSnackBar(SnackBar(content: Text('“${f.name}” uploaded.')));
+        setState(() => _page = 0);
+        _load();
+      },
+    );
+  }
+
+  Future<void> _delete(AccountDocument doc) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete document'),
+        content: Text('Remove “${doc.name}”? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final result = await sl<DeleteAccountDocumentUseCase>()(
+      DeleteAccountDocumentParams(accountId: widget.accountId, documentId: doc.id),
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => messenger.showSnackBar(SnackBar(
+        content: Text('Failed to delete: ${f.message}'),
+        backgroundColor: AppColors.error,
+      )),
+      (_) {
+        messenger.showSnackBar(const SnackBar(content: Text('Document deleted.')));
+        _load();
+      },
     );
   }
 
@@ -1025,6 +1097,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     if (_loading) return const AppLoadingIndicator(message: 'Loading documents...');
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
+    final canManage = context.can(Perms.accountsManage);
     final filtered = _filtered;
     final totalPages = (filtered.length / _pageSize).ceil().clamp(1, 9999);
     final page = _page.clamp(0, totalPages - 1);
@@ -1055,11 +1128,18 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              ElevatedButton.icon(
-                onPressed: _upload,
-                icon: const Icon(Icons.upload_outlined, size: 16),
-                label: const Text('Upload'),
-              ),
+              if (canManage)
+                ElevatedButton.icon(
+                  onPressed: _uploading ? null : _upload,
+                  icon: _uploading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.upload_outlined, size: 16),
+                  label: Text(_uploading ? 'Uploading...' : 'Upload'),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -1103,7 +1183,13 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final doc = pageItems[index];
-                          return _DocumentRow(document: doc);
+                          return _DocumentRow(
+                            document: doc,
+                            uploaderName: _uploaderName(doc.uploadedBy),
+                            canManage: canManage,
+                            onView: () => launchWebUrl(_mediaUrl(doc.fileUrl)),
+                            onDelete: () => _delete(doc),
+                          );
                         },
                       ),
                     ),
@@ -1144,23 +1230,27 @@ class _DocumentsTabState extends State<_DocumentsTab> {
 }
 
 class _DocumentRow extends StatelessWidget {
-  const _DocumentRow({required this.document});
+  const _DocumentRow({
+    required this.document,
+    required this.uploaderName,
+    required this.canManage,
+    required this.onView,
+    required this.onDelete,
+  });
   final AccountDocument document;
-
-  String _size(int bytes) {
-    if (bytes >= 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    return '$bytes B';
-  }
+  final String uploaderName;
+  final bool canManage;
+  final VoidCallback onView;
+  final VoidCallback onDelete;
 
   IconData _icon(String ext) {
     switch (ext) {
       case 'pdf':
         return Icons.picture_as_pdf_outlined;
-      case 'xlsx':
-      case 'xls':
-      case 'csv':
-        return Icons.table_chart_outlined;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+        return Icons.image_outlined;
       case 'docx':
       case 'doc':
         return Icons.description_outlined;
@@ -1169,69 +1259,71 @@ class _DocumentRow extends StatelessWidget {
     }
   }
 
+  /// A short, friendly label for the file type shown under the name.
+  String _typeLabel() {
+    final ext = document.extension;
+    if (ext.isNotEmpty) return ext.toUpperCase();
+    return document.contentType;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final messenger = ScaffoldMessenger.of(context);
-    return Column(
-      children: [
-        Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
             child: Row(
               children: [
+                Icon(_icon(document.extension), size: 22, color: AppColors.primary),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  flex: 5,
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(_icon(document.extension), size: 22, color: AppColors.primary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(document.name, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
-                            Text(_size(document.sizeBytes), style: AppTextStyles.caption),
-                          ],
-                        ),
+                      InkWell(
+                        onTap: onView,
+                        child: Text(document.name, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Row(
-                    children: [
-                      InitialsAvatar(name: document.uploadedByName, size: 24),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: Text(document.uploadedByName, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                ),
-                Expanded(flex: 2, child: Text(DateFormat('MMM d, yyyy').format(document.uploadedAt), style: AppTextStyles.tableCell)),
-                Expanded(
-                  flex: 2,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.download_outlined, size: 18),
-                        tooltip: 'Download',
-                        onPressed: () => messenger.showSnackBar(
-                          const SnackBar(content: Text('Download will be wired with the documents API.')),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.more_vert, size: 18),
-                        tooltip: 'More',
-                        onPressed: () => messenger.showSnackBar(
-                          const SnackBar(content: Text('Document actions will be wired with the documents API.')),
-                        ),
-                      ),
+                      Text(_typeLabel(), style: AppTextStyles.caption),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-      ],
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                InitialsAvatar(name: uploaderName, size: 24),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text(uploaderName, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          ),
+          Expanded(flex: 2, child: Text(DateFormat('MMM d, yyyy').format(document.createdAt), style: AppTextStyles.tableCell)),
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  tooltip: 'View / Download',
+                  onPressed: onView,
+                ),
+                if (canManage)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                    tooltip: 'Delete',
+                    onPressed: onDelete,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1299,4 +1391,372 @@ Widget accountTableMobileScroll(BuildContext context, Widget table, {double widt
     scrollDirection: Axis.horizontal,
     child: SizedBox(width: width, child: table),
   );
+}
+
+const Map<String, IconData> _accountActivityIcons = {
+  'note': Icons.description_outlined,
+  'meeting': Icons.event_outlined,
+  'call': Icons.call_outlined,
+  'comment': Icons.chat_bubble_outline,
+  'follow_up': Icons.flag_outlined,
+};
+
+/// Account → Activity Log tab. Wired to `/accounts/{id}/activities` — list,
+/// log, edit (owner-only server-side) and delete (admin-only server-side).
+/// Self-contained so a log/edit/delete refreshes without tearing down the
+/// account header/tabs.
+class _AccountActivityTab extends StatefulWidget {
+  const _AccountActivityTab({required this.accountId});
+  final String accountId;
+
+  @override
+  State<_AccountActivityTab> createState() => _AccountActivityTabState();
+}
+
+class _AccountActivityTabState extends State<_AccountActivityTab> {
+  final List<AccountActivity> _activities = [];
+  bool _loading = true;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final result = await sl<ListAccountActivitiesUseCase>()(
+      ListAccountActivitiesParams(accountId: widget.accountId),
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() {
+        _loading = false;
+        _error = f.message;
+      }),
+      (items) => setState(() {
+        _loading = false;
+        _error = null;
+        _activities
+          ..clear()
+          ..addAll(items);
+      }),
+    );
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _busy = true);
+    await _load();
+    if (mounted) setState(() => _busy = false);
+  }
+
+  void _showLogDialog() {
+    String type = accountActivityTypeLabels.keys.first;
+    final noteController = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setLocal) {
+            return AlertDialog(
+              title: const Text('Log Activity'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Type'),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      value: type,
+                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      items: accountActivityTypeLabels.entries
+                          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                          .toList(),
+                      onChanged: (v) => setLocal(() => type = v!),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Note'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'What happened?',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    if (noteController.text.trim().isEmpty) return;
+                    Navigator.pop(dialogContext);
+                    _log(type, noteController.text.trim());
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _log(String type, String note) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    final result = await sl<LogAccountActivityUseCase>()(
+      LogAccountActivityParams(accountId: widget.accountId, type: type, note: note),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    result.fold(
+      (f) => messenger.showSnackBar(SnackBar(
+        content: Text('Failed to log activity: ${f.message}'),
+        backgroundColor: AppColors.error,
+      )),
+      (_) => _refresh(),
+    );
+  }
+
+  void _showEditDialog(AccountActivity activity) {
+    final noteController = TextEditingController(text: activity.note);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Activity'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(accountActivityLabel(activity.type), style: AppTextStyles.bodyMedium),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Text('Note'),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: noteController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (noteController.text.trim().isEmpty) return;
+                Navigator.pop(dialogContext);
+                _update(activity, noteController.text.trim());
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _update(AccountActivity activity, String note) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    final result = await sl<UpdateAccountActivityUseCase>()(
+      UpdateAccountActivityParams(
+        accountId: widget.accountId,
+        activityId: '${activity.id}',
+        note: note,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    result.fold(
+      (f) => messenger.showSnackBar(SnackBar(
+        content: Text('Failed to update: ${f.message}'),
+        backgroundColor: AppColors.error,
+      )),
+      (_) => _refresh(),
+    );
+  }
+
+  Future<void> _delete(AccountActivity activity) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this activity?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final result = await sl<DeleteAccountActivityUseCase>()(
+      DeleteAccountActivityParams(accountId: widget.accountId, activityId: '${activity.id}'),
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => messenger.showSnackBar(SnackBar(
+        content: Text('Failed to delete: ${f.message}'),
+        backgroundColor: AppColors.error,
+      )),
+      (_) => _refresh(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const AppLoadingIndicator(message: 'Loading activity...');
+    if (_error != null) return ErrorState(message: _error!, onRetry: _load);
+
+    final canManage = context.can(Perms.accountsManage);
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Activity Timeline', style: AppTextStyles.h3)),
+              if (_busy)
+                const Padding(
+                  padding: EdgeInsets.only(right: AppSpacing.sm),
+                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+              if (canManage)
+                ElevatedButton.icon(
+                  onPressed: _showLogDialog,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Log Activity'),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          if (_activities.isEmpty)
+            const Expanded(
+              child: EmptyState(
+                icon: Icons.history,
+                title: 'No activity yet',
+                subtitle: 'Log calls, meetings, and notes to build this account\'s timeline.',
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                itemCount: _activities.length,
+                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                itemBuilder: (context, index) {
+                  final a = _activities[index];
+                  return _AccountActivityRow(
+                    activity: a,
+                    canManage: canManage,
+                    onEdit: () => _showEditDialog(a),
+                    onDelete: () => _delete(a),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountActivityRow extends StatelessWidget {
+  const _AccountActivityRow({
+    required this.activity,
+    required this.canManage,
+    required this.onEdit,
+    required this.onDelete,
+  });
+  final AccountActivity activity;
+  final bool canManage;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryLight,
+            child: Icon(
+              _accountActivityIcons[activity.type] ?? Icons.circle,
+              size: 16,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(child: Text(accountActivityLabel(activity.type), style: AppTextStyles.labelLarge)),
+                    Text(DateFormat('MMM d, yyyy • h:mm a').format(activity.createdAt.toLocal()), style: AppTextStyles.caption),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(activity.note, style: AppTextStyles.bodyMedium),
+                const SizedBox(height: 4),
+                Text(
+                  activity.updatedAt != null && activity.updatedBy != null
+                      ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
+                      : 'Logged by ${activity.createdByName ?? 'User ${activity.createdBy}'}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          if (canManage) ...[
+            IconButton(
+              tooltip: 'Edit',
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+            ),
+            IconButton(
+              tooltip: 'Delete',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
