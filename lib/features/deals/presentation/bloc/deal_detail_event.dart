@@ -27,3 +27,43 @@ class DealDetailStageUpdateRequested extends DealDetailEvent {
   @override
   List<Object?> get props => [id, stageId, note, coldReason];
 }
+
+class DealDetailActivityLogRequested extends DealDetailEvent {
+  final String dealId;
+  final String type;
+  final String? title;
+  final String note;
+  const DealDetailActivityLogRequested(
+    this.dealId, {
+    required this.type,
+    this.title,
+    required this.note,
+  });
+  @override
+  List<Object?> get props => [dealId, type, title, note];
+}
+
+class DealDetailActivityUpdateRequested extends DealDetailEvent {
+  final String dealId;
+  final String activityId;
+  final String? type;
+  final String? title;
+  final String? note;
+  const DealDetailActivityUpdateRequested(
+    this.dealId,
+    this.activityId, {
+    this.type,
+    this.title,
+    this.note,
+  });
+  @override
+  List<Object?> get props => [dealId, activityId, type, title, note];
+}
+
+class DealDetailActivityDeleteRequested extends DealDetailEvent {
+  final String dealId;
+  final String activityId;
+  const DealDetailActivityDeleteRequested(this.dealId, this.activityId);
+  @override
+  List<Object?> get props => [dealId, activityId];
+}

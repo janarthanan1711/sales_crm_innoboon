@@ -11,10 +11,11 @@ import '../../../../core/auth/permissions.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_activity.dart';
+import '../../domain/entities/deal_enums.dart';
 import '../../domain/entities/deal_stage_history.dart';
 import '../bloc/deal_detail_bloc.dart';
 import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
-import '../../../../features/activity/presentation/widgets/activity_timeline_view.dart';
 import '../../../../core/utils/link_launcher.dart';
 
 import 'create_deal_page.dart';
@@ -255,52 +256,83 @@ class _DealDetailView extends StatelessWidget {
                 ),
 
           const SizedBox(height: AppSpacing.xl),
-          // Stage Progress Bar — built from the dynamic pipeline stages.
+          // Stage progress stepper — a connected track with a node marking the
+          // current stage, built from the dynamic pipeline stages.
           if (stages.isNotEmpty)
             Row(
-              children: stages.map((s) {
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(stages.length, (i) {
+                final s = stages[i];
                 final isCurrent = s.id == deal.stageId;
                 final isCompleted =
                     currentSort != null && s.sortOrder < currentSort;
-
+                // The track is filled up to and including the current node.
+                final leftColor = (isCompleted || isCurrent)
+                    ? AppColors.primary
+                    : AppColors.border;
+                final rightColor = isCompleted
+                    ? AppColors.primary
+                    : AppColors.border;
                 return Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? AppColors.primary
-                          : isCompleted
-                          ? AppColors.primaryLight
-                          : AppColors.border,
-                      borderRadius: BorderRadius.horizontal(
-                        left: s == stages.first
-                            ? const Radius.circular(4)
-                            : Radius.zero,
-                        right: s == stages.last
-                            ? const Radius.circular(4)
-                            : Radius.zero,
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 16,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 3,
+                                color: i == 0
+                                    ? Colors.transparent
+                                    : leftColor,
+                              ),
+                            ),
+                            if (isCurrent)
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary,
+                                    width: 3,
+                                  ),
+                                ),
+                              ),
+                            Expanded(
+                              child: Container(
+                                height: 3,
+                                color: i == stages.length - 1
+                                    ? Colors.transparent
+                                    : rightColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      s.name,
-                      style: AppTextStyles.caption.copyWith(
-                        color: isCurrent
-                            ? Colors.white
-                            : (isCompleted
-                                  ? AppColors.primary
-                                  : AppColors.textMuted),
-                        fontWeight: isCurrent
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        s.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: isCurrent
+                              ? AppColors.primary
+                              : (isCompleted
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted),
+                          fontWeight: isCurrent
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                    ),
+                    ],
                   ),
                 );
-              }).toList(),
+              }),
             ),
         ],
       ),
@@ -484,6 +516,7 @@ class _DealDetailView extends StatelessWidget {
   }
 
   Widget _activityTab(BuildContext context, DealDetailLoaded state) {
+    final canManage = context.can(Perms.dealsManage);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
@@ -496,13 +529,152 @@ class _DealDetailView extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           SectionCard(
             title: 'Activity Timeline',
-            child: ActivityTimelineView(
-              entityType: 'Deal',
-              entityId: state.deal.id,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (state.activityBusy)
+                  const Padding(
+                    padding: EdgeInsets.only(right: AppSpacing.sm),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                if (canManage)
+                  TextButton.icon(
+                    onPressed: () =>
+                        _showLogActivityDialog(context, state.deal.id),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Log Activity'),
+                  ),
+              ],
             ),
+            child: state.activities.isEmpty
+                ? Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Text(
+                      'No activity logged yet. Track calls, meetings, and notes here.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: state.activities
+                        .map(
+                          (a) => _DealActivityRow(
+                            dealId: state.deal.id,
+                            activity: a,
+                            canManage: canManage,
+                          ),
+                        )
+                        .toList(),
+                  ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showLogActivityDialog(BuildContext context, String dealId) {
+    final bloc = context.read<DealDetailBloc>();
+    String type = dealActivityTypeLabels.keys.first;
+    final titleController = TextEditingController();
+    final noteController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            return AlertDialog(
+              title: const Text('Log Activity'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Type'),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      value: type,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: dealActivityTypeLabels.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => type = v!),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Title'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: titleController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        hintText: 'Short summary (e.g. Kick-off call)',
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Note'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        hintText: 'What happened?',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (noteController.text.trim().isEmpty) return;
+                    bloc.add(
+                      DealDetailActivityLogRequested(
+                        dealId,
+                        type: type,
+                        title: titleController.text.trim().isEmpty
+                            ? null
+                            : titleController.text.trim(),
+                        note: noteController.text.trim(),
+                      ),
+                    );
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -534,6 +706,223 @@ class _DealDetailView extends StatelessWidget {
           Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
         ],
       ),
+    );
+  }
+}
+
+const Map<String, IconData> _activityIcons = {
+  'note': Icons.description_outlined,
+  'meeting': Icons.event_outlined,
+  'call': Icons.call_outlined,
+  'comment': Icons.chat_bubble_outline,
+  'follow_up': Icons.flag_outlined,
+};
+
+class _DealActivityRow extends StatelessWidget {
+  const _DealActivityRow({
+    required this.dealId,
+    required this.activity,
+    required this.canManage,
+  });
+  final String dealId;
+  final DealActivity activity;
+  final bool canManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = activity.title;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryLight,
+            child: Icon(
+              _activityIcons[activity.type] ?? Icons.circle,
+              size: 16,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        labelForWireValue(
+                          dealActivityTypeLabels,
+                          activity.type,
+                        ),
+                        style: AppTextStyles.labelLarge,
+                      ),
+                    ),
+                    Text(
+                      DateFormatter.dateTime(activity.createdAt),
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+                if (title != null && title.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(title, style: AppTextStyles.labelMedium),
+                ],
+                const SizedBox(height: 4),
+                Text(activity.note, style: AppTextStyles.bodyMedium),
+                const SizedBox(height: 4),
+                Text(
+                  activity.updatedAt != null
+                      ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
+                      : 'Logged by ${activity.createdByName ?? 'User ${activity.createdBy}'}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          if (canManage) ...[
+            IconButton(
+              tooltip: 'Edit',
+              onPressed: () => _showEditDialog(context),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+            ),
+            IconButton(
+              tooltip: 'Delete',
+              onPressed: () => _confirmDelete(context),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.error,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    final bloc = context.read<DealDetailBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete this activity?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              bloc.add(
+                DealDetailActivityDeleteRequested(dealId, '${activity.id}'),
+              );
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context) {
+    final bloc = context.read<DealDetailBloc>();
+    final titleController = TextEditingController(text: activity.title ?? '');
+    final noteController = TextEditingController(text: activity.note);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Activity'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // The activity type is fixed once logged — show it read-only.
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    labelForWireValue(dealActivityTypeLabels, activity.type),
+                    style: AppTextStyles.bodyMedium,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Text('Title'),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    hintText: 'Short summary',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Text('Note'),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: noteController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (noteController.text.trim().isEmpty) return;
+                bloc.add(
+                  DealDetailActivityUpdateRequested(
+                    dealId,
+                    '${activity.id}',
+                    title: titleController.text.trim(),
+                    note: noteController.text.trim(),
+                  ),
+                );
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

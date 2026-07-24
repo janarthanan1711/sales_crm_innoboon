@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_activity.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/entities/deal_stage_history.dart';
 import '../../domain/repositories/deal_repository.dart';
@@ -116,6 +117,78 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, List<DealStageDef>>> getDealStages() async {
     try {
       return Right(await remoteDataSource.getDealStages());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<DealActivity>>> listActivities(
+    String dealId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      return Right(await remoteDataSource.listActivities(
+        dealId,
+        types: types,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, DealActivity>> logActivity(
+    String dealId, {
+    required String type,
+    String? title,
+    required String note,
+  }) async {
+    try {
+      return Right(await remoteDataSource.logActivity(
+        dealId,
+        type: type,
+        title: title,
+        note: note,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, DealActivity>> updateActivity(
+    String dealId,
+    String activityId, {
+    String? type,
+    String? title,
+    String? note,
+  }) async {
+    try {
+      return Right(await remoteDataSource.updateActivity(
+        dealId,
+        activityId,
+        type: type,
+        title: title,
+        note: note,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteActivity(
+    String dealId,
+    String activityId,
+  ) async {
+    try {
+      await remoteDataSource.deleteActivity(dealId, activityId);
+      return const Right(unit);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

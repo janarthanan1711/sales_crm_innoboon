@@ -3,9 +3,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_activity.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/entities/deal_stage_history.dart';
 import '../../domain/repositories/deal_repository.dart';
+import '../models/deal_activity_model.dart';
 import '../models/deal_model.dart';
 import '../models/deal_stage_def_model.dart';
 
@@ -153,6 +155,84 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  @override
+  Future<List<DealActivity>> listActivities(
+    String dealId, {
+    List<String>? types,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      final response = await dioClient.get(
+        ApiEndpoints.dealActivities(dealId),
+        queryParameters: {
+          if (types != null && types.isNotEmpty) 'types': types,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
+        },
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => dealActivityFromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<DealActivity> logActivity(
+    String dealId, {
+    required String type,
+    String? title,
+    required String note,
+  }) async {
+    try {
+      final response = await dioClient.post(
+        ApiEndpoints.dealActivities(dealId),
+        data: dealActivityCreateJson(type: type, title: title, note: note),
+      );
+      return dealActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<DealActivity> updateActivity(
+    String dealId,
+    String activityId, {
+    String? type,
+    String? title,
+    String? note,
+  }) async {
+    try {
+      final response = await dioClient.patch(
+        ApiEndpoints.dealActivityById(dealId, activityId),
+        data: dealActivityUpdateJson(type: type, title: title, note: note),
+      );
+      return dealActivityFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> deleteActivity(String dealId, String activityId) async {
+    try {
+      await dioClient.delete(
+        ApiEndpoints.dealActivityById(dealId, activityId),
+      );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 
   Exception _normalize(DioException e) {

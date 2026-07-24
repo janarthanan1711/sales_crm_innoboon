@@ -80,6 +80,7 @@ import '../../features/deals/domain/usecases/update_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
+import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
 
@@ -140,9 +141,8 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue:
-          //  "https://dollar-starry-worry.ngrok-free.dev/api/v1",
-          "http://192.168.0.187:8000/api/v1",
+      defaultValue: "https://dollar-starry-worry.ngrok-free.dev/api/v1",
+      // "http://192.168.0.187:8000/api/v1",
       // 'https://api.saleshub.example.com/api/v1',
     ),
     authInterceptor: authInterceptor,
@@ -298,6 +298,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
+  sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteDealActivityUseCase(sl()));
   sl.registerFactory(
     () => DealsListBloc(
       getDealsUseCase: sl(),
@@ -315,6 +319,10 @@ Future<void> initDependencies() async {
       getDealStageHistoryUseCase: sl(),
       getAccountByIdUseCase: sl(),
       getUsersUseCase: sl(),
+      listDealActivitiesUseCase: sl(),
+      logDealActivityUseCase: sl(),
+      updateDealActivityUseCase: sl(),
+      deleteDealActivityUseCase: sl(),
     ),
   );
   // ─── Checklist Feature ──────────────────────────────
