@@ -65,7 +65,10 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
           ? '${_closeDate!.month.toString().padLeft(2, '0')}/${_closeDate!.day.toString().padLeft(2, '0')}/${_closeDate!.year}'
           : '',
     );
-    _tier = widget.deal?.tier;
+    // The API returns tier as '' when unset — normalise to null (and drop any
+    // value not in our option list) so the Tier dropdown never asserts.
+    final rawTier = widget.deal?.tier;
+    _tier = (rawTier != null && _kDealTiers.contains(rawTier)) ? rawTier : null;
     if (isEdit) {
       _stageId = widget.deal!.stageId;
       _selectedOwnerId = widget.deal!.ownerId;
@@ -256,7 +259,16 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                               'Associated Account',
                               true,
                               DropdownButtonFormField<Account>(
-                                value: _selectedAccount,
+                                // Resolve to the actual list instance by id so
+                                // the value always equals exactly one item
+                                // (a preset account is a different instance).
+                                value: _accounts
+                                        .where((a) => a.id == _selectedAccount?.id)
+                                        .isEmpty
+                                    ? null
+                                    : _accounts.firstWhere(
+                                        (a) => a.id == _selectedAccount!.id,
+                                      ),
                                 decoration: _inputDecoration('Select account'),
                                 items: _accounts
                                     .map((a) => DropdownMenuItem(value: a, child: Text(a.companyName, overflow: TextOverflow.ellipsis)))
@@ -303,7 +315,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                               'Stage',
                               false,
                               DropdownButtonFormField<int>(
-                                value: _stageId,
+                                value: _stages.any((s) => s.id == _stageId)
+                                    ? _stageId
+                                    : null,
                                 decoration: _inputDecoration('Select stage'),
                                 items: _stages.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
                                 onChanged: (v) => setState(() => _stageId = v),
@@ -347,7 +361,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                         'Owner',
                         false,
                         DropdownButtonFormField<int?>(
-                          value: _selectedOwnerId,
+                          value: _users.any((u) => u.id == _selectedOwnerId)
+                              ? _selectedOwnerId
+                              : null,
                           decoration: _inputDecoration(
                             '',
                             prefix: const Padding(
@@ -371,7 +387,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                               'Tier',
                               false,
                               DropdownButtonFormField<String>(
-                                value: _tier,
+                                value: _kDealTiers.contains(_tier)
+                                    ? _tier
+                                    : null,
                                 decoration: _inputDecoration('Select tier'),
                                 items: _kDealTiers
                                     .map((t) => DropdownMenuItem(
