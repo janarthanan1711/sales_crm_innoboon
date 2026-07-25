@@ -184,6 +184,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
     final bloc = context.read<ContactsListBloc>();
     final loaded = context.watch<ContactsListBloc>().state;
     final primaryOnly = loaded is ContactsListLoaded && loaded.primaryOnly;
+    final ownerFilter = loaded is ContactsListLoaded ? loaded.ownerFilter : null;
+    final accountFilter = loaded is ContactsListLoaded ? loaded.accountFilter : null;
+    final tierFilter = loaded is ContactsListLoaded ? loaded.tierFilter : null;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -200,6 +203,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
           const SizedBox(width: AppSpacing.sm),
           _MenuFilter<int?>(
             label: 'Owner',
+            selected: ownerFilter,
             options: [
               const MapEntry<int?, String>(null, 'All Owners'),
               ..._owners.map((o) => MapEntry<int?, String>(o.id, o.displayName)),
@@ -211,6 +215,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
           const SizedBox(width: AppSpacing.sm),
           _MenuFilter<int?>(
             label: 'Account',
+            selected: accountFilter,
             options: [
               const MapEntry<int?, String>(null, 'All Accounts'),
               ..._accounts.map((a) => MapEntry<int?, String>(int.tryParse(a.id), a.companyName)),
@@ -222,6 +227,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
           const SizedBox(width: AppSpacing.sm),
           _MenuFilter<String?>(
             label: 'Tier',
+            selected: tierFilter,
             options: [
               const MapEntry<String?, String>(null, 'All Tiers'),
               ..._kTiers.map((t) => MapEntry<String?, String>(t, _titleCase(t))),
@@ -515,31 +521,74 @@ class _PrimaryBadge extends StatelessWidget {
 
 // ─── Filter menu ────────────────────────────────────────
 class _MenuFilter<T> extends StatelessWidget {
-  const _MenuFilter({required this.label, required this.options, required this.onSelected});
+  const _MenuFilter({
+    required this.label,
+    required this.options,
+    required this.onSelected,
+    this.selected,
+  });
   final String label;
   final List<MapEntry<T, String>> options;
   final ValueChanged<T> onSelected;
 
+  /// Currently-applied filter key. When it matches a non-default option the
+  /// chrome shows that option's label instead of the static [label].
+  final T? selected;
+
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<T>(
-      onSelected: onSelected,
+    // The first option is the "All …" default (key is null/'all'); only treat
+    // a match against a later option as an active selection.
+    String? selectedLabel;
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].key == selected && i != 0) {
+        selectedLabel = options[i].value;
+        break;
+      }
+    }
+    final active = selectedLabel != null;
+    // Use the option index as the menu value (never null) — a PopupMenuItem
+    // with a null value never fires onSelected (Flutter treats it as a
+    // dismissal), which would make the "All …" option unclickable.
+    return PopupMenuButton<int>(
+      onSelected: (i) => onSelected(options[i].key),
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
-      itemBuilder: (context) =>
-          options.map((e) => PopupMenuItem<T>(value: e.key, child: Text(e.value))).toList(),
+      itemBuilder: (context) => [
+        for (var i = 0; i < options.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: Row(
+              children: [
+                Expanded(child: Text(options[i].value)),
+                if (options[i].key == selected)
+                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+              ],
+            ),
+          ),
+      ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          color: active ? AppColors.primaryLight : null,
+          border: Border.all(color: active ? AppColors.primary : AppColors.border),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: AppTextStyles.labelMedium),
+            Text(
+              selectedLabel ?? label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : null,
+              ),
+            ),
             const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textMuted),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: active ? AppColors.primary : AppColors.textMuted,
+            ),
           ],
         ),
       ),

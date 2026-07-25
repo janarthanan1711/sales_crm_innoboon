@@ -192,9 +192,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, AppSpacing.xxl),
-                child: Center(
+                child: Align(
+                  alignment: Alignment.topLeft,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 900),
+                    // Stretch across the page on normal screens; only cap on
+                    // ultra-wide displays so line lengths stay readable.
+                    constraints: const BoxConstraints(maxWidth: 1400),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

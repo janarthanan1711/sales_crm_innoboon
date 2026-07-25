@@ -105,35 +105,45 @@ class _LeadDetailViewState extends State<_LeadDetailView>
     final lead = state.lead;
     final padding = context.pagePadding;
 
+    // The Overview/Activity tabs sit above the center column only — the
+    // Contact Information and Related Records side panels stay top-aligned
+    // with the tab row (matches the mockups).
+    final tabbedCenter = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
+            indicatorWeight: 3,
+            labelStyle: AppTextStyles.labelLarge,
+            tabAlignment: TabAlignment.start,
+            tabs: const [Tab(text: 'Overview'), Tab(text: 'Activity')],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _CenterContent(tabController: _tabController, state: state),
+      ],
+    );
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Header(lead: lead),
-          const SizedBox(height: AppSpacing.lg),
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              indicatorWeight: 3,
-              labelStyle: AppTextStyles.labelLarge,
-              tabAlignment: TabAlignment.start,
-              tabs: const [Tab(text: 'Overview'), Tab(text: 'Activity')],
-            ),
-          ),
           const SizedBox(height: AppSpacing.xl),
           ResponsiveBuilder(
             mobile: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CenterContent(tabController: _tabController, state: state),
+                tabbedCenter,
                 const SizedBox(height: AppSpacing.xl),
                 _ContactInfoCard(lead: lead),
                 const SizedBox(height: AppSpacing.xl),
@@ -145,12 +155,7 @@ class _LeadDetailViewState extends State<_LeadDetailView>
               children: [
                 SizedBox(width: 300, child: _ContactInfoCard(lead: lead)),
                 const SizedBox(width: AppSpacing.xl),
-                Expanded(
-                  child: _CenterContent(
-                    tabController: _tabController,
-                    state: state,
-                  ),
-                ),
+                Expanded(child: tabbedCenter),
                 const SizedBox(width: AppSpacing.xl),
                 SizedBox(width: 280, child: _RelatedRecordsCard(lead: lead)),
               ],
@@ -195,108 +200,209 @@ class _Header extends StatelessWidget {
       lead.firstName,
       lead.lastName,
     ].where((s) => s != null && s.isNotEmpty).join(' ');
+    final displayName = contactName.isEmpty ? lead.company : contactName;
+    final canManage = context.can(Perms.leadsManage);
 
-    return Column(
+    final identity = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            IconButton(
-              onPressed: () => context.go('/leads'),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            InitialsAvatar(name: contactName.isEmpty ? lead.company : contactName, size: 44),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        IconButton(
+          onPressed: () => context.go('/leads'),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back to leads',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        InitialsAvatar(name: displayName, size: 48),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.sm,
                 children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: AppSpacing.sm,
-                    children: [
-                      Text(contactName.isEmpty ? lead.company : contactName, style: AppTextStyles.h2),
-                      StatusBadge.leadStatus(
-                        labelForWireValue(leadStatusLabels, lead.status),
+                  Text(displayName, style: AppTextStyles.h2),
+                  const Icon(Icons.star_border, size: 18, color: AppColors.textMuted),
+                  StatusBadge.leadStatus(
+                    labelForWireValue(leadStatusLabels, lead.status),
+                  ),
+                  // Mark converted leads so it's clear this prospect is now an
+                  // account.
+                  if (lead.isConverted)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
                       ),
-                      // Mark converted leads so it's clear this prospect is
-                      // now an account.
-                      if (lead.isConverted)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.business, size: 13, color: AppColors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Account',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.business, size: 13, color: AppColors.success),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Account',
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.success,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  Text(
-                    '${lead.jobTitle ?? ''}${lead.jobTitle != null ? ' at ' : ''}${lead.company}',
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-                  ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${lead.jobTitle ?? ''}${lead.jobTitle != null ? ' at ' : ''}${lead.company}',
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: context.isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                identity,
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.lg,
+                  runSpacing: AppSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [_tierMeta(), _ownerMeta()],
+                ),
+                if (canManage) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _actions(context),
+                ],
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: identity),
+                const SizedBox(width: AppSpacing.lg),
+                _tierMeta(),
+                const SizedBox(width: AppSpacing.xl),
+                _ownerMeta(),
+                if (canManage) ...[
+                  const SizedBox(width: AppSpacing.xl),
+                  _actions(context),
+                ],
+              ],
+            ),
+    );
+  }
+
+  // Leads have no tier of their own — it's assigned at conversion — so this is
+  // always a placeholder, matching the mockup's "Tier: —".
+  Widget _tierMeta() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Tier: ',
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+        ),
+        Text('—', style: AppTextStyles.labelMedium),
+      ],
+    );
+  }
+
+  Widget _ownerMeta() {
+    final owner = lead.ownerName ?? 'Unassigned';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Owner: ',
+          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+        ),
+        if (lead.ownerName != null) ...[
+          InitialsAvatar(name: owner, size: 22),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+        Text(owner, style: AppTextStyles.labelMedium),
+      ],
+    );
+  }
+
+  // Edit / Convert / Delete require `leads.access` (manage). View-only users
+  // (`leads.view_all`) don't see these actions. Delete lives in the overflow
+  // menu to match the mockup.
+  Widget _actions(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => _editLead(context, lead),
+          icon: const Icon(Icons.edit, size: 16),
+          label: const Text('Edit'),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        if (!lead.isConverted)
+          ElevatedButton.icon(
+            onPressed: () => _showConvertDialog(context, lead),
+            icon: const Icon(Icons.swap_horiz, size: 16),
+            label: const Text('Convert to Account'),
+          ),
+        PopupMenuButton<String>(
+          tooltip: 'More actions',
+          icon: const Icon(Icons.more_vert),
+          onSelected: (value) {
+            if (value == 'edit') _editLead(context, lead);
+            if (value == 'delete') _confirmDelete(context, lead.id);
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Edit Lead'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Delete', style: TextStyle(color: AppColors.error)),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        // Edit / Convert / Delete require `leads.access` (manage). View-only
-        // users (`leads.view_all`) don't see these actions.
-        if (context.can(Perms.leadsManage))
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final bloc = context.read<LeadDetailBloc>();
-                  await context.push(
-                    RoutePaths.editLead.replaceFirst(':id', '${lead.id}'),
-                    extra: lead,
-                  );
-                  // Refresh so edits show without navigating away and back.
-                  bloc.add(LeadDetailLoadRequested(lead.id));
-                },
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Edit Lead'),
-              ),
-              if (!lead.isConverted)
-                ElevatedButton.icon(
-                  onPressed: () => _showConvertDialog(context, lead),
-                  icon: const Icon(Icons.swap_horiz, size: 16),
-                  label: const Text('Convert to Account'),
-                ),
-              OutlinedButton.icon(
-                onPressed: () => _confirmDelete(context, lead.id),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: const BorderSide(color: AppColors.error),
-                ),
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Delete'),
-              ),
-            ],
-          ),
       ],
     );
+  }
+
+  Future<void> _editLead(BuildContext context, Lead lead) async {
+    final bloc = context.read<LeadDetailBloc>();
+    await context.push(
+      RoutePaths.editLead.replaceFirst(':id', '${lead.id}'),
+      extra: lead,
+    );
+    // Refresh so edits show without navigating away and back.
+    bloc.add(LeadDetailLoadRequested(lead.id));
   }
 
   void _confirmDelete(BuildContext context, int id) {
@@ -453,9 +559,6 @@ class _ContactInfoCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          _label('Owner'),
-          Text(lead.ownerName ?? 'Unassigned', style: AppTextStyles.bodyMedium),
           const Divider(height: AppSpacing.xl * 1.2),
           _label('Created'),
           Text(
@@ -483,35 +586,82 @@ class _RelatedRecordsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Related Records',
-      child: Column(
-        children: [
-          Icon(
-            lead.isConverted ? Icons.check_circle_outline : Icons.account_balance_outlined,
-            size: 40,
-            color: AppColors.textMuted,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            lead.isConverted
-                ? 'This lead has already been converted to an account.'
-                : "This lead hasn't been converted to an account yet.",
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-          ),
-          if (!lead.isConverted && context.can(Perms.leadsManage)) ...[
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _HeaderConvertProxy.show(context, lead),
-                child: const Text('Convert to Account'),
+      child: _DashedBox(
+        child: Column(
+          children: [
+            Icon(
+              lead.isConverted
+                  ? Icons.check_circle_outline
+                  : Icons.account_balance_outlined,
+              size: 34,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              lead.isConverted
+                  ? 'This lead has already been converted to an account.'
+                  : "This lead hasn't been converted to an account yet.",
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
+            if (!lead.isConverted && context.can(Perms.leadsManage)) ...[
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton(
+                onPressed: () => _HeaderConvertProxy.show(context, lead),
+                child: const Text('Convert to\nAccount', textAlign: TextAlign.center),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
+}
+
+/// A dashed-border container used for the "Related Records" empty panel.
+class _DashedBox extends StatelessWidget {
+  const _DashedBox({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedBoxPainter(),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Center(child: child),
+      ),
+    );
+  }
+}
+
+class _DashedBoxPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.border
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(8),
+    );
+    final path = Path()..addRRect(rrect);
+    const dash = 6.0;
+    const gap = 4.0;
+    for (final metric in path.computeMetrics()) {
+      double dist = 0;
+      while (dist < metric.length) {
+        canvas.drawPath(metric.extractPath(dist, dist + dash), paint);
+        dist += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBoxPainter oldDelegate) => false;
 }
 
 /// Small indirection so the Related Records panel can reuse the exact same
@@ -519,6 +669,10 @@ class _RelatedRecordsCard extends StatelessWidget {
 class _HeaderConvertProxy {
   static Future<void> show(BuildContext context, Lead lead) {
     return _Header(lead: lead)._showConvertDialog(context, lead);
+  }
+
+  static Future<void> edit(BuildContext context, Lead lead) {
+    return _Header(lead: lead)._editLead(context, lead);
   }
 }
 
@@ -544,26 +698,30 @@ class _OverviewCenter extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.lightbulb_outline, color: AppColors.primary),
+                const Icon(Icons.lightbulb_outline, color: Colors.white),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Ready to convert?', style: AppTextStyles.labelLarge),
+                      Text(
+                        'Ready to convert?',
+                        style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         inSystemLabel != null
                             ? 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'} over $inSystemLabel.'
                             : 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'}.',
-                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
                       ),
                     ],
                   ),
@@ -571,6 +729,10 @@ class _OverviewCenter extends StatelessWidget {
                 const SizedBox(width: AppSpacing.md),
                 ElevatedButton(
                   onPressed: () => _HeaderConvertProxy.show(context, lead),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                  ),
                   child: const Text('Convert to Account'),
                 ),
               ],
@@ -599,10 +761,30 @@ class _OverviewCenter extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         SectionCard(
           title: 'Initial Notes',
-          child: Text(
-            lead.followUpNote ?? 'No initial notes recorded yet.',
-            style: AppTextStyles.bodyMedium,
-          ),
+          trailing: context.can(Perms.leadsManage)
+              ? IconButton(
+                  tooltip: 'Edit lead',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: () => _HeaderConvertProxy.edit(context, lead),
+                )
+              : null,
+          child: lead.followUpNote != null && lead.followUpNote!.isNotEmpty
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                  ),
+                  child: Text(lead.followUpNote!, style: AppTextStyles.bodyMedium),
+                )
+              : Text(
+                  'No initial notes recorded yet.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
         ),
       ],
     );
@@ -654,6 +836,15 @@ const Map<String, IconData> _activityIcons = {
   'note': Icons.description_outlined,
   'comment': Icons.chat_bubble_outline,
   'follow_up': Icons.event_repeat,
+};
+
+/// Node accent colors per activity type (drives the timeline dots).
+const Map<String, Color> _activityColors = {
+  'call': Color(0xFF3B82F6),
+  'meeting': Color(0xFF8B5CF6),
+  'note': Color(0xFF64748B),
+  'comment': Color(0xFF06B6D4),
+  'follow_up': Color(0xFF10B981),
 };
 
 class _ActivityCenter extends StatefulWidget {
@@ -716,66 +907,132 @@ class _ActivityCenterState extends State<_ActivityCenter> {
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
+    final canManage = context.can(Perms.leadsManage);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (context.can(Perms.leadsManage))
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () => _showLogActivityDialog(context, state.lead.id),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Log Activity'),
-            ),
+        if (canManage) ...[
+          ElevatedButton.icon(
+            onPressed: () => _showLogActivityDialog(context, state.lead.id),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Log Activity'),
           ),
-        if (context.can(Perms.leadsManage))
           const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            for (final entry in leadActivityTypeLabels.entries)
-              FilterChip(
-                label: Text('${entry.value}s'),
-                selected: state.activityTypeFilter.contains(entry.key),
-                onSelected: (_) => _toggleType(entry.key),
-              ),
-            const SizedBox(width: AppSpacing.sm),
-            OutlinedButton.icon(
-              onPressed: _pickDateRange,
-              icon: const Icon(Icons.calendar_today_outlined, size: 14),
-              label: Text(
-                state.activityDateFrom != null && state.activityDateTo != null
-                    ? '${DateFormatter.shortDate(state.activityDateFrom!)} - ${DateFormatter.shortDate(state.activityDateTo!)}'
-                    : 'Date range',
-              ),
-            ),
-            if (state.activityDateFrom != null)
-              IconButton(
-                tooltip: 'Clear date range',
-                onPressed: _clearDateRange,
-                icon: const Icon(Icons.close, size: 16),
-              ),
-          ],
-        ),
+        ],
+        _filterCard(state),
         const SizedBox(height: AppSpacing.lg),
         if (state.activities.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-            child: EmptyState(
-              icon: Icons.assignment_outlined,
-              title: 'No activities logged yet',
-              subtitle: 'Track your interactions with this lead — calls, meetings, notes, and follow-ups all in one place.',
-            ),
-          )
+          _emptyState(context, canManage, state.lead.id)
         else
-          Column(
-            children: state.activities
-                .map((a) => _ActivityRow(leadId: state.lead.id, activity: a))
-                .toList(),
-          ),
+          _ActivityTimeline(leadId: state.lead.id, activities: state.activities),
       ],
+    );
+  }
+
+  /// The type-filter + date-range card that sits above the timeline.
+  Widget _filterCard(LeadDetailLoaded state) {
+    final hasRange = state.activityDateFrom != null && state.activityDateTo != null;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Wrap(
+        spacing: AppSpacing.lg,
+        runSpacing: AppSpacing.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final entry in leadActivityTypeLabels.entries)
+            _checkFilter(
+              label: '${entry.value}s',
+              selected: state.activityTypeFilter.contains(entry.key),
+              onTap: () => _toggleType(entry.key),
+            ),
+          OutlinedButton.icon(
+            onPressed: _pickDateRange,
+            icon: const Icon(Icons.calendar_today_outlined, size: 14),
+            label: Text(
+              hasRange
+                  ? '${DateFormatter.shortDate(state.activityDateFrom!)} - ${DateFormatter.shortDate(state.activityDateTo!)}'
+                  : 'Date range',
+            ),
+          ),
+          if (state.activityDateFrom != null)
+            IconButton(
+              tooltip: 'Clear date range',
+              onPressed: _clearDateRange,
+              icon: const Icon(Icons.close, size: 16),
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _checkFilter({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Checkbox(
+              value: selected,
+              onChanged: (_) => onTap(),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label, style: AppTextStyles.bodyMedium),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(BuildContext context, bool canManage, int leadId) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.xxl,
+        horizontal: AppSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.assignment_outlined, size: 44, color: AppColors.textMuted),
+          const SizedBox(height: AppSpacing.md),
+          Text('No activities logged yet', style: AppTextStyles.h4),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Track your interactions with this lead — calls, meetings, notes, '
+            'and follow-ups all in one place.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          ),
+          if (canManage) ...[
+            const SizedBox(height: AppSpacing.lg),
+            ElevatedButton.icon(
+              onPressed: () => _showLogActivityDialog(context, leadId),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Log First Activity'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -849,6 +1106,77 @@ class _ActivityCenterState extends State<_ActivityCenter> {
   }
 }
 
+/// The Activity tab body — a vertical timeline of logged activities, newest
+/// first, with a colored icon node per type connected by a track.
+class _ActivityTimeline extends StatelessWidget {
+  const _ActivityTimeline({required this.leadId, required this.activities});
+  final int leadId;
+  final List<LeadActivity> activities;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(activities.length, (i) {
+        return _TimelineRow(
+          leadId: leadId,
+          activity: activities[i],
+          isLast: i == activities.length - 1,
+        );
+      }),
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({
+    required this.leadId,
+    required this.activity,
+    required this.isLast,
+  });
+  final int leadId;
+  final LeadActivity activity;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _activityColors[activity.type] ?? AppColors.primary;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Icon(
+                  _activityIcons[activity.type] ?? Icons.circle,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  width: 2,
+                  color: isLast ? Colors.transparent : AppColors.border,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: _ActivityRow(leadId: leadId, activity: activity),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({required this.leadId, required this.activity});
   final int leadId;
@@ -856,66 +1184,60 @@ class _ActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canManage = context.can(Perms.leadsManage);
+    final who = activity.createdByName ?? 'User ${activity.createdBy}';
+    final meta = activity.updatedAt != null
+        ? '${DateFormatter.dateTime(activity.createdAt)}, Edited ${DateFormatter.displayDate(activity.updatedAt!)} by ${activity.updatedByName ?? who}'
+        : '${DateFormatter.dateTime(activity.createdAt)} by $who';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primaryLight,
-            child: Icon(
-              _activityIcons[activity.type] ?? Icons.circle,
-              size: 16,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       labelForWireValue(leadActivityTypeLabels, activity.type),
                       style: AppTextStyles.labelLarge,
                     ),
-                    Text(
-                      DateFormatter.dateTime(activity.createdAt),
-                      style: AppTextStyles.caption,
-                    ),
+                    const SizedBox(height: 2),
+                    Text(meta, style: AppTextStyles.caption),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(activity.note, style: AppTextStyles.bodyMedium),
-                const SizedBox(height: 4),
-                Text(
-                  activity.updatedAt != null
-                      ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
-                      : 'Logged by ${activity.createdByName ?? 'User ${activity.createdBy}'}',
-                  style: AppTextStyles.caption,
+              ),
+              if (canManage) ...[
+                InkWell(
+                  onTap: () => _showEditDialog(context),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textMuted),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => _confirmDelete(context),
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Edit',
-            onPressed: () => _showEditDialog(context),
-            icon: const Icon(Icons.edit_outlined, size: 18),
-          ),
-          IconButton(
-            tooltip: 'Delete',
-            onPressed: () => _confirmDelete(context),
-            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(activity.note, style: AppTextStyles.bodyMedium),
         ],
       ),
     );

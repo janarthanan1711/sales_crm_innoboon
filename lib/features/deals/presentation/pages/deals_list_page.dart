@@ -636,27 +636,49 @@ class _FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final active = selected != null;
     return PopupMenuButton<String>(
       onSelected: onSelected,
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
-      itemBuilder: (context) => options.map((option) => PopupMenuItem(value: option, child: Text(option))).toList(),
+      itemBuilder: (context) => options
+          .map((option) => PopupMenuItem(
+                value: option,
+                child: Row(
+                  children: [
+                    Expanded(child: Text(option)),
+                    if (option == selected)
+                      const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  ],
+                ),
+              ))
+          .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          color: active ? AppColors.primaryLight : null,
+          border: Border.all(color: active ? AppColors.primary : AppColors.border),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 15, color: AppColors.textMuted),
+              Icon(icon, size: 15, color: active ? AppColors.primary : AppColors.textMuted),
               const SizedBox(width: 6),
             ],
-            Text(selected ?? label, style: AppTextStyles.labelMedium),
+            Text(
+              selected ?? label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : null,
+              ),
+            ),
             const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textMuted),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: active ? AppColors.primary : AppColors.textMuted,
+            ),
           ],
         ),
       ),

@@ -37,6 +37,10 @@ class _AccountsListView extends StatefulWidget {
 class _AccountsListViewState extends State<_AccountsListView> {
   List<OwnerUser> _users = [];
   int? _ownerId;
+  // Selected display labels for the Tier/Industry filters (null = "All"), so
+  // the dropdown chrome can reflect the active choice.
+  String? _tier;
+  String? _industry;
   final Set<String> _selected = {};
 
   @override
@@ -159,12 +163,16 @@ class _AccountsListViewState extends State<_AccountsListView> {
           const SizedBox(width: AppSpacing.sm),
           _FilterDropdown(
             label: 'Tier',
+            selected: _tier,
             options: ['All', ...leadTierLabels.values],
-            onSelected: (v) => bloc.add(
-              AccountsListFilterChanged(
-                tier: v == 'All' ? 'All' : wireValueForLabel(leadTierLabels, v),
-              ),
-            ),
+            onSelected: (v) {
+              setState(() => _tier = v == 'All' ? null : v);
+              bloc.add(
+                AccountsListFilterChanged(
+                  tier: v == 'All' ? 'All' : wireValueForLabel(leadTierLabels, v),
+                ),
+              );
+            },
           ),
           const SizedBox(width: AppSpacing.sm),
           _OwnerFilterDropdown(
@@ -180,8 +188,12 @@ class _AccountsListViewState extends State<_AccountsListView> {
           const SizedBox(width: AppSpacing.sm),
           _FilterDropdown(
             label: 'Industry',
+            selected: _industry,
             options: ['All', ...AppConstants.industries],
-            onSelected: (v) => bloc.add(AccountsListFilterChanged(industry: v)),
+            onSelected: (v) {
+              setState(() => _industry = v == 'All' ? null : v);
+              bloc.add(AccountsListFilterChanged(industry: v));
+            },
           ),
         ],
       ),
@@ -389,10 +401,18 @@ class _PaginationBar extends StatelessWidget {
 }
 
 class _FilterDropdown extends StatelessWidget {
-  const _FilterDropdown({required this.label, required this.options, required this.onSelected});
+  const _FilterDropdown({
+    required this.label,
+    required this.options,
+    required this.onSelected,
+    this.selected,
+  });
   final String label;
   final List<String> options;
   final ValueChanged<String> onSelected;
+
+  /// Selected option label (null when no filter is applied).
+  final String? selected;
 
   @override
   Widget build(BuildContext context) {
@@ -400,8 +420,13 @@ class _FilterDropdown extends StatelessWidget {
       onSelected: onSelected,
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
-      itemBuilder: (context) => options.map((option) => PopupMenuItem(value: option, child: Text(option))).toList(),
-      child: _FilterChrome(label: label),
+      itemBuilder: (context) => options
+          .map((option) => PopupMenuItem(
+                value: option,
+                child: _MenuRow(text: option, checked: option == selected),
+              ))
+          .toList(),
+      child: _FilterChrome(label: selected ?? label, active: selected != null),
     );
   }
 }
@@ -415,40 +440,76 @@ class _OwnerFilterDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matches = users.where((u) => u.id == selectedId).toList();
-    final selectedName = (selectedId == null || matches.isEmpty)
-        ? 'Primary Owner'
-        : matches.first.displayName;
-    return PopupMenuButton<int?>(
-      onSelected: onSelected,
+    final active = selectedId != null && matches.isNotEmpty;
+    final selectedName = active ? matches.first.displayName : 'Primary Owner';
+    // Owner ids are positive; use -1 as the "All" sentinel so the menu item
+    // has a non-null value (a null-valued PopupMenuItem never fires
+    // onSelected — Flutter treats it as a dismissal).
+    return PopupMenuButton<int>(
+      onSelected: (v) => onSelected(v == -1 ? null : v),
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
       itemBuilder: (context) => [
-        const PopupMenuItem<int?>(value: null, child: Text('All Owners')),
-        ...users.map((u) => PopupMenuItem<int?>(value: u.id, child: Text(u.displayName))),
+        PopupMenuItem<int>(
+          value: -1,
+          child: _MenuRow(text: 'All Owners', checked: selectedId == null),
+        ),
+        ...users.map((u) => PopupMenuItem<int>(
+              value: u.id,
+              child: _MenuRow(text: u.displayName, checked: u.id == selectedId),
+            )),
       ],
-      child: _FilterChrome(label: selectedName),
+      child: _FilterChrome(label: selectedName, active: active),
+    );
+  }
+}
+
+/// A popup-menu row with an optional trailing check for the active option.
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.text, required this.checked});
+  final String text;
+  final bool checked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(text)),
+        if (checked) const Icon(Icons.check, size: 16, color: AppColors.primary),
+      ],
     );
   }
 }
 
 class _FilterChrome extends StatelessWidget {
-  const _FilterChrome({required this.label});
+  const _FilterChrome({required this.label, this.active = false});
   final String label;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
+        color: active ? AppColors.primaryLight : null,
+        border: Border.all(color: active ? AppColors.primary : AppColors.border),
         borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: AppTextStyles.labelMedium),
+          Text(
+            label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: active ? AppColors.primary : null,
+            ),
+          ),
           const SizedBox(width: 4),
-          const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textMuted),
+          Icon(
+            Icons.keyboard_arrow_down,
+            size: 16,
+            color: active ? AppColors.primary : AppColors.textMuted,
+          ),
         ],
       ),
     );

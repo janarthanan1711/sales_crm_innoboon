@@ -229,6 +229,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
           ),
           const SizedBox(width: AppSpacing.sm),
           _OwnerFilterDropdown(
+            selectedId: _ownerIdFilter,
             onSelected: (ownerId) {
               setState(() => _ownerIdFilter = ownerId);
               _applyFilters(context);
@@ -238,6 +239,9 @@ class _LeadsListViewState extends State<_LeadsListView> {
           _FilterDropdown(
             label: 'Source',
             icon: Icons.source_outlined,
+            selected: _sourceFilter == null
+                ? null
+                : labelForWireValue(leadSourceLabels, _sourceFilter!),
             options: ['All', ...AppConstants.leadSources],
             onSelected: (value) {
               setState(() {
@@ -252,6 +256,9 @@ class _LeadsListViewState extends State<_LeadsListView> {
           _FilterDropdown(
             label: 'Status',
             icon: Icons.circle_outlined,
+            selected: _statusFilter == null
+                ? null
+                : labelForWireValue(leadStatusLabels, _statusFilter!),
             options: ['All', ...AppConstants.leadStatuses],
             onSelected: (value) {
               setState(() {
@@ -723,6 +730,7 @@ class _FilterDropdown extends StatelessWidget {
     required this.options,
     required this.onSelected,
     this.icon,
+    this.selected,
   });
 
   final String label;
@@ -730,8 +738,13 @@ class _FilterDropdown extends StatelessWidget {
   final ValueChanged<String> onSelected;
   final IconData? icon;
 
+  /// The currently-selected option label (null when no filter is applied), so
+  /// the control reflects the active choice instead of the static [label].
+  final String? selected;
+
   @override
   Widget build(BuildContext context) {
+    final active = selected != null;
     return PopupMenuButton<String>(
       onSelected: onSelected,
       offset: const Offset(0, 40),
@@ -739,7 +752,17 @@ class _FilterDropdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       itemBuilder: (context) => options.map((option) {
-        return PopupMenuItem(value: option, child: Text(option));
+        final isSel = option == selected;
+        return PopupMenuItem(
+          value: option,
+          child: Row(
+            children: [
+              Expanded(child: Text(option)),
+              if (isSel)
+                const Icon(Icons.check, size: 16, color: AppColors.primary),
+            ],
+          ),
+        );
       }).toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -747,22 +770,28 @@ class _FilterDropdown extends StatelessWidget {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          color: active ? AppColors.primaryLight : null,
+          border: Border.all(color: active ? AppColors.primary : AppColors.border),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 16, color: AppColors.textSecondary),
+              Icon(icon, size: 16, color: active ? AppColors.primary : AppColors.textSecondary),
               const SizedBox(width: 4),
             ],
-            Text(label, style: AppTextStyles.labelMedium),
+            Text(
+              selected ?? label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : null,
+              ),
+            ),
             const SizedBox(width: 4),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down,
               size: 16,
-              color: AppColors.textMuted,
+              color: active ? AppColors.primary : AppColors.textMuted,
             ),
           ],
         ),
@@ -774,8 +803,9 @@ class _FilterDropdown extends StatelessWidget {
 /// ─── Owner Filter Dropdown ──────────────────────────────
 /// Options are loaded from `GET /api/v1/users` rather than a static list.
 class _OwnerFilterDropdown extends StatefulWidget {
-  const _OwnerFilterDropdown({required this.onSelected});
+  const _OwnerFilterDropdown({required this.onSelected, this.selectedId});
   final ValueChanged<int?> onSelected;
+  final int? selectedId;
 
   @override
   State<_OwnerFilterDropdown> createState() => _OwnerFilterDropdownState();
@@ -798,18 +828,40 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<int?>(
-      onSelected: widget.onSelected,
+    final selectedId = widget.selectedId;
+    final matches = _owners.where((o) => o.id == selectedId).toList();
+    final active = selectedId != null && matches.isNotEmpty;
+    final display = active ? matches.first.displayName : 'Owner';
+    // Owner ids are positive; use -1 as the "All" sentinel so the menu item
+    // has a non-null value (a null-valued PopupMenuItem never fires
+    // onSelected — Flutter treats it as a dismissal).
+    return PopupMenuButton<int>(
+      onSelected: (v) => widget.onSelected(v == -1 ? null : v),
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       itemBuilder: (context) => [
-        const PopupMenuItem<int?>(value: null, child: Text('All')),
+        PopupMenuItem<int>(
+          value: -1,
+          child: Row(
+            children: [
+              const Expanded(child: Text('All')),
+              if (selectedId == null)
+                const Icon(Icons.check, size: 16, color: AppColors.primary),
+            ],
+          ),
+        ),
         ..._owners.map(
-          (owner) => PopupMenuItem<int?>(
+          (owner) => PopupMenuItem<int>(
             value: owner.id,
-            child: Text(owner.displayName),
+            child: Row(
+              children: [
+                Expanded(child: Text(owner.displayName)),
+                if (owner.id == selectedId)
+                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+              ],
+            ),
           ),
         ),
       ],
@@ -819,24 +871,30 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          color: active ? AppColors.primaryLight : null,
+          border: Border.all(color: active ? AppColors.primary : AppColors.border),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.person_outline,
               size: 16,
-              color: AppColors.textSecondary,
+              color: active ? AppColors.primary : AppColors.textSecondary,
             ),
             const SizedBox(width: 4),
-            Text('Owner', style: AppTextStyles.labelMedium),
+            Text(
+              display,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : null,
+              ),
+            ),
             const SizedBox(width: 4),
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down,
               size: 16,
-              color: AppColors.textMuted,
+              color: active ? AppColors.primary : AppColors.textMuted,
             ),
           ],
         ),
