@@ -10,8 +10,20 @@ import '../../../../core/widgets/shared_widgets.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../bloc/deals_list_bloc.dart';
+import '../pages/create_deal_page.dart';
 
 const String _cancelled = '__cancelled__';
+
+/// Accent colors for the column status dots, cycled by stage order.
+const List<Color> _kStageDotColors = [
+  Color(0xFF94A3B8), // slate
+  Color(0xFF3B82F6), // blue
+  Color(0xFF8B5CF6), // violet
+  Color(0xFFF97316), // orange
+  Color(0xFF10B981), // emerald
+  Color(0xFF06B6D4), // cyan
+  Color(0xFFEF4444), // red
+];
 
 /// Result of the move dialog: cancelled, or a confirmed (note, coldReason).
 class _MoveResult {
@@ -102,14 +114,16 @@ class KanbanBoard extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: stages.map((stage) {
+        children: List.generate(stages.length, (i) {
+          final stage = stages[i];
           final stageDeals = deals.where((d) => d.stageId == stage.id).toList();
           return _KanbanColumn(
             stage: stage,
             deals: stageDeals,
             canManage: canManage,
+            accent: _kStageDotColors[i % _kStageDotColors.length],
           );
-        }).toList(),
+        }),
       ),
     );
   }
@@ -120,10 +134,12 @@ class _KanbanColumn extends StatelessWidget {
     required this.stage,
     required this.deals,
     required this.canManage,
+    required this.accent,
   });
   final DealStageDef stage;
   final List<Deal> deals;
   final bool canManage;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -159,18 +175,32 @@ class _KanbanColumn extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Column header — status dot + uppercase stage name + count.
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
                       child: Text(
-                        stage.name,
-                        style: AppTextStyles.labelLarge,
+                        stage.name.toUpperCase(),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: AppSpacing.sm),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -188,18 +218,6 @@ class _KanbanColumn extends StatelessWidget {
                   ],
                 ),
               ),
-              if (deals.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ).copyWith(bottom: AppSpacing.md),
-                  child: Text(
-                    CurrencyFormatter.formatINR(totalValue),
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
               // A fixed-height scroll area so empty columns are still valid
               // drop targets.
               Expanded(
@@ -211,7 +229,13 @@ class _KanbanColumn extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final deal = deals[index];
                     void open() => context.go('/deals/${deal.id}');
-                    if (!canManage) return _DealCard(deal: deal, onTap: open);
+                    if (!canManage) {
+                      return _DealCard(
+                        deal: deal,
+                        onTap: open,
+                        canManage: false,
+                      );
+                    }
                     return Draggable<Deal>(
                       data: deal,
                       feedback: Material(
@@ -221,16 +245,34 @@ class _KanbanColumn extends StatelessWidget {
                         ),
                         child: SizedBox(
                           width: 280,
-                          child: _DealCard(deal: deal),
+                          child: _DealCard(deal: deal, canManage: canManage),
                         ),
                       ),
                       childWhenDragging: Opacity(
                         opacity: 0.5,
-                        child: _DealCard(deal: deal),
+                        child: _DealCard(deal: deal, canManage: canManage),
                       ),
-                      child: _DealCard(deal: deal, onTap: open),
+                      child: _DealCard(
+                        deal: deal,
+                        onTap: open,
+                        canManage: canManage,
+                      ),
                     );
                   },
+                ),
+              ),
+              // Column footer — pinned total for the stage.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: AppColors.border)),
+                ),
+                child: Text(
+                  'Total: ${CurrencyFormatter.formatINR(totalValue)}',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -241,10 +283,20 @@ class _KanbanColumn extends StatelessWidget {
   }
 }
 
-class _DealCard extends StatelessWidget {
-  const _DealCard({required this.deal, this.onTap});
+class _DealCard extends StatefulWidget {
+  const _DealCard({required this.deal, this.onTap, this.canManage = false});
   final Deal deal;
   final VoidCallback? onTap;
+  final bool canManage;
+
+  @override
+  State<_DealCard> createState() => _DealCardState();
+}
+
+class _DealCardState extends State<_DealCard> {
+  bool _hover = false;
+
+  Deal get deal => widget.deal;
 
   /// True when the deal is due within the next 10 days (or already overdue) —
   /// surfaced as a red left border to flag deals needing attention.
@@ -254,9 +306,25 @@ class _DealCard extends StatelessWidget {
     return close.difference(DateTime.now()).inDays <= 10;
   }
 
+  void _openDetail() => context.go('/deals/${deal.id}');
+
+  Future<void> _edit() async {
+    final bloc = context.read<DealsListBloc>();
+    final result = await showDialog(
+      context: context,
+      builder: (_) => CreateDealDialog(deal: deal),
+    );
+    if (result != null) bloc.add(const DealsListLoadRequested());
+  }
+
   @override
   Widget build(BuildContext context) {
     final side = BorderSide(color: AppColors.border);
+    final leftColor = _dueSoon
+        ? AppColors.error
+        : (_hover ? AppColors.primary : AppColors.border);
+    final leftWidth = _dueSoon ? 4.0 : (_hover ? 3.0 : 1.0);
+
     final card = Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -266,10 +334,7 @@ class _DealCard extends StatelessWidget {
           top: side,
           right: side,
           bottom: side,
-          left: BorderSide(
-            color: _dueSoon ? AppColors.error : AppColors.border,
-            width: _dueSoon ? 4 : 1,
-          ),
+          left: BorderSide(color: leftColor, width: leftWidth),
         ),
         boxShadow: [
           BoxShadow(
@@ -282,10 +347,20 @@ class _DealCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tier badge
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TierBadge(tier: deal.tier),
+          // Tier badge + overflow menu.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: deal.tier.isNotEmpty
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: TierBadge(tier: deal.tier),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              _overflowMenu(),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -308,23 +383,12 @@ class _DealCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              const Icon(Icons.person_outline, size: 13, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  deal.owner,
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
+              if (deal.expectedCloseDate != null) ...[
+                Icon(
+                  Icons.event_outlined,
+                  size: 13,
+                  color: _dueSoon ? AppColors.error : AppColors.textMuted,
                 ),
-              ),
-            ],
-          ),
-          if (deal.expectedCloseDate != null) ...[
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Icon(Icons.event_outlined, size: 13,
-                    color: _dueSoon ? AppColors.error : AppColors.textMuted),
                 const SizedBox(width: 4),
                 Text(
                   DateFormatter.shortDate(deal.expectedCloseDate!),
@@ -332,18 +396,51 @@ class _DealCard extends StatelessWidget {
                     color: _dueSoon ? AppColors.error : AppColors.textSecondary,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ] else
+                Text(
+                  'No close date',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              const Spacer(),
+              InitialsAvatar(name: deal.owner, size: 26),
+            ],
+          ),
         ],
       ),
     );
 
-    if (onTap == null) return card;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      child: card,
+    return MouseRegion(
+      // onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: InkWell(
+        onTap: widget.onTap ?? _openDetail,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: card,
+      ),
+    );
+  }
+
+  Widget _overflowMenu() {
+    return SizedBox(
+      width: 28,
+      height: 24,
+      child: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        iconSize: 18,
+        tooltip: 'Options',
+        icon: const Icon(Icons.more_horiz, color: AppColors.textMuted),
+        onSelected: (v) {
+          if (v == 'view') _openDetail();
+          if (v == 'edit') _edit();
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'view', child: Text('View details')),
+          if (widget.canManage)
+            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+        ],
+      ),
     );
   }
 }

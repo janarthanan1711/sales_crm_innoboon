@@ -82,6 +82,7 @@ import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
 import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
+import '../../features/deals/domain/usecases/export_deals_usecase.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
 
@@ -143,7 +144,8 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: "https://dollar-starry-worry.ngrok-free.dev/api/v1",
+      defaultValue:
+          "https://553b-2405-201-e036-e038-7882-2a64-40d4-8691.ngrok-free.app/api/v1",
       // "http://192.168.0.187:8000/api/v1",
       // 'https://api.saleshub.example.com/api/v1',
     ),
@@ -304,6 +306,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
+  sl.registerLazySingleton(() => ExportDealsUseCase(sl()));
   sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));
@@ -406,6 +409,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetAccountDocumentsUseCase(sl()));
   sl.registerLazySingleton(() => UploadAccountDocumentUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAccountDocumentUseCase(sl()));
+  sl.registerLazySingleton(() => GetDealDocumentsUseCase(sl()));
+  sl.registerLazySingleton(() => UploadDealDocumentUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteDealDocumentUseCase(sl()));
 
   // ─── Search Feature ─────────────────────────────────
   sl.registerLazySingleton<SearchRemoteDataSource>(

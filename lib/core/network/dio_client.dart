@@ -22,6 +22,10 @@ class DioClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          // ngrok free tier serves an HTML interstitial to browser-like
+          // clients unless this header is present; it also lets ngrok pass
+          // the request straight through instead of interfering.
+          'ngrok-skip-browser-warning': 'true',
         },
       ),
     );

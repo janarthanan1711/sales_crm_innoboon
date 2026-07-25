@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/account_document.dart';
+import '../../domain/entities/deal_document.dart';
 import '../../domain/repositories/document_repository.dart';
 
 class DocumentRepositoryImpl implements DocumentRepository {
@@ -44,6 +45,47 @@ class DocumentRepositoryImpl implements DocumentRepository {
   ) async {
     try {
       await dataSource.deleteAccountDocument(accountId, documentId);
+      return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<DealDocument>>> getDealDocuments(
+    String dealId,
+  ) async {
+    try {
+      return Right(await dataSource.getDealDocuments(dealId));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, DealDocument>> uploadDealDocument(
+    String dealId, {
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    try {
+      return Right(await dataSource.uploadDealDocument(
+        dealId,
+        bytes: bytes,
+        fileName: fileName,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteDealDocument(
+    String dealId,
+    String documentId,
+  ) async {
+    try {
+      await dataSource.deleteDealDocument(dealId, documentId);
       return const Right(unit);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));

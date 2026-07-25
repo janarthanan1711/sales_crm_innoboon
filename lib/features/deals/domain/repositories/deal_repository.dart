@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/deal.dart';
@@ -34,10 +35,13 @@ abstract class DealRepository {
     int? stageId,
     List<int>? contactIds,
     String? coldReason,
+    String? tier,
     int? ownerId,
     String? note,
   });
-  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(String id);
+  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
+    String id,
+  );
   Future<Either<Failure, List<DealStageDef>>> getDealStages();
 
   Future<Either<Failure, List<DealActivity>>> listActivities(
@@ -63,6 +67,14 @@ abstract class DealRepository {
     String dealId,
     String activityId,
   );
+
+  /// Downloads the filtered deals as an `.xlsx` byte stream
+  /// (`GET /deals/export`). Role-scoped server-side; no owner filter.
+  Future<Either<Failure, Uint8List>> exportDeals({
+    int? stageId,
+    String? tier,
+    String? search,
+  });
 }
 
 abstract class DealRemoteDataSource {
@@ -95,6 +107,7 @@ abstract class DealRemoteDataSource {
     List<int>? contactIds,
     String? coldReason,
     int? ownerId,
+    String? tier,
     String? note,
   });
   Future<List<DealStageHistoryEntry>> getStageHistory(String id);
@@ -120,4 +133,6 @@ abstract class DealRemoteDataSource {
     String? note,
   });
   Future<void> deleteActivity(String dealId, String activityId);
+
+  Future<Uint8List> exportDeals({int? stageId, String? tier, String? search});
 }

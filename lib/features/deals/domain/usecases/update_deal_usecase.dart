@@ -12,6 +12,7 @@ class UpdateDealParams {
   final int? stageId;
   final List<int>? contactIds;
   final String? coldReason;
+  final String? tier;
   final int? ownerId;
   final String? note;
 
@@ -23,6 +24,7 @@ class UpdateDealParams {
     this.expectedCloseDate,
     this.stageId,
     this.contactIds,
+    this.tier,
     this.coldReason,
     this.ownerId,
     this.note,
@@ -43,6 +45,7 @@ class UpdateDealUseCase {
       stageId: params.stageId,
       contactIds: params.contactIds,
       coldReason: params.coldReason,
+      tier: params.tier,
       ownerId: params.ownerId,
       note: params.note,
     );

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -22,10 +24,10 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('┌──── Response ─────────────────────────────');
-      debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}');
-      debugPrint('│ Data: ${_truncate(response.data.toString(), 500)}');
-      debugPrint('└───────────────────────────────────────────');
+      log('┌──── Response ─────────────────────────────');
+      log('│ ${response.statusCode} ${response.requestOptions.uri}');
+      log('│ Data: ${_truncate(response.data.toString(), 10000)}');
+      log('└───────────────────────────────────────────');
     }
     handler.next(response);
   }
@@ -38,7 +40,9 @@ class LoggingInterceptor extends Interceptor {
       debugPrint('│ ${err.message}');
       if (err.response != null) {
         debugPrint('│ Status: ${err.response?.statusCode}');
-        debugPrint('│ Data: ${_truncate(err.response?.data?.toString() ?? '', 500)}');
+        debugPrint(
+          '│ Data: ${_truncate(err.response?.data?.toString() ?? '', 500)}',
+        );
       }
       debugPrint('└───────────────────────────────────────────');
     }

@@ -37,7 +37,7 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           if (tier != null && tier.isNotEmpty && tier != 'All') 'tier': tier,
           if (industry != null && industry.isNotEmpty && industry != 'All')
             'industry': industry,
-          if (ownerId != null) 'owner_id': ownerId,
+          'owner_id': ?ownerId,
           'limit': limit,
           'offset': offset,
         },
@@ -111,14 +111,14 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
       final response = await _dioClient.patch(
         ApiEndpoints.accountById(id),
         data: {
-          if (company != null) 'company': company,
-          if (domain != null) 'domain': domain,
-          if (tier != null) 'tier': tier,
-          if (ownerId != null) 'owner_id': ownerId,
-          if (industry != null) 'industry': industry,
-          if (city != null) 'city': city,
-          if (description != null) 'description': description,
-          if (linkedinUrl != null) 'linkedin_url': linkedinUrl,
+          'company': ?company,
+          'domain': ?domain,
+          'tier': ?tier,
+          'owner_id': ?ownerId,
+          'industry': ?industry,
+          'city': ?city,
+          'description': ?description,
+          'linkedin_url': ?linkedinUrl,
         },
       );
       return AccountModel.fromJson(response.data as Map<String, dynamic>);
@@ -208,10 +208,7 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     try {
       final response = await _dioClient.patch(
         ApiEndpoints.accountActivityById(accountId, activityId),
-        data: {
-          if (type != null) 'type': type,
-          if (note != null) 'note': note,
-        },
+        data: {'type': ?type, 'note': ?note},
       );
       return accountActivityFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {

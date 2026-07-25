@@ -25,10 +25,10 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
       final response = await dioClient.get(
         ApiEndpoints.contacts,
         queryParameters: {
-          if (ownerId != null) 'owner_id': ownerId,
-          if (accountId != null) 'account_id': accountId,
-          if (tier != null) 'tier': tier,
-          if (isPrimary != null) 'is_primary': isPrimary,
+          'owner_id': ?ownerId,
+          'account_id': ?accountId,
+          'tier': ?tier,
+          'is_primary': ?isPrimary,
           if (search != null && search.isNotEmpty) 'search': search,
           'limit': limit,
           'offset': offset,
@@ -58,7 +58,9 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
   Future<ContactOverview> getContactOverview(int id) async {
     try {
       final response = await dioClient.get(ApiEndpoints.contactOverview('$id'));
-      return ContactModel.overviewFromJson(response.data as Map<String, dynamic>);
+      return ContactModel.overviewFromJson(
+        response.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw _normalize(e);
     }

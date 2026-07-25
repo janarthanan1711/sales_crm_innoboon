@@ -42,7 +42,9 @@ class DealModel extends Deal {
           ? DateTime.tryParse(json['expected_close_date'] as String)
           : null,
       ownerId: json['owner_id'] as int?,
-      owner: json['owner_id'] != null ? 'Owner ${json['owner_id']}' : 'Unassigned',
+      owner: json['owner_id'] != null
+          ? 'Owner ${json['owner_id']}'
+          : 'Unassigned',
       coldReason: json['cold_reason'] as String?,
       tier: json['tier'] as String? ?? '',
       // Not in the API — placeholder so sort-by-date UI doesn't crash.
@@ -71,10 +73,12 @@ class DealModel extends Deal {
       if (expectedCloseDate != null)
         'expected_close_date': _formatDate(expectedCloseDate),
       'stage_id': stageId,
-      if (contactIds != null && contactIds.isNotEmpty) 'contact_ids': contactIds,
+      if (contactIds != null && contactIds.isNotEmpty)
+        'contact_ids': contactIds,
       if (tier != null && tier.isNotEmpty) 'tier': tier,
-      if (coldReason != null && coldReason.isNotEmpty) 'cold_reason': coldReason,
-      if (ownerId != null) 'owner_id': ownerId,
+      if (coldReason != null && coldReason.isNotEmpty)
+        'cold_reason': coldReason,
+      'owner_id': ?ownerId,
     };
   }
 
@@ -89,20 +93,22 @@ class DealModel extends Deal {
     int? stageId,
     List<int>? contactIds,
     String? coldReason,
+    String? tier,
     int? ownerId,
     String? note,
   }) {
     return {
-      if (dealName != null) 'deal_name': dealName,
-      if (value != null) 'value': value,
-      if (currency != null) 'currency': currency,
+      'deal_name': ?dealName,
+      'value': ?value,
+      'currency': ?currency,
       if (expectedCloseDate != null)
         'expected_close_date': _formatDate(expectedCloseDate),
-      if (stageId != null) 'stage_id': stageId,
-      if (contactIds != null) 'contact_ids': contactIds,
-      if (coldReason != null) 'cold_reason': coldReason,
-      if (ownerId != null) 'owner_id': ownerId,
-      if (note != null) 'note': note,
+      'stage_id': ?stageId,
+      'contact_ids': ?contactIds,
+      'cold_reason': ?coldReason,
+      'owner_id': ?ownerId,
+      'tier': ?tier,
+      'note': ?note,
     };
   }
 

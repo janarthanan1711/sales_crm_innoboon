@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -32,9 +33,9 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         ApiEndpoints.deals,
         queryParameters: {
           'view': 'list',
-          if (ownerId != null) 'owner_id': ownerId,
-          if (accountId != null) 'account_id': accountId,
-          if (stageId != null) 'stage_id': stageId,
+          'owner_id': ?ownerId,
+          'account_id': ?accountId,
+          'stage_id': ?stageId,
           if (search != null && search.isNotEmpty) 'search': search,
           'limit': 200,
           'offset': 0,
@@ -104,6 +105,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     DateTime? expectedCloseDate,
     int? stageId,
     List<int>? contactIds,
+    String? tier,
     String? coldReason,
     int? ownerId,
     String? note,
@@ -120,6 +122,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           contactIds: contactIds,
           coldReason: coldReason,
           ownerId: ownerId,
+          tier: tier,
           note: note,
         ),
       );
@@ -147,10 +150,11 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     try {
       final response = await dioClient.get(ApiEndpoints.dealStages);
       final items = response.data as List<dynamic>;
-      final stages = items
-          .map((e) => dealStageDefFromJson(e as Map<String, dynamic>))
-          .toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final stages =
+          items
+              .map((e) => dealStageDefFromJson(e as Map<String, dynamic>))
+              .toList()
+            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       return stages;
     } on DioException catch (e) {
       throw _normalize(e);
@@ -222,9 +226,29 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   @override
   Future<void> deleteActivity(String dealId, String activityId) async {
     try {
-      await dioClient.delete(
-        ApiEndpoints.dealActivityById(dealId, activityId),
+      await dioClient.delete(ApiEndpoints.dealActivityById(dealId, activityId));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> exportDeals({
+    int? stageId,
+    String? tier,
+    String? search,
+  }) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.dealsExport,
+        queryParameters: {
+          if (stageId != null) 'stage_id': stageId,
+          if (tier != null && tier.isNotEmpty) 'tier': tier,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+        options: Options(responseType: ResponseType.bytes),
       );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _normalize(e);
     }

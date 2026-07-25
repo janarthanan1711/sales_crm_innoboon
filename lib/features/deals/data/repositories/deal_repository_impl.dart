@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/deal.dart';
@@ -80,6 +81,7 @@ class DealRepositoryImpl implements DealRepository {
     String? currency,
     DateTime? expectedCloseDate,
     int? stageId,
+    String? tier,
     List<int>? contactIds,
     String? coldReason,
     int? ownerId,
@@ -94,6 +96,7 @@ class DealRepositoryImpl implements DealRepository {
         expectedCloseDate: expectedCloseDate,
         stageId: stageId,
         contactIds: contactIds,
+        tier: tier,
         coldReason: coldReason,
         ownerId: ownerId,
         note: note,
@@ -105,7 +108,9 @@ class DealRepositoryImpl implements DealRepository {
   }
 
   @override
-  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(String id) async {
+  Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
+    String id,
+  ) async {
     try {
       return Right(await remoteDataSource.getStageHistory(id));
     } on Exception catch (e) {
@@ -130,12 +135,14 @@ class DealRepositoryImpl implements DealRepository {
     DateTime? dateTo,
   }) async {
     try {
-      return Right(await remoteDataSource.listActivities(
-        dealId,
-        types: types,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-      ));
+      return Right(
+        await remoteDataSource.listActivities(
+          dealId,
+          types: types,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -149,12 +156,14 @@ class DealRepositoryImpl implements DealRepository {
     required String note,
   }) async {
     try {
-      return Right(await remoteDataSource.logActivity(
-        dealId,
-        type: type,
-        title: title,
-        note: note,
-      ));
+      return Right(
+        await remoteDataSource.logActivity(
+          dealId,
+          type: type,
+          title: title,
+          note: note,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -169,13 +178,15 @@ class DealRepositoryImpl implements DealRepository {
     String? note,
   }) async {
     try {
-      return Right(await remoteDataSource.updateActivity(
-        dealId,
-        activityId,
-        type: type,
-        title: title,
-        note: note,
-      ));
+      return Right(
+        await remoteDataSource.updateActivity(
+          dealId,
+          activityId,
+          type: type,
+          title: title,
+          note: note,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -189,6 +200,23 @@ class DealRepositoryImpl implements DealRepository {
     try {
       await remoteDataSource.deleteActivity(dealId, activityId);
       return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportDeals({
+    int? stageId,
+    String? tier,
+    String? search,
+  }) async {
+    try {
+      return Right(await remoteDataSource.exportDeals(
+        stageId: stageId,
+        tier: tier,
+        search: search,
+      ));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
