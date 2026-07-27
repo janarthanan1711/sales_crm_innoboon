@@ -1319,15 +1319,24 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
       ),
     );
     if (!mounted) return;
-    setState(() => _uploading = false);
     result.fold(
-      (fail) => messenger.showSnackBar(SnackBar(
-        content: Text('Upload failed: ${fail.message}'),
-        backgroundColor: AppColors.error,
-      )),
-      (_) {
+      (fail) {
+        setState(() => _uploading = false);
+        messenger.showSnackBar(SnackBar(
+          content: Text('Upload failed: ${fail.message}'),
+          backgroundColor: AppColors.error,
+        ));
+      },
+      (doc) {
         messenger.showSnackBar(SnackBar(content: Text('“${f.name}” uploaded.')));
-        _load();
+        // Reflect immediately from the authoritative upload response — a
+        // follow-up GET can race the server's write and return a stale list,
+        // so insert the returned document directly instead of re-fetching.
+        setState(() {
+          _uploading = false;
+          _all.removeWhere((d) => d.id == doc.id);
+          _all.insert(0, doc);
+        });
       },
     );
   }

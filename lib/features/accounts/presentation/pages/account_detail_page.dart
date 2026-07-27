@@ -1044,16 +1044,26 @@ class _DocumentsTabState extends State<_DocumentsTab> {
       ),
     );
     if (!mounted) return;
-    setState(() => _uploading = false);
     result.fold(
-      (fail) => messenger.showSnackBar(SnackBar(
-        content: Text('Upload failed: ${fail.message}'),
-        backgroundColor: AppColors.error,
-      )),
-      (_) {
+      (fail) {
+        setState(() => _uploading = false);
+        messenger.showSnackBar(SnackBar(
+          content: Text('Upload failed: ${fail.message}'),
+          backgroundColor: AppColors.error,
+        ));
+      },
+      (doc) {
         messenger.showSnackBar(SnackBar(content: Text('“${f.name}” uploaded.')));
-        setState(() => _page = 0);
-        _load();
+        // Reflect immediately from the authoritative upload response. A
+        // follow-up GET can race the server's write and return a stale list
+        // (which is why the doc only appeared after leaving and re-entering
+        // the tab), so insert the returned document directly.
+        setState(() {
+          _uploading = false;
+          _all.removeWhere((d) => d.id == doc.id);
+          _all.insert(0, doc);
+          _page = 0;
+        });
       },
     );
   }

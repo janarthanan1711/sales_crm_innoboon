@@ -85,17 +85,33 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       _activities = List.from(l.activities ?? []);
 
       if (l.contacts != null) {
+        // The backend returns the lead's own primary email/phone as a contact
+        // row too. That's already shown in the Primary Email / Phone fields
+        // above, so skip the first entry that just mirrors it — otherwise the
+        // Additional Contacts section shows a phantom duplicate of the primary
+        // email on every edit.
+        final primaryEmail = l.email.trim().toLowerCase();
+        final primaryPhone = (l.phone ?? '').trim();
+        var skippedPrimary = false;
         for (final contact in l.contacts!) {
-          final hasEmail = contact.email != null && contact.email!.isNotEmpty;
-          final hasPhone = contact.phone != null && contact.phone!.isNotEmpty;
-          if (hasEmail || hasPhone) {
-            _additionalContactControllers.add(
-              _ContactDraftControllers(
-                email: contact.email,
-                phone: contact.phone,
-              ),
-            );
+          final email = (contact.email ?? '').trim();
+          final phone = (contact.phone ?? '').trim();
+          if (email.isEmpty && phone.isEmpty) continue;
+
+          final duplicatesPrimary =
+              (email.isNotEmpty && email.toLowerCase() == primaryEmail) ||
+              (email.isEmpty && phone.isNotEmpty && phone == primaryPhone);
+          if (!skippedPrimary && duplicatesPrimary) {
+            skippedPrimary = true;
+            continue;
           }
+
+          _additionalContactControllers.add(
+            _ContactDraftControllers(
+              email: contact.email,
+              phone: contact.phone,
+            ),
+          );
         }
       }
     }
