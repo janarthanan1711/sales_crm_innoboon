@@ -28,6 +28,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   final _companyController = TextEditingController();
   final _domainController = TextEditingController();
   final _cityController = TextEditingController();
+  final _linkedinController = TextEditingController();
   final _descriptionController = TextEditingController();
 
   // Primary contact (only used when the toggle is on).
@@ -63,6 +64,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       _companyController,
       _domainController,
       _cityController,
+      _linkedinController,
       _descriptionController,
       _cFirstName,
       _cLastName,
@@ -108,6 +110,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         ownerId: _ownerId,
         industry: _industry,
         city: val(_cityController),
+        linkedinUrl: val(_linkedinController),
         description: _descriptionController.text.trim(),
       ),
     );
@@ -251,6 +254,16 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 decoration: const InputDecoration(
                                   prefixIcon: Icon(Icons.location_on_outlined, size: 18),
                                   hintText: 'e.g. Coimbatore',
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              _FieldLabel('LinkedIn URL'),
+                              TextField(
+                                controller: _linkedinController,
+                                keyboardType: TextInputType.url,
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.link, size: 18),
+                                  hintText: 'https://linkedin.com/company/nexbridge',
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.md),

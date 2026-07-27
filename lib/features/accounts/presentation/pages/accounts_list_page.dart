@@ -339,7 +339,15 @@ class _AccountRowState extends State<_AccountRow> {
                 ),
               ),
               Expanded(flex: 2, child: Text(account.industry ?? '—', style: AppTextStyles.tableCell)),
-              Expanded(flex: 2, child: TierBadge(tier: account.tier, showDot: true)),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: account.tier.trim().isEmpty
+                      ? Text('—', style: AppTextStyles.tableCell)
+                      : StatusBadge.tier(account.tier),
+                ),
+              ),
               Expanded(flex: 2, child: OwnerChip(name: account.primaryOwner)),
               Expanded(flex: 1, child: Text('${account.contactCount}', style: AppTextStyles.tableCell)),
               Expanded(flex: 1, child: Text('${account.dealCount}', style: AppTextStyles.tableCell)),

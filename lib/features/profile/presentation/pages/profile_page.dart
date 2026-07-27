@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -10,6 +11,8 @@ import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../app/router/route_paths.dart';
+import '../../../../app/router/auth_notifier.dart';
 import '../../../auth/domain/entities/user.dart';
 import '../../../auth/domain/usecases/profile_usecases.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -74,8 +77,8 @@ class _ProfilePageState extends State<ProfilePage> {
               child: _loading
                   ? const AppLoadingIndicator(message: 'Loading profile...')
                   : _error != null
-                      ? ErrorState(message: _error!, onRetry: _load)
-                      : _buildContent(context, _user!),
+                  ? ErrorState(message: _error!, onRetry: _load)
+                  : _buildContent(context, _user!),
             ),
           ],
         ),
@@ -84,8 +87,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildContent(BuildContext context, User user) {
+    // Stretch so every card (avatar, account details, sessions...) fills the
+    // full column width instead of shrink-wrapping to its own content — the
+    // avatar card in particular has nothing inside forcing full width on its
+    // own, which left a gap next to the narrower cards below it.
     final left = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _AvatarCard(user: user, onUploaded: (u) => setState(() => _user = u)),
         const SizedBox(height: AppSpacing.lg),
@@ -93,9 +100,19 @@ class _ProfilePageState extends State<ProfilePage> {
           title: 'Account Details',
           child: Column(
             children: [
-              _detailRow('Account Created', user.createdAt != null ? DateFormatter.displayDate(user.createdAt!) : 'Unknown'),
+              _detailRow(
+                'Account Created',
+                user.createdAt != null
+                    ? DateFormatter.displayDate(user.createdAt!)
+                    : 'Unknown',
+              ),
               const Divider(height: AppSpacing.xl),
-              _detailRow('Last Login', user.lastLoginAt != null ? DateFormatter.relativeTime(user.lastLoginAt!) : 'Unknown'),
+              _detailRow(
+                'Last Login',
+                user.lastLoginAt != null
+                    ? DateFormatter.relativeTime(user.lastLoginAt!)
+                    : 'Unknown',
+              ),
             ],
           ),
         ),
@@ -110,12 +127,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.laptop_mac,
                 title: 'This device',
                 subtitle: 'Active now',
-                onLogOut: () => context.read<AuthBloc>().add(const AuthLogoutRequested()),
+                onLogOut: () =>
+                    context.read<AuthBloc>().add(const AuthLogoutRequested()),
               ),
               const SizedBox(height: AppSpacing.md),
               OutlinedButton(
                 onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Remote session management is not available yet.')),
+                  const SnackBar(
+                    content: Text(
+                      'Remote session management is not available yet.',
+                    ),
+                  ),
                 ),
                 child: const Text('Log Out of All Other Sessions'),
               ),
@@ -130,7 +152,9 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text(
                 'Choose which alerts you receive for leads, deals, and tasks.',
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               SizedBox(
@@ -148,28 +172,32 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     final right = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionCard(
           title: 'Profile Information',
-          child: _ProfileInfoForm(user: user, onSaved: (u) {
-            setState(() => _user = u);
-            context.read<AuthBloc>().add(const AuthCheckRequested());
-          }),
+          child: _ProfileInfoForm(
+            user: user,
+            onSaved: (u) {
+              setState(() => _user = u);
+              context.read<AuthBloc>().add(const AuthCheckRequested());
+            },
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        SectionCard(
-          title: 'Security',
-          child: const _PasswordForm(),
-        ),
+        SectionCard(title: 'Security', child: const _PasswordForm()),
       ],
     );
 
     return SingleChildScrollView(
       child: ResponsiveBuilder(
         mobile: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [left, const SizedBox(height: AppSpacing.xl), right],
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            left,
+            const SizedBox(height: AppSpacing.xl),
+            right,
+          ],
         ),
         web: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +215,12 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: AppTextStyles.labelMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
         Text(value, style: AppTextStyles.bodyMedium),
       ],
     );
@@ -209,7 +242,10 @@ class _ProfilePageState extends State<ProfilePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: AppTextStyles.labelMedium),
-              Text(subtitle, style: AppTextStyles.caption.copyWith(color: AppColors.success)),
+              Text(
+                subtitle,
+                style: AppTextStyles.caption.copyWith(color: AppColors.success),
+              ),
             ],
           ),
         ),
@@ -231,7 +267,9 @@ class _ProfilePageState extends State<ProfilePage> {
         ..addAll(result);
     });
     messenger.showSnackBar(
-      const SnackBar(content: Text('Notification preferences saved on this device.')),
+      const SnackBar(
+        content: Text('Notification preferences saved on this device.'),
+      ),
     );
   }
 }
@@ -243,10 +281,12 @@ class _NotificationPreferencesDialog extends StatefulWidget {
   final Map<String, bool> initial;
 
   @override
-  State<_NotificationPreferencesDialog> createState() => _NotificationPreferencesDialogState();
+  State<_NotificationPreferencesDialog> createState() =>
+      _NotificationPreferencesDialogState();
 }
 
-class _NotificationPreferencesDialogState extends State<_NotificationPreferencesDialog> {
+class _NotificationPreferencesDialogState
+    extends State<_NotificationPreferencesDialog> {
   late final Map<String, bool> _prefs = Map<String, bool>.from(widget.initial);
 
   @override
@@ -305,7 +345,9 @@ class _AvatarCardState extends State<_AvatarCard> {
       type: FileType.image,
       withData: true,
     );
-    final file = (result != null && result.files.isNotEmpty) ? result.files.first : null;
+    final file = (result != null && result.files.isNotEmpty)
+        ? result.files.first
+        : null;
     if (file?.bytes == null) return;
     setState(() => _uploading = true);
     final uploadResult = await sl<UploadAvatarUseCase>()(
@@ -315,7 +357,10 @@ class _AvatarCardState extends State<_AvatarCard> {
     setState(() => _uploading = false);
     uploadResult.fold(
       (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload avatar: ${f.message}'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Failed to upload avatar: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
       ),
       widget.onUploaded,
     );
@@ -325,46 +370,74 @@ class _AvatarCardState extends State<_AvatarCard> {
   Widget build(BuildContext context) {
     final avatarUrl = resolveMediaUrl(widget.user.avatarUrl);
     return SectionCard(
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: AppColors.primaryLight,
-                backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
-                child: avatarUrl == null
-                    ? Text(
-                        widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
-                        style: AppTextStyles.h1.copyWith(color: AppColors.primary),
-                      )
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: InkWell(
-                  onTap: _uploading ? null : _pickAndUpload,
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primary,
-                    child: _uploading
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+      // SectionCard left-anchors its body by default, which only matters now
+      // that the card stretches to the column's full width — center this
+      // one explicitly so the avatar/name/badge sit in the middle of it.
+      child: Center(
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: AppColors.primaryLight,
+                  backgroundImage: avatarUrl != null
+                      ? CachedNetworkImageProvider(avatarUrl)
+                      : null,
+                  child: avatarUrl == null
+                      ? Text(
+                          widget.user.name.isNotEmpty
+                              ? widget.user.name[0].toUpperCase()
+                              : '?',
+                          style: AppTextStyles.h1.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: InkWell(
+                    onTap: _uploading ? null : _pickAndUpload,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.primary,
+                      child: _uploading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(widget.user.name, style: AppTextStyles.h3),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(widget.user.name, style: AppTextStyles.h3),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-            child: Text(widget.user.role.name, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-          ),
-        ],
+              child: Text(
+                widget.user.role.name,
+                style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -389,8 +462,12 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
   void initState() {
     super.initState();
     _firstNameController = TextEditingController(text: widget.user.firstName);
-    _lastNameController = TextEditingController(text: widget.user.lastName ?? '');
-    _phoneController = TextEditingController(text: widget.user.phoneNumber ?? '');
+    _lastNameController = TextEditingController(
+      text: widget.user.lastName ?? '',
+    );
+    _phoneController = TextEditingController(
+      text: widget.user.phoneNumber ?? '',
+    );
   }
 
   @override
@@ -414,11 +491,17 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
     setState(() => _saving = false);
     result.fold(
       (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile: ${f.message}'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Failed to update profile: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
       ),
       (user) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated.'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('Profile updated.'),
+            backgroundColor: AppColors.success,
+          ),
         );
         widget.onSaved(user);
       },
@@ -451,7 +534,10 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
         TextField(
           enabled: false,
           controller: TextEditingController(text: widget.user.email),
-          decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.lock_outline, size: 18)),
+          decoration: const InputDecoration(
+            labelText: 'Email Address',
+            prefixIcon: Icon(Icons.lock_outline, size: 18),
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         TextField(
@@ -462,7 +548,14 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('Save Changes'),
         ),
       ],
@@ -524,13 +617,19 @@ class _PasswordFormState extends State<_PasswordForm> {
   Future<void> _save() async {
     if (_newController.text != _confirmController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('New password and confirmation do not match.'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('New password and confirmation do not match.'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
     if (_currentController.text.isEmpty || _newController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all password fields.'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('Please fill in all password fields.'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -547,7 +646,10 @@ class _PasswordFormState extends State<_PasswordForm> {
     setState(() => _saving = false);
     result.fold(
       (f) => messenger.showSnackBar(
-        SnackBar(content: Text(_cleanPasswordError(f.message)), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text(_cleanPasswordError(f.message)),
+          backgroundColor: AppColors.error,
+        ),
       ),
       (_) {
         _currentController.clear();
@@ -555,10 +657,20 @@ class _PasswordFormState extends State<_PasswordForm> {
         _confirmController.clear();
         // Password changes invalidate the current session — force a fresh
         // sign-in.
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Password updated. Please sign in again.'), backgroundColor: AppColors.success),
-        );
+        // Trigger the real logout so stored tokens are cleared (with a
+        // best-effort server revoke). We deliberately do NOT await it: the
+        // password change already invalidated the access token, so the
+        // revoke call gets a 401 and drags the auth interceptor through a
+        // refresh-retry round-trip that can stall on web — awaiting that
+        // previously left the user stuck on this page.
         authBloc.add(const AuthLogoutRequested());
+        // Flip the router's auth gate ourselves and navigate immediately, so
+        // reaching /login doesn't depend on the AuthBloc emission landing
+        // first. The bloc's own AuthUnauthenticated (once logout completes)
+        // sets the same flag again — a harmless no-op.
+        sl<AuthNotifier>().setAuthenticated(false);
+        if (!mounted) return;
+        context.go(RoutePaths.login);
       },
     );
   }
@@ -566,7 +678,9 @@ class _PasswordFormState extends State<_PasswordForm> {
   /// Turns a raw backend/exception string into a short, user-facing message.
   String _cleanPasswordError(String raw) {
     final m = raw.toLowerCase();
-    if (m.contains('current password') || m.contains('incorrect') || m.contains('wrong')) {
+    if (m.contains('current password') ||
+        m.contains('incorrect') ||
+        m.contains('wrong')) {
       return 'Current password is incorrect.';
     }
     return 'Could not update password. Please try again.';
@@ -583,8 +697,13 @@ class _PasswordFormState extends State<_PasswordForm> {
           decoration: InputDecoration(
             labelText: 'Current Password',
             suffixIcon: IconButton(
-              icon: Icon(_obscureCurrent ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-              onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+              icon: Icon(
+                _obscureCurrent
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+              onPressed: () =>
+                  setState(() => _obscureCurrent = !_obscureCurrent),
             ),
           ),
         ),
@@ -596,7 +715,11 @@ class _PasswordFormState extends State<_PasswordForm> {
           decoration: InputDecoration(
             labelText: 'New Password',
             suffixIcon: IconButton(
-              icon: Icon(_obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+              icon: Icon(
+                _obscureNew
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
               onPressed: () => setState(() => _obscureNew = !_obscureNew),
             ),
           ),
@@ -613,7 +736,10 @@ class _PasswordFormState extends State<_PasswordForm> {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(_strengthLabel, style: AppTextStyles.caption.copyWith(color: _strengthColor)),
+              Text(
+                _strengthLabel,
+                style: AppTextStyles.caption.copyWith(color: _strengthColor),
+              ),
             ],
           ),
         ],
@@ -627,7 +753,14 @@ class _PasswordFormState extends State<_PasswordForm> {
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('Update Password'),
         ),
       ],

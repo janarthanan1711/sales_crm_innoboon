@@ -44,8 +44,19 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final path = err.requestOptions.path;
+    // Never attempt a token refresh for the auth endpoints themselves. A 401
+    // from /auth/refresh must NOT kick off another refresh — that recurses
+    // into an infinite refresh loop (which is exactly what happens right
+    // after a password change invalidates the refresh token). /auth/login and
+    // /auth/logout have no recoverable session to refresh either.
+    final isAuthEndpoint =
+        path.contains('/auth/refresh') ||
+        path.contains('/auth/login') ||
+        path.contains('/auth/logout');
     final alreadyRetried = err.requestOptions.extra[_retriedFlag] == true;
     if (err.response?.statusCode == 401 &&
+        !isAuthEndpoint &&
         _onRefreshToken != null &&
         _dio != null &&
         !alreadyRetried) {

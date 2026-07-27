@@ -321,7 +321,8 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
   Widget build(BuildContext context) {
     final leads = widget.leads;
     final allSelected =
-        leads.isNotEmpty && leads.every((lead) => _selectedIds.contains(lead.id));
+        leads.isNotEmpty &&
+        leads.every((lead) => _selectedIds.contains(lead.id));
 
     return Container(
       decoration: BoxDecoration(
@@ -359,7 +360,7 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
                 SizedBox(
                   width: _kActionsColWidth,
                   child: Text(
-                    'ACTIONS',
+                    'ACTION',
                     style: AppTextStyles.tableHeader,
                     textAlign: TextAlign.center,
                   ),
@@ -478,7 +479,8 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                             style: AppTextStyles.tableCellLink,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (lead.jobTitle != null && lead.jobTitle!.isNotEmpty)
+                          if (lead.jobTitle != null &&
+                              lead.jobTitle!.isNotEmpty)
                             Text(
                               lead.jobTitle!,
                               style: AppTextStyles.caption,
@@ -597,7 +599,11 @@ class _ContactLine extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.error),
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 14,
+            color: AppColors.error,
+          ),
           const SizedBox(width: 4),
           Text(
             missingLabel,
@@ -771,14 +777,20 @@ class _FilterDropdown extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: active ? AppColors.primaryLight : null,
-          border: Border.all(color: active ? AppColors.primary : AppColors.border),
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 16, color: active ? AppColors.primary : AppColors.textSecondary),
+              Icon(
+                icon,
+                size: 16,
+                color: active ? AppColors.primary : AppColors.textSecondary,
+              ),
               const SizedBox(width: 4),
             ],
             Text(
@@ -872,7 +884,9 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
         ),
         decoration: BoxDecoration(
           color: active ? AppColors.primaryLight : null,
-          border: Border.all(color: active ? AppColors.primary : AppColors.border),
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
@@ -952,8 +966,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
             backgroundColor: AppColors.error,
           ),
         ),
-        (bytes) async =>
-            downloadBytes(bytes, 'lead_import_template.$format'),
+        (bytes) async => downloadBytes(bytes, 'lead_import_template.$format'),
       );
     } finally {
       if (mounted) setState(() => _downloadingFormat = null);
@@ -992,7 +1005,9 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
         } else {
           messenger.showSnackBar(
             SnackBar(
-              content: Text('Imported ${summary.created} lead(s) successfully.'),
+              content: Text(
+                'Imported ${summary.created} lead(s) successfully.',
+              ),
               backgroundColor: AppColors.success,
             ),
           );
@@ -1080,8 +1095,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                           IconButton(
                             icon: const Icon(Icons.close, size: 18),
                             tooltip: 'Remove file',
-                            onPressed: () =>
-                                setState(() => _pickedFile = null),
+                            onPressed: () => setState(() => _pickedFile = null),
                           ),
                         ],
                       ),
@@ -1133,7 +1147,9 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                             ? const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.grid_on, size: 16),
                         label: const Text('Excel (.xlsx)'),
@@ -1146,7 +1162,9 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                             ? const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.description_outlined, size: 16),
                         label: const Text('CSV (.csv)'),
@@ -1170,7 +1188,10 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Upload'),
         ),
@@ -1197,17 +1218,31 @@ class _ImportResultDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.check_circle_outline, size: 18, color: AppColors.success),
+                const Icon(
+                  Icons.check_circle_outline,
+                  size: 18,
+                  color: AppColors.success,
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('${result.created} lead(s) created', style: AppTextStyles.labelLarge),
+                Text(
+                  '${result.created} lead(s) created',
+                  style: AppTextStyles.labelLarge,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+                const Icon(
+                  Icons.error_outline,
+                  size: 18,
+                  color: AppColors.error,
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('${result.errors.length} row(s) skipped', style: AppTextStyles.labelLarge),
+                Text(
+                  '${result.errors.length} row(s) skipped',
+                  style: AppTextStyles.labelLarge,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -1216,13 +1251,17 @@ class _ImportResultDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: result.errors
-                      .map((e) => Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                            child: Text(
-                              'Row ${e.row}: ${e.error}',
-                              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                      .map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: Text(
+                            'Row ${e.row}: ${e.error}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ),

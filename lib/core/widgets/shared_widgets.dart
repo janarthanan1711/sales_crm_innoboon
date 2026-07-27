@@ -116,6 +116,18 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  /// Tier badge in the plain [StatusBadge] pill style (no leading dot).
+  /// Reuses [TierBadge]'s tier→colour mapping so tiers stay consistent
+  /// wherever they're shown.
+  factory StatusBadge.tier(String tier) {
+    final colors = TierBadge._getTierColors(tier);
+    return StatusBadge(
+      label: tier.toUpperCase(),
+      backgroundColor: colors.bg,
+      textColor: colors.text,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(

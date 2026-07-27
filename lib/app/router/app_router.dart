@@ -42,7 +42,14 @@ class AppRouter {
     initialLocation: RoutePaths.dashboard,
     refreshListenable: sl<AuthNotifier>(),
     redirect: (context, state) {
-      final isAuthenticated = sl<AuthNotifier>().isAuthenticated;
+      final authNotifier = sl<AuthNotifier>();
+      // Defer redirect decisions until the initial cached-session check
+      // resolves — otherwise a page refresh briefly reads as "unauthenticated"
+      // and gets redirected to /login before the real state is known, and the
+      // originally requested deep link (e.g. /leads/123) is lost.
+      if (authNotifier.isChecking) return null;
+
+      final isAuthenticated = authNotifier.isAuthenticated;
       final loggingIn = state.matchedLocation == RoutePaths.login;
       final forgotPwd = state.matchedLocation == RoutePaths.forgotPassword;
 
