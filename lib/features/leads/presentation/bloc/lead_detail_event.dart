@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/lead.dart';
 
 abstract class LeadDetailEvent extends Equatable {
   const LeadDetailEvent();
@@ -8,22 +7,77 @@ abstract class LeadDetailEvent extends Equatable {
 }
 
 class LeadDetailLoadRequested extends LeadDetailEvent {
-  final String leadId;
+  final int leadId;
   const LeadDetailLoadRequested(this.leadId);
   @override
   List<Object?> get props => [leadId];
 }
 
-class LeadDetailUpdateRequested extends LeadDetailEvent {
-  final Lead lead;
-  const LeadDetailUpdateRequested(this.lead);
+class LeadDetailConvertRequested extends LeadDetailEvent {
+  final int leadId;
+  final String? tier;
+  final int? ownerId;
+  const LeadDetailConvertRequested(this.leadId, {this.tier, this.ownerId});
   @override
-  List<Object?> get props => [lead];
+  List<Object?> get props => [leadId, tier, ownerId];
 }
 
-class LeadDetailConvertRequested extends LeadDetailEvent {
-  final String leadId;
-  const LeadDetailConvertRequested(this.leadId);
+class LeadDetailDeleteRequested extends LeadDetailEvent {
+  final int leadId;
+  const LeadDetailDeleteRequested(this.leadId);
   @override
   List<Object?> get props => [leadId];
+}
+
+/// Re-fetches the activity list (Activity tab) with the given filters.
+/// Pass empty [types] and null [dateFrom]/[dateTo] to clear all filters.
+class LeadDetailActivityFilterChanged extends LeadDetailEvent {
+  final int leadId;
+  final Set<String> types;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  const LeadDetailActivityFilterChanged(
+    this.leadId, {
+    this.types = const {},
+    this.dateFrom,
+    this.dateTo,
+  });
+  @override
+  List<Object?> get props => [leadId, types, dateFrom, dateTo];
+}
+
+class LeadDetailActivityLogRequested extends LeadDetailEvent {
+  final int leadId;
+  final String type;
+  final String note;
+  const LeadDetailActivityLogRequested(
+    this.leadId, {
+    required this.type,
+    required this.note,
+  });
+  @override
+  List<Object?> get props => [leadId, type, note];
+}
+
+class LeadDetailActivityUpdateRequested extends LeadDetailEvent {
+  final int leadId;
+  final int activityId;
+  final String? type;
+  final String note;
+  const LeadDetailActivityUpdateRequested(
+    this.leadId,
+    this.activityId, {
+    this.type,
+    required this.note,
+  });
+  @override
+  List<Object?> get props => [leadId, activityId, type, note];
+}
+
+class LeadDetailActivityDeleteRequested extends LeadDetailEvent {
+  final int leadId;
+  final int activityId;
+  const LeadDetailActivityDeleteRequested(this.leadId, this.activityId);
+  @override
+  List<Object?> get props => [leadId, activityId];
 }

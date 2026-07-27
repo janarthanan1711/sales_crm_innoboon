@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_stage_def.dart';
 
 abstract class DealsListState extends Equatable {
   const DealsListState();
@@ -17,17 +18,23 @@ class DealsListLoading extends DealsListState {
 
 class DealsListLoaded extends DealsListState {
   final List<Deal> deals;
-  final String? ownerFilter;
-  final String? tierFilter;
+  final List<DealStageDef> stages;
+  final int? ownerIdFilter;
+  final int? stageIdFilter;
+  /// One-shot error surfaced after a failed stage update (e.g. a kanban
+  /// drag) — read once via `BlocListener`, not persisted.
+  final String? actionError;
 
   const DealsListLoaded({
     required this.deals,
-    this.ownerFilter,
-    this.tierFilter,
+    this.stages = const [],
+    this.ownerIdFilter,
+    this.stageIdFilter,
+    this.actionError,
   });
 
   @override
-  List<Object?> get props => [deals, ownerFilter, tierFilter];
+  List<Object?> get props => [deals, stages, ownerIdFilter, stageIdFilter, actionError];
 }
 
 class DealsListError extends DealsListState {

@@ -5,7 +5,8 @@ import '../models/user_model.dart';
 /// Local datasource for auth — token/user persistence
 abstract class AuthLocalDataSource {
   Future<void> saveUser(UserModel user);
-  Future<void> saveTokens(String accessToken, String? refreshToken);
+  Future<void> saveAccessToken(String accessToken);
+  Future<void> saveRefreshToken(String refreshToken);
   Future<UserModel?> getCachedUser();
   Future<String?> getAccessToken();
   Future<String?> getRefreshToken();
@@ -30,11 +31,13 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
-  Future<void> saveTokens(String accessToken, String? refreshToken) async {
+  Future<void> saveAccessToken(String accessToken) async {
     await secureStorage.write(key: _accessTokenKey, value: accessToken);
-    if (refreshToken != null) {
-      await secureStorage.write(key: _refreshTokenKey, value: refreshToken);
-    }
+  }
+
+  @override
+  Future<void> saveRefreshToken(String refreshToken) async {
+    await secureStorage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
   @override

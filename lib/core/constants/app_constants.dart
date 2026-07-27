@@ -1,3 +1,5 @@
+import '../../features/leads/domain/entities/lead_enums.dart';
+
 /// App-wide constants
 class AppConstants {
   AppConstants._();
@@ -12,34 +14,20 @@ class AppConstants {
   static const List<int> pageSizeOptions = [10, 25, 50, 100];
 
   // ─── Roles ─────────────────────────────────────────────
+  // Matches backend UserRole enum values (app/models/enums.py) exactly.
   static const String roleAdmin = 'admin';
   static const String roleSalesManager = 'sales_manager';
   static const String roleSalesRep = 'sales_rep';
-  static const String roleViewer = 'viewer';
+  static const String roleDeliverySme = 'delivery_sme';
 
   // ─── Lead Sources ──────────────────────────────────────
-  static const List<String> leadSources = [
-    'Website',
-    'Referral',
-    'LinkedIn',
-    'Cold Outreach',
-    'Apollo',
-    'Lusha',
-    'Red Drop',
-    'HubSpot Import',
-    'Conference',
-    'Partner',
-    'Other',
-  ];
+  // Labels shown in dropdowns — sourced from leadSourceLabels (see
+  // lead_enums.dart) so this list and the backend wire-value map never
+  // drift apart.
+  static final List<String> leadSources = leadSourceLabels.values.toList();
 
   // ─── Lead Statuses ─────────────────────────────────────
-  static const List<String> leadStatuses = [
-    'New',
-    'Contacted',
-    'Junk',
-    'Closed',
-    'Contact in Future',
-  ];
+  static final List<String> leadStatuses = leadStatusLabels.values.toList();
 
   // ─── Deal Stages ───────────────────────────────────────
   static const List<String> dealStages = [
@@ -54,13 +42,8 @@ class AppConstants {
   ];
 
   // ─── Tiers ─────────────────────────────────────────────
-  static const List<String> tiers = [
-    'Strategic',
-    'Diamond',
-    'Gold',
-    'Silver',
-    'Bronze',
-  ];
+  // Matches backend LeadTier exactly (set only at lead-conversion time).
+  static final List<String> tiers = leadTierLabels.values.toList();
 
   // ─── Industries ────────────────────────────────────────
   static const List<String> industries = [

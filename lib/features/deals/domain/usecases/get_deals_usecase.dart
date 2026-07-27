@@ -5,18 +5,24 @@ import '../entities/deal.dart';
 import '../repositories/deal_repository.dart';
 
 class GetDealsParams {
-  final String? owner;
-  final String? tier;
-  final DealStage? stage;
+  final int? ownerId;
+  final String? accountId;
+  final int? stageId;
+  final String? search;
 
-  const GetDealsParams({this.owner, this.tier, this.stage});
+  const GetDealsParams({this.ownerId, this.accountId, this.stageId, this.search});
 }
 
 class GetDealsUseCase implements UseCase<List<Deal>, GetDealsParams> {
   final DealRepository repository;
   GetDealsUseCase(this.repository);
-  
+
   @override
-  Future<Either<Failure, List<Deal>>> call(GetDealsParams params) => 
-      repository.getDeals(owner: params.owner, tier: params.tier, stage: params.stage);
+  Future<Either<Failure, List<Deal>>> call(GetDealsParams params) =>
+      repository.getDeals(
+        ownerId: params.ownerId,
+        accountId: params.accountId,
+        stageId: params.stageId,
+        search: params.search,
+      );
 }

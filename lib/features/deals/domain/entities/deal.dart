@@ -1,44 +1,29 @@
 import 'package:equatable/equatable.dart';
 import 'stakeholder.dart';
 
-enum DealStage {
-  receivedRequirements,
-  qualifiedToBuy,
-  evaluation,
-  proposals,
-  contracts,
-  closedWon,
-  closedLost,
-  coldDeals
-}
-
-extension DealStageExtension on DealStage {
-  String get name {
-    switch (this) {
-      case DealStage.receivedRequirements: return 'Received Requirements';
-      case DealStage.qualifiedToBuy: return 'Qualified to Buy';
-      case DealStage.evaluation: return 'Evaluation';
-      case DealStage.proposals: return 'Proposals';
-      case DealStage.contracts: return 'Contracts';
-      case DealStage.closedWon: return 'Closed Won';
-      case DealStage.closedLost: return 'Closed Lost';
-      case DealStage.coldDeals: return 'Cold Deals';
-    }
-  }
-}
-
+/// Deal entity — mirrors the backend's `DealRead` shape. Stages are dynamic
+/// (`stage_id` referencing `/deal-stages`), so this holds the numeric
+/// [stageId] plus a client-resolved [stageName]/[stageIsCold] for display.
+///
+/// Fields the API does not carry ([description], [stakeholders],
+/// [paymentStatus], [contactName], [createdAt]) are kept for UI convenience
+/// and default to empty — they are populated by the caller, not the wire.
 class Deal extends Equatable {
   final String id;
   final String name;
   final String accountId;
   final String accountName;
-  final String? contactId;
+  final List<int> contactIds;
   final String? contactName;
   final double value;
   final String currency;
-  final DealStage stage;
+  final int stageId;
+  final String stageName;
+  final bool stageIsCold;
   final DateTime? expectedCloseDate;
+  final int? ownerId;
   final String owner;
+  final String? coldReason;
   final String tier;
   final String description;
   final List<Stakeholder> stakeholders;
@@ -50,14 +35,18 @@ class Deal extends Equatable {
     required this.name,
     required this.accountId,
     required this.accountName,
-    this.contactId,
+    this.contactIds = const [],
     this.contactName,
     required this.value,
     this.currency = 'INR',
-    required this.stage,
+    required this.stageId,
+    this.stageName = '',
+    this.stageIsCold = false,
     this.expectedCloseDate,
+    this.ownerId,
     required this.owner,
-    required this.tier,
+    this.coldReason,
+    this.tier = '',
     this.description = '',
     this.stakeholders = const [],
     this.paymentStatus = 'Pending',
@@ -69,13 +58,17 @@ class Deal extends Equatable {
     String? name,
     String? accountId,
     String? accountName,
-    String? contactId,
+    List<int>? contactIds,
     String? contactName,
     double? value,
     String? currency,
-    DealStage? stage,
+    int? stageId,
+    String? stageName,
+    bool? stageIsCold,
     DateTime? expectedCloseDate,
+    int? ownerId,
     String? owner,
+    String? coldReason,
     String? tier,
     String? description,
     List<Stakeholder>? stakeholders,
@@ -87,13 +80,17 @@ class Deal extends Equatable {
       name: name ?? this.name,
       accountId: accountId ?? this.accountId,
       accountName: accountName ?? this.accountName,
-      contactId: contactId ?? this.contactId,
+      contactIds: contactIds ?? this.contactIds,
       contactName: contactName ?? this.contactName,
       value: value ?? this.value,
       currency: currency ?? this.currency,
-      stage: stage ?? this.stage,
+      stageId: stageId ?? this.stageId,
+      stageName: stageName ?? this.stageName,
+      stageIsCold: stageIsCold ?? this.stageIsCold,
       expectedCloseDate: expectedCloseDate ?? this.expectedCloseDate,
+      ownerId: ownerId ?? this.ownerId,
       owner: owner ?? this.owner,
+      coldReason: coldReason ?? this.coldReason,
       tier: tier ?? this.tier,
       description: description ?? this.description,
       stakeholders: stakeholders ?? this.stakeholders,
@@ -108,13 +105,17 @@ class Deal extends Equatable {
         name,
         accountId,
         accountName,
-        contactId,
+        contactIds,
         contactName,
         value,
         currency,
-        stage,
+        stageId,
+        stageName,
+        stageIsCold,
         expectedCloseDate,
+        ownerId,
         owner,
+        coldReason,
         tier,
         description,
         stakeholders,

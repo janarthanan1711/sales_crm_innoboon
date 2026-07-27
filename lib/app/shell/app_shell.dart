@@ -8,7 +8,15 @@ import '../../core/utils/responsive.dart';
 import '../../core/constants/app_constants.dart';
 import '../router/route_paths.dart';
 import '../../features/notifications/presentation/widgets/notification_bell.dart';
+import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/domain/entities/user.dart';
+
+/// Whether the sidebar "Quick Action" button is shown. Hidden for now
+/// (the quick-action menu isn't built yet); flip to true to re-enable.
+/// Intentionally non-const so the retained button code isn't flagged as
+/// dead code by the analyzer.
+final bool _kShowQuickAction = false;
 
 /// Navigation item definition
 class NavItem {
@@ -17,11 +25,16 @@ class NavItem {
   final IconData activeIcon;
   final String path;
 
+  /// Permission codes that grant visibility — the item shows if the user
+  /// holds ANY of them. Empty ⇒ visible to any authenticated user.
+  final List<String> requiredPermissions;
+
   const NavItem({
     required this.label,
     required this.icon,
     required this.activeIcon,
     required this.path,
+    this.requiredPermissions = const [],
   });
 }
 
@@ -38,12 +51,28 @@ const List<NavItem> _mainNavItems = [
     icon: Icons.people_outline,
     activeIcon: Icons.people,
     path: RoutePaths.leads,
+    requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
     label: 'Deals',
     icon: Icons.handshake_outlined,
     activeIcon: Icons.handshake,
     path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
+  ),
+  NavItem(
+    label: 'Accounts',
+    icon: Icons.business_outlined,
+    activeIcon: Icons.business,
+    path: RoutePaths.accounts,
+    requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Contacts',
+    icon: Icons.contacts_outlined,
+    activeIcon: Icons.contacts,
+    path: RoutePaths.contacts,
+    requiredPermissions: ['contacts.access'],
   ),
   NavItem(
     label: 'Analytics',
@@ -56,6 +85,7 @@ const List<NavItem> _mainNavItems = [
     icon: Icons.settings_outlined,
     activeIcon: Icons.settings,
     path: RoutePaths.settings,
+    requiredPermissions: ['users.manage', 'roles.manage'],
   ),
 ];
 
@@ -72,12 +102,28 @@ const List<NavItem> _sidebarMainItems = [
     icon: Icons.people_outline,
     activeIcon: Icons.people,
     path: RoutePaths.leads,
+    requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
     label: 'Deals',
     icon: Icons.handshake_outlined,
     activeIcon: Icons.handshake,
     path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
+  ),
+  NavItem(
+    label: 'Accounts',
+    icon: Icons.business_outlined,
+    activeIcon: Icons.business,
+    path: RoutePaths.accounts,
+    requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Contacts',
+    icon: Icons.contacts_outlined,
+    activeIcon: Icons.contacts,
+    path: RoutePaths.contacts,
+    requiredPermissions: ['contacts.access'],
   ),
   NavItem(
     label: 'Staff Augmentation',
@@ -91,21 +137,15 @@ const List<NavItem> _sidebarMainItems = [
     activeIcon: Icons.description,
     path: RoutePaths.documents,
   ),
-  NavItem(
-    label: 'Activity',
-    icon: Icons.timeline_outlined,
-    activeIcon: Icons.timeline,
-    path: RoutePaths.activity,
-  ),
+  // NavItem(
+  //   label: 'Activity',
+  //   icon: Icons.timeline_outlined,
+  //   activeIcon: Icons.timeline,
+  //   path: RoutePaths.activity,
+  // ),
 ];
 
 const List<NavItem> _sidebarBottomItems = [
-  NavItem(
-    label: 'Settings',
-    icon: Icons.settings_outlined,
-    activeIcon: Icons.settings,
-    path: RoutePaths.settings,
-  ),
   NavItem(
     label: 'Support',
     icon: Icons.help_outline,
@@ -143,7 +183,8 @@ class _MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
+    final navItems = _visibleMainNavItems(context);
+    final currentIndex = _getCurrentIndex(context, navItems);
 
     return Scaffold(
       body: Column(
@@ -154,14 +195,12 @@ class _MobileShell extends StatelessWidget {
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: AppColors.border, width: 1),
-          ),
+          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
         ),
         child: BottomNavigationBar(
-          currentIndex: currentIndex.clamp(0, _mainNavItems.length - 1),
-          onTap: (index) => _onNavTap(context, _mainNavItems[index].path),
-          items: _mainNavItems.map((item) {
+          currentIndex: currentIndex.clamp(0, navItems.length - 1),
+          onTap: (index) => _onNavTap(context, navItems[index].path),
+          items: navItems.map((item) {
             return BottomNavigationBarItem(
               icon: Icon(item.icon),
               activeIcon: Icon(item.activeIcon),
@@ -181,15 +220,16 @@ class _TabletShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _getCurrentIndex(context);
+    final navItems = _visibleMainNavItems(context);
+    final currentIndex = _getCurrentIndex(context, navItems);
 
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            selectedIndex: currentIndex.clamp(0, _mainNavItems.length - 1),
+            selectedIndex: currentIndex.clamp(0, navItems.length - 1),
             onDestinationSelected: (index) =>
-                _onNavTap(context, _mainNavItems[index].path),
+                _onNavTap(context, navItems[index].path),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
@@ -199,7 +239,7 @@ class _TabletShell extends StatelessWidget {
                 size: 32,
               ),
             ),
-            destinations: _mainNavItems.map((item) {
+            destinations: navItems.map((item) {
               return NavigationRailDestination(
                 icon: Icon(item.icon),
                 selectedIcon: Icon(item.activeIcon),
@@ -257,9 +297,7 @@ class _WebSidebar extends StatelessWidget {
       width: AppSpacing.sidebarWidth,
       decoration: const BoxDecoration(
         color: AppColors.sidebarBackground,
-        border: Border(
-          right: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(right: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Column(
         children: [
@@ -302,22 +340,25 @@ class _WebSidebar extends StatelessWidget {
           ),
 
           // ── Quick Action Button ──────────
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Quick action menu
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Quick Action'),
+          // Hidden until the quick-action menu is built (kept, not removed).
+          // Flip [_kShowQuickAction] to re-enable.
+          if (_kShowQuickAction) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Quick action menu
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Quick Action'),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+          if (!_kShowQuickAction) const SizedBox(height: AppSpacing.xl),
 
           // ── Main Menu Label ──────────────
           Padding(
@@ -327,19 +368,29 @@ class _WebSidebar extends StatelessWidget {
             ),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                'MAIN MENU',
-                style: AppTextStyles.overline,
-              ),
+              child: Text('MAIN MENU', style: AppTextStyles.overline),
             ),
           ),
 
-          // ── Main Nav Items ───────────────
-          ..._sidebarMainItems.map((item) => _SidebarNavItem(
-                item: item,
-                isActive: currentPath == item.path,
-                onTap: () => _onNavTap(context, item.path),
-              )),
+          // ── Main Nav Items (filtered by permissions) ─────
+          ..._visibleNavItems(context, _sidebarMainItems).map(
+            (item) => _SidebarNavItem(
+              item: item,
+              isActive: currentPath == item.path,
+              onTap: () => _onNavTap(context, item.path),
+            ),
+          ),
+          if (_hasAdminAccess(context))
+            _SidebarNavItem(
+              item: const NavItem(
+                label: 'Admin Settings',
+                icon: Icons.settings_outlined,
+                activeIcon: Icons.settings,
+                path: RoutePaths.settings,
+              ),
+              isActive: currentPath == RoutePaths.settings,
+              onTap: () => _onNavTap(context, RoutePaths.settings),
+            ),
 
           const Spacer(),
 
@@ -362,11 +413,13 @@ class _WebSidebar extends StatelessWidget {
           const Divider(),
 
           // ── Bottom Items ─────────────────
-          ..._sidebarBottomItems.map((item) => _SidebarNavItem(
-                item: item,
-                isActive: currentPath == item.path,
-                onTap: () => _onNavTap(context, item.path),
-              )),
+          ..._sidebarBottomItems.map(
+            (item) => _SidebarNavItem(
+              item: item,
+              isActive: currentPath == item.path,
+              onTap: () => _onNavTap(context, item.path),
+            ),
+          ),
           const SizedBox(height: AppSpacing.lg),
         ],
       ),
@@ -416,8 +469,8 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
               color: widget.isActive
                   ? AppColors.navActiveBg
                   : _isHovered
-                      ? AppColors.navHover
-                      : Colors.transparent,
+                  ? AppColors.navHover
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
             ),
             child: Row(
@@ -454,53 +507,28 @@ class _DesktopTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
         children: [
-          // Search bar
-          SizedBox(
-            width: AppSpacing.searchBarWidth,
-            height: 40,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search deals, leads...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                filled: true,
-                fillColor: AppColors.background,
-              ),
-              style: AppTextStyles.bodyMedium,
-            ),
-          ),
+          // Global search
+          GlobalSearchField(width: AppSpacing.searchBarWidth),
           const Spacer(),
 
           // Action buttons
           const NotificationBell(),
           const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search),
-            tooltip: 'Global Search',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.add_circle_outline),
-            tooltip: 'Quick Create',
-          ),
+          // IconButton(
+          //   onPressed: () {},
+          //   icon: const Icon(Icons.search),
+          //   tooltip: 'Global Search',
+          // ),
+          // const SizedBox(width: AppSpacing.sm),
+          // IconButton(
+          //   onPressed: () {},
+          //   icon: const Icon(Icons.add_circle_outline),
+          //   tooltip: 'Quick Create',
+          // ),
           const SizedBox(width: AppSpacing.md),
 
           // User avatar
@@ -520,9 +548,7 @@ class _MobileTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
         children: [
@@ -553,11 +579,11 @@ class _MobileTopBar extends StatelessWidget {
 
 /// ─── Helpers ────────────────────────────────────────────
 
-int _getCurrentIndex(BuildContext context) {
+int _getCurrentIndex(BuildContext context, List<NavItem> navItems) {
   final currentPath = GoRouterState.of(context).matchedLocation;
-  for (int i = 0; i < _mainNavItems.length; i++) {
-    if (currentPath == _mainNavItems[i].path ||
-        currentPath.startsWith('${_mainNavItems[i].path}/')) {
+  for (int i = 0; i < navItems.length; i++) {
+    if (currentPath == navItems[i].path ||
+        currentPath.startsWith('${navItems[i].path}/')) {
       return i;
     }
   }
@@ -567,6 +593,38 @@ int _getCurrentIndex(BuildContext context) {
 void _onNavTap(BuildContext context, String path) {
   context.go(path);
 }
+
+/// Only users whose role can manage users/roles see the Admin Settings
+/// entry point (top-level nav item, sidebar item, or "Settings" tab).
+bool _hasAdminAccess(BuildContext context) {
+  final user = _currentUser(context);
+  if (user == null) return false;
+  return user.hasPermission('users.manage') ||
+      user.hasPermission('roles.manage');
+}
+
+/// The authenticated user, or null if not signed in.
+User? _currentUser(BuildContext context) {
+  final state = context.watch<AuthBloc>().state;
+  return state is AuthAuthenticated ? state.user : null;
+}
+
+/// Filters [items] to those the current user is permitted to see, based on
+/// the login-response permission codes on [User.permissions].
+List<NavItem> _visibleNavItems(BuildContext context, List<NavItem> items) {
+  final user = _currentUser(context);
+  // Before auth resolves, only show items with no permission requirement.
+  return items
+      .where(
+        (i) => user == null
+            ? i.requiredPermissions.isEmpty
+            : user.hasAnyPermission(i.requiredPermissions),
+      )
+      .toList();
+}
+
+List<NavItem> _visibleMainNavItems(BuildContext context) =>
+    _visibleNavItems(context, _mainNavItems);
 
 class _UserProfileDropdown extends StatelessWidget {
   final double radius;
@@ -579,26 +637,24 @@ class _UserProfileDropdown extends StatelessWidget {
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
         final displayName = user?.name ?? 'Sarah Jenkins';
-        final displayRole = user?.role ?? 'sales_manager';
-        
-        // Convert camelCase or snake_case roles to Title Case for UI display
-        String roleName = displayRole;
-        if (displayRole == 'sales_manager') {
-          roleName = 'Sales Manager';
-        } else if (displayRole == 'sales_rep') {
-          roleName = 'Sales Representative';
-        } else {
-          roleName = displayRole.split('_').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1)}' : '').join(' ');
-        }
+        final roleName = user?.role.name ?? 'Sales Team';
 
         final initials = displayName.isNotEmpty
-            ? displayName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+            ? displayName
+                  .trim()
+                  .split(' ')
+                  .map((e) => e.isNotEmpty ? e[0] : '')
+                  .take(2)
+                  .join()
+                  .toUpperCase()
             : 'U';
 
         return PopupMenuButton<String>(
           onSelected: (value) {
             if (value == 'logout') {
               context.read<AuthBloc>().add(const AuthLogoutRequested());
+            } else if (value == 'profile') {
+              context.go(RoutePaths.profile);
             }
           },
           offset: const Offset(0, 48),
@@ -636,6 +692,20 @@ class _UserProfileDropdown extends StatelessWidget {
               ),
             ),
             const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'profile',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('View Profile'),
+                ],
+              ),
+            ),
             const PopupMenuItem(
               value: 'logout',
               child: Row(

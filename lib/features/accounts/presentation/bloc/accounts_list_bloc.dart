@@ -11,13 +11,17 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
   String? _search;
   String? _industryFilter;
   String? _tierFilter;
-  String? _ownerFilter;
+  int? _ownerFilter;
+  int _limit = 25;
+  int _offset = 0;
 
   AccountsListBloc({required this.getAccountsUseCase})
     : super(const AccountsListInitial()) {
     on<AccountsListLoadRequested>(_onLoadRequested);
     on<AccountsListSearchChanged>(_onSearchChanged);
     on<AccountsListFilterChanged>(_onFilterChanged);
+    on<AccountsListPageChanged>(_onPageChanged);
+    on<AccountsListRowsPerPageChanged>(_onRowsPerPageChanged);
   }
 
   Future<void> _onLoadRequested(
@@ -33,6 +37,7 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
     Emitter<AccountsListState> emit,
   ) async {
     _search = event.query;
+    _offset = 0; // new query → back to first page
     await _loadAccounts(emit);
   }
 
@@ -42,7 +47,29 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
   ) async {
     if (event.industry != null) _industryFilter = event.industry;
     if (event.tier != null) _tierFilter = event.tier;
-    if (event.owner != null) _ownerFilter = event.owner;
+    if (event.ownerId == AccountsListFilterChanged.clearOwner) {
+      _ownerFilter = null;
+    } else if (event.ownerId is int) {
+      _ownerFilter = event.ownerId as int;
+    }
+    _offset = 0;
+    await _loadAccounts(emit);
+  }
+
+  Future<void> _onPageChanged(
+    AccountsListPageChanged event,
+    Emitter<AccountsListState> emit,
+  ) async {
+    _offset = event.offset < 0 ? 0 : event.offset;
+    await _loadAccounts(emit);
+  }
+
+  Future<void> _onRowsPerPageChanged(
+    AccountsListRowsPerPageChanged event,
+    Emitter<AccountsListState> emit,
+  ) async {
+    _limit = event.limit;
+    _offset = 0;
     await _loadAccounts(emit);
   }
 
@@ -52,15 +79,20 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
         search: _search,
         industry: _industryFilter,
         tier: _tierFilter,
-        owner: _ownerFilter,
+        ownerId: _ownerFilter,
+        limit: _limit,
+        offset: _offset,
       ),
     );
 
     result.fold(
       (f) => emit(AccountsListError(f.message)),
-      (a) => emit(
+      (page) => emit(
         AccountsListLoaded(
-          accounts: a,
+          accounts: page.items,
+          total: page.total,
+          limit: _limit,
+          offset: _offset,
           search: _search,
           industryFilter: _industryFilter,
           tierFilter: _tierFilter,

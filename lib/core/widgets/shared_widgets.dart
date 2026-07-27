@@ -116,6 +116,18 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  /// Tier badge in the plain [StatusBadge] pill style (no leading dot).
+  /// Reuses [TierBadge]'s tier→colour mapping so tiers stay consistent
+  /// wherever they're shown.
+  factory StatusBadge.tier(String tier) {
+    final colors = TierBadge._getTierColors(tier);
+    return StatusBadge(
+      label: tier.toUpperCase(),
+      backgroundColor: colors.bg,
+      textColor: colors.text,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -162,14 +174,18 @@ class StatusBadge extends StatelessWidget {
   }
 
   static ({Color bg, Color text}) _getLeadStatusColors(String status) {
+    // Labels match saleshub's LeadStatus enum (see lead_enums.dart).
     switch (status.toLowerCase()) {
-      case 'new':
+      case 'not contacted':
         return (bg: AppColors.primaryLight, text: AppColors.primary);
+      case 'attempted to contact':
+        return (bg: AppColors.warningLight, text: AppColors.warning);
       case 'contacted':
         return (bg: AppColors.infoLight, text: AppColors.info);
-      case 'qualified':
-        return (bg: AppColors.successLight, text: AppColors.success);
-      case 'unqualified':
+      case 'contact in future':
+        return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
+      case 'junk lead':
+      case 'lost lead':
         return (bg: AppColors.errorLight, text: AppColors.error);
       default:
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);

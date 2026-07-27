@@ -13,8 +13,11 @@ import '../../features/leads/presentation/pages/create_lead_page.dart';
 import '../../features/leads/domain/entities/lead.dart';
 import '../../features/accounts/presentation/pages/accounts_list_page.dart';
 import '../../features/accounts/presentation/pages/account_detail_page.dart';
+import '../../features/accounts/presentation/pages/create_account_page.dart';
 import '../../features/deals/presentation/pages/deals_list_page.dart';
 import '../../features/deals/presentation/pages/deal_detail_page.dart';
+import '../../features/contacts/presentation/pages/contacts_list_page.dart';
+import '../../features/contacts/presentation/pages/contact_detail_page.dart';
 
 import '../../features/staff_augmentation/presentation/pages/staff_augmentation_page.dart';
 import '../../features/documents/presentation/pages/documents_page.dart';
@@ -22,7 +25,8 @@ import '../../features/activity_log/presentation/pages/activity_log_page.dart';
 import '../../features/tasks/presentation/pages/tasks_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/performance_dashboard/presentation/pages/analytics_page.dart';
-import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/admin/presentation/pages/admin_settings_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 
 /// Global navigator key
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -38,7 +42,14 @@ class AppRouter {
     initialLocation: RoutePaths.dashboard,
     refreshListenable: sl<AuthNotifier>(),
     redirect: (context, state) {
-      final isAuthenticated = sl<AuthNotifier>().isAuthenticated;
+      final authNotifier = sl<AuthNotifier>();
+      // Defer redirect decisions until the initial cached-session check
+      // resolves — otherwise a page refresh briefly reads as "unauthenticated"
+      // and gets redirected to /login before the real state is known, and the
+      // originally requested deep link (e.g. /leads/123) is lost.
+      if (authNotifier.isChecking) return null;
+
+      final isAuthenticated = authNotifier.isAuthenticated;
       final loggingIn = state.matchedLocation == RoutePaths.login;
       final forgotPwd = state.matchedLocation == RoutePaths.forgotPassword;
 
@@ -100,6 +111,11 @@ class AppRouter {
                 const NoTransitionPage(child: AccountsListPage()),
           ),
           GoRoute(
+            path: RoutePaths.createAccount,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CreateAccountPage()),
+          ),
+          GoRoute(
             path: RoutePaths.accountDetail,
             builder: (context, state) =>
                 AccountDetailPage(accountId: state.pathParameters['id'] ?? ''),
@@ -114,6 +130,16 @@ class AppRouter {
             path: RoutePaths.dealDetail,
             builder: (context, state) =>
                 DealDetailPage(dealId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: RoutePaths.contacts,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ContactsListPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.contactDetail,
+            builder: (context, state) =>
+                ContactDetailPage(contactId: state.pathParameters['id'] ?? ''),
           ),
           GoRoute(
             path: RoutePaths.staffAugmentation,
@@ -148,7 +174,12 @@ class AppRouter {
           GoRoute(
             path: RoutePaths.settings,
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsPage()),
+                const NoTransitionPage(child: AdminSettingsPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.profile,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProfilePage()),
           ),
         ],
       ),

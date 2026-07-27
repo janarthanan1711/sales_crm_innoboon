@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/deal.dart';
 
 abstract class DealsListEvent extends Equatable {
   const DealsListEvent();
@@ -12,17 +11,31 @@ class DealsListLoadRequested extends DealsListEvent {
 }
 
 class DealsListFilterChanged extends DealsListEvent {
-  final String? owner;
-  final String? tier;
-  const DealsListFilterChanged({this.owner, this.tier});
+  final int? ownerId;
+  final int? stageId;
+  final bool clearOwner;
+  final bool clearStage;
+  const DealsListFilterChanged({
+    this.ownerId,
+    this.stageId,
+    this.clearOwner = false,
+    this.clearStage = false,
+  });
   @override
-  List<Object?> get props => [owner, tier];
+  List<Object?> get props => [ownerId, stageId, clearOwner, clearStage];
 }
 
 class DealsListStageUpdated extends DealsListEvent {
   final String dealId;
-  final DealStage newStage;
-  const DealsListStageUpdated({required this.dealId, required this.newStage});
+  final int newStageId;
+  final String? note;
+  final String? coldReason;
+  const DealsListStageUpdated({
+    required this.dealId,
+    required this.newStageId,
+    this.note,
+    this.coldReason,
+  });
   @override
-  List<Object?> get props => [dealId, newStage];
+  List<Object?> get props => [dealId, newStageId, note, coldReason];
 }

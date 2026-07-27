@@ -65,14 +65,14 @@ class _WebLoginLayout extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [
-                  Color(0xFFF0F4FF),
-                  Color(0xFFE0EAFC),
-                ],
+                colors: [Color(0xFFF0F4FF), Color(0xFFE0EAFC)],
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 64.0, vertical: 48.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 64.0,
+                vertical: 48.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -85,7 +85,11 @@ class _WebLoginLayout extends StatelessWidget {
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.show_chart, color: Colors.white, size: 24),
+                        child: const Icon(
+                          Icons.show_chart,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -135,9 +139,14 @@ class _WebLoginLayout extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.5),
                         image: const DecorationImage(
-                          image: NetworkImage('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80'),
+                          image: NetworkImage(
+                            'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80',
+                          ),
                           fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(Colors.white54, BlendMode.lighten),
+                          colorFilter: ColorFilter.mode(
+                            Colors.white54,
+                            BlendMode.lighten,
+                          ),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -180,11 +189,15 @@ class _WebLoginLayout extends StatelessWidget {
                     children: [
                       Text(
                         '© 2024 SalesHub Inc.',
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       Text(
                         'v2.4.1',
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -255,8 +268,10 @@ class _LoginForm extends StatefulWidget {
 
 class _LoginFormState extends State<_LoginForm> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'rep@innoboon.com');
-  final _passwordController = TextEditingController(text: 'hunter2pass');
+  final _emailController = TextEditingController(
+    text: 'test.user@innoboon.com',
+  );
+  final _passwordController = TextEditingController(text: 'Test@1234');
   bool _obscurePassword = true;
 
   @override
@@ -269,11 +284,11 @@ class _LoginFormState extends State<_LoginForm> {
   void _onSubmit() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-            AuthLoginRequested(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+        AuthLoginRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
@@ -284,7 +299,13 @@ class _LoginFormState extends State<_LoginForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Sign in to your account', style: AppTextStyles.h1.copyWith(fontSize: 28, color: const Color(0xFF1E293B))),
+          Text(
+            'Sign in to your account',
+            style: AppTextStyles.h1.copyWith(
+              fontSize: 28,
+              color: const Color(0xFF1E293B),
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             'Welcome back. Please enter your details.',
@@ -295,7 +316,13 @@ class _LoginFormState extends State<_LoginForm> {
           const SizedBox(height: 40),
 
           // Email field
-          Text('Email Address', style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
+          Text(
+            'Email Address',
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF334155),
+            ),
+          ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _emailController,
@@ -304,8 +331,15 @@ class _LoginFormState extends State<_LoginForm> {
             decoration: InputDecoration(
               hintText: 'you@company.com',
               hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.mail_outline, size: 20, color: AppColors.textMuted),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: const Icon(
+                Icons.mail_outline,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -323,7 +357,13 @@ class _LoginFormState extends State<_LoginForm> {
           const SizedBox(height: 24),
 
           // Password field
-          Text('Password', style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
+          Text(
+            'Password',
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF334155),
+            ),
+          ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _passwordController,
@@ -333,7 +373,11 @@ class _LoginFormState extends State<_LoginForm> {
             decoration: InputDecoration(
               hintText: '••••••••',
               hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.lock_outline, size: 20, color: AppColors.textMuted),
+              prefixIcon: const Icon(
+                Icons.lock_outline,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword
@@ -346,7 +390,10 @@ class _LoginFormState extends State<_LoginForm> {
                   setState(() => _obscurePassword = !_obscurePassword);
                 },
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: AppColors.border),
@@ -382,7 +429,12 @@ class _LoginFormState extends State<_LoginForm> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('Remember me', style: AppTextStyles.bodyMedium.copyWith(color: const Color(0xFF475569))),
+                  Text(
+                    'Remember me',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
                 ],
               ),
               TextButton(
@@ -429,7 +481,12 @@ class _LoginFormState extends State<_LoginForm> {
                             color: Colors.white,
                           ),
                         )
-                      : Text('Log In', style: AppTextStyles.buttonMedium.copyWith(fontSize: 16)),
+                      : Text(
+                          'Log In',
+                          style: AppTextStyles.buttonMedium.copyWith(
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               );
             },
@@ -441,7 +498,9 @@ class _LoginFormState extends State<_LoginForm> {
             child: Text.rich(
               TextSpan(
                 text: 'Need access? ',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 children: [
                   TextSpan(
                     text: 'Contact Admin',

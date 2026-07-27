@@ -137,7 +137,7 @@ class _TimelineItem extends StatelessWidget {
                       children: [
                         Text(activity.title, style: AppTextStyles.labelLarge),
                         Text(
-                          DateFormat('MMM d, yyyy • h:mm a').format(activity.performedAt),
+                          DateFormat('MMM d, yyyy • h:mm a').format(activity.performedAt.toLocal()),
                           style: AppTextStyles.caption,
                         ),
                       ],

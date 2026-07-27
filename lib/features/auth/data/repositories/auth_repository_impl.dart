@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/user.dart';
@@ -19,13 +20,12 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final userModel = await remoteDataSource.login(email, password);
 
-      // Cache user and tokens
       await localDataSource.saveUser(userModel);
       if (userModel.accessToken != null) {
-        await localDataSource.saveTokens(
-          userModel.accessToken!,
-          userModel.refreshToken,
-        );
+        await localDataSource.saveAccessToken(userModel.accessToken!);
+      }
+      if (userModel.refreshToken != null) {
+        await localDataSource.saveRefreshToken(userModel.refreshToken!);
       }
 
       return Right(userModel.toEntity());
@@ -37,6 +37,16 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> logout() async {
     try {
+      final refreshToken = await localDataSource.getRefreshToken();
+      if (refreshToken != null) {
+        // Best-effort: the user can still log out locally even if the
+        // revoke call fails (offline, token already expired, etc).
+        try {
+          await remoteDataSource.logout(refreshToken);
+        } on Exception {
+          // ignore — local clear below still runs
+        }
+      }
       await localDataSource.clearAll();
       return const Right(null);
     } on Exception catch (e) {
@@ -64,10 +74,69 @@ class AuthRepositoryImpl implements AuthRepository {
       if (currentRefreshToken == null) {
         return const Left(AuthFailure(message: 'No refresh token'));
       }
-      final newToken =
-          await remoteDataSource.refreshToken(currentRefreshToken);
-      await localDataSource.saveTokens(newToken, null);
-      return Right(newToken);
+      final newAccessToken = await remoteDataSource.refreshToken(currentRefreshToken);
+      await localDataSource.saveAccessToken(newAccessToken);
+      return Right(newAccessToken);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> fetchCurrentUser() async {
+    try {
+      final userModel = await remoteDataSource.getMe();
+      await localDataSource.saveUser(userModel);
+      return Right(userModel.toEntity());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> updateCurrentUser({
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+  }) async {
+    try {
+      final userModel = await remoteDataSource.updateMe(
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: phoneNumber,
+      );
+      await localDataSource.saveUser(userModel);
+      return Right(userModel.toEntity());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await remoteDataSource.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      return const Right(null);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> uploadAvatar({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    try {
+      final userModel = await remoteDataSource.uploadAvatar(bytes: bytes, filename: filename);
+      await localDataSource.saveUser(userModel);
+      return Right(userModel.toEntity());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
