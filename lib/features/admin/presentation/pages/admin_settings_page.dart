@@ -20,7 +20,8 @@ class AdminSettingsPage extends StatefulWidget {
   State<AdminSettingsPage> createState() => _AdminSettingsPageState();
 }
 
-class _AdminSettingsPageState extends State<AdminSettingsPage> with SingleTickerProviderStateMixin {
+class _AdminSettingsPageState extends State<AdminSettingsPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
@@ -43,7 +44,12 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> with SingleTicker
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xxl,
+              AppSpacing.xxl,
+              AppSpacing.xxl,
+              0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -51,7 +57,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> with SingleTicker
                 const SizedBox(height: 4),
                 Text(
                   'Manage your organization, team members, and global configurations.',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -80,7 +88,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> with SingleTicker
               children: const [
                 _UsersTab(),
                 _RolesTab(),
-                _ComingSoonTab(message: 'Global configuration options aren\'t available yet.'),
+                _ComingSoonTab(
+                  message:
+                      'Global configuration options aren\'t available yet.',
+                ),
                 _ComingSoonTab(message: 'Audit logging isn\'t available yet.'),
               ],
             ),
@@ -101,9 +112,18 @@ class _ComingSoonTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.construction_outlined, size: 48, color: AppColors.textMuted),
+          const Icon(
+            Icons.construction_outlined,
+            size: 48,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: AppSpacing.md),
-          Text(message, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+          Text(
+            message,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -188,7 +208,9 @@ class _UsersTabState extends State<_UsersTab> {
                 value: _roleFilter,
                 items: [
                   const DropdownMenuItem(value: null, child: Text('All Roles')),
-                  ..._roles.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))),
+                  ..._roles.map(
+                    (r) => DropdownMenuItem(value: r.id, child: Text(r.name)),
+                  ),
                 ],
                 onChanged: (v) {
                   setState(() => _roleFilter = v);
@@ -202,7 +224,10 @@ class _UsersTabState extends State<_UsersTab> {
                   DropdownMenuItem(value: null, child: Text('All Status')),
                   DropdownMenuItem(value: 'active', child: Text('Active')),
                   DropdownMenuItem(value: 'invited', child: Text('Invited')),
-                  DropdownMenuItem(value: 'deactivated', child: Text('Deactivated')),
+                  DropdownMenuItem(
+                    value: 'deactivated',
+                    child: Text('Deactivated'),
+                  ),
                 ],
                 onChanged: (v) {
                   setState(() => _statusFilter = v);
@@ -221,10 +246,13 @@ class _UsersTabState extends State<_UsersTab> {
             child: _loading
                 ? const AppLoadingIndicator(message: 'Loading users...')
                 : _error != null
-                    ? ErrorState(message: _error!, onRetry: _load)
-                    : _users.isEmpty
-                        ? const EmptyState(icon: Icons.people_outline, title: 'No users found')
-                        : _UsersTable(users: _users, onChanged: _load),
+                ? ErrorState(message: _error!, onRetry: _load)
+                : _users.isEmpty
+                ? const EmptyState(
+                    icon: Icons.people_outline,
+                    title: 'No users found',
+                  )
+                : _UsersTable(users: _users, onChanged: _load),
           ),
         ],
       ),
@@ -250,26 +278,48 @@ class _UsersTabState extends State<_UsersTab> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
                     const SizedBox(height: AppSpacing.md),
-                    TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First Name')),
+                    TextField(
+                      controller: firstNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'First Name',
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.md),
-                    TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last Name')),
+                    TextField(
+                      controller: lastNameController,
+                      decoration: const InputDecoration(labelText: 'Last Name'),
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     DropdownButtonFormField<int?>(
                       value: roleId,
                       decoration: const InputDecoration(labelText: 'Role'),
-                      items: _roles.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))).toList(),
+                      items: _roles
+                          .map(
+                            (r) => DropdownMenuItem(
+                              value: r.id,
+                              child: Text(r.name),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (v) => setState(() => roleId = v),
                     ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (emailController.text.trim().isEmpty || roleId == null) return;
+                    if (emailController.text.trim().isEmpty || roleId == null)
+                      return;
                     final result = await sl<CreateUserUseCase>()(
                       CreateUserParams(
                         email: emailController.text.trim(),
@@ -282,11 +332,17 @@ class _UsersTabState extends State<_UsersTab> {
                     Navigator.pop(dialogContext);
                     result.fold(
                       (f) => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to invite user: ${f.message}'), backgroundColor: AppColors.error),
+                        SnackBar(
+                          content: Text('Failed to invite user: ${f.message}'),
+                          backgroundColor: AppColors.error,
+                        ),
                       ),
                       (_) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Invitation sent.'), backgroundColor: AppColors.success),
+                          const SnackBar(
+                            content: Text('Invitation sent.'),
+                            backgroundColor: AppColors.success,
+                          ),
                         );
                         _load();
                       },
@@ -319,8 +375,13 @@ class _UsersTable extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
             child: Row(
               children: [
                 _header('NAME', flex: 3),
@@ -336,7 +397,8 @@ class _UsersTable extends StatelessWidget {
             child: ListView.separated(
               itemCount: users.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) => _UserRow(user: users[index], onChanged: onChanged),
+              itemBuilder: (context, index) =>
+                  _UserRow(user: users[index], onChanged: onChanged),
             ),
           ),
         ],
@@ -344,7 +406,10 @@ class _UsersTable extends StatelessWidget {
     );
   }
 
-  Widget _header(String label, {int flex = 1}) => Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+  Widget _header(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
 }
 
 class _UserRow extends StatelessWidget {
@@ -355,7 +420,10 @@ class _UserRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -364,25 +432,46 @@ class _UserRow extends StatelessWidget {
               children: [
                 InitialsAvatar(name: user.displayName, size: 32),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(user.displayName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                Expanded(
+                  child: Text(
+                    user.displayName,
+                    style: AppTextStyles.labelLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
-          Expanded(flex: 3, child: Text(user.email, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              user.email,
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           Expanded(
             flex: 2,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(4)),
-              alignment: Alignment.center,
-              child: Text(user.role.name.toUpperCase(), style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                user.role.name.toUpperCase(),
+                style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+              ),
             ),
           ),
           Expanded(flex: 2, child: _statusBadge(user.status)),
           Expanded(
             flex: 2,
             child: Text(
-              user.lastLoginAt != null ? DateFormatter.relativeTime(user.lastLoginAt!) : 'Never',
+              user.lastLoginAt != null
+                  ? DateFormatter.relativeTime(user.lastLoginAt!)
+                  : 'Never',
               style: AppTextStyles.tableCell,
             ),
           ),
@@ -396,12 +485,20 @@ class _UserRow extends StatelessWidget {
                     context: context,
                     builder: (dialogContext) => AlertDialog(
                       title: const Text('Deactivate user?'),
-                      content: Text('${user.displayName} will lose access immediately.'),
+                      content: Text(
+                        '${user.displayName} will lose access immediately.',
+                      ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Deactivate', style: TextStyle(color: AppColors.error)),
+                          child: const Text(
+                            'Deactivate',
+                            style: TextStyle(color: AppColors.error),
+                          ),
                         ),
                       ],
                     ),
@@ -410,14 +507,20 @@ class _UserRow extends StatelessWidget {
                   final result = await sl<DeleteUserUseCase>()(user.id);
                   result.fold(
                     (f) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to deactivate: ${f.message}'), backgroundColor: AppColors.error),
+                      SnackBar(
+                        content: Text('Failed to deactivate: ${f.message}'),
+                        backgroundColor: AppColors.error,
+                      ),
                     ),
                     (_) => onChanged(),
                   );
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'deactivate', child: Text('Deactivate')),
+                const PopupMenuItem(
+                  value: 'deactivate',
+                  child: Text('Deactivate'),
+                ),
               ],
             ),
           ),
@@ -441,9 +544,16 @@ class _UserRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
-        Text(status[0].toUpperCase() + status.substring(1), style: AppTextStyles.bodySmall),
+        Text(
+          status[0].toUpperCase() + status.substring(1),
+          style: AppTextStyles.bodySmall,
+        ),
       ],
     );
   }
@@ -511,46 +621,61 @@ class _RolesTabState extends State<_RolesTab> {
             child: _loading
                 ? const AppLoadingIndicator(message: 'Loading roles...')
                 : _error != null
-                    ? ErrorState(message: _error!, onRetry: _load)
-                    : ListView.separated(
-                        itemCount: _roles.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                        itemBuilder: (context, index) {
-                          final role = _roles[index];
-                          return Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBackground,
-                              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(role.name, style: AppTextStyles.labelLarge),
-                                      Text(
-                                        role.description.isEmpty ? '${role.permissions.length} permissions' : role.description,
-                                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                                      ),
-                                    ],
+                ? ErrorState(message: _error!, onRetry: _load)
+                : ListView.separated(
+                    itemCount: _roles.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      final role = _roles[index];
+                      return Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.cardRadius,
+                          ),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    role.name,
+                                    style: AppTextStyles.labelLarge,
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit_outlined, size: 18),
-                                  onPressed: () => _showRoleDialog(context, role: role),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                                  onPressed: () => _confirmDelete(context, role),
-                                ),
-                              ],
+                                  Text(
+                                    role.description.isEmpty
+                                        ? '${role.permissions.length} permissions'
+                                        : role.description,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          );
-                        },
-                      ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              onPressed: () =>
+                                  _showRoleDialog(context, role: role),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              onPressed: () => _confirmDelete(context, role),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -562,21 +687,32 @@ class _RolesTabState extends State<_RolesTab> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete role?'),
-        content: Text('This cannot be undone. "${role.name}" will no longer be assignable.'),
+        content: Text(
+          'This cannot be undone. "${role.name}" will no longer be assignable.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
               final result = await sl<DeleteRoleUseCase>()(role.id);
               result.fold(
                 (f) => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to delete role: ${f.message}'), backgroundColor: AppColors.error),
+                  SnackBar(
+                    content: Text('Failed to delete role: ${f.message}'),
+                    backgroundColor: AppColors.error,
+                  ),
                 ),
                 (_) => _load(),
               );
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -585,7 +721,9 @@ class _RolesTabState extends State<_RolesTab> {
 
   void _showRoleDialog(BuildContext context, {Role? role}) {
     final nameController = TextEditingController(text: role?.name ?? '');
-    final descriptionController = TextEditingController(text: role?.description ?? '');
+    final descriptionController = TextEditingController(
+      text: role?.description ?? '',
+    );
     final selected = <int>{...?role?.permissions.map((p) => p.id)};
     final permissionsByModule = <String, List<Permission>>{};
     for (final p in _permissions) {
@@ -606,35 +744,58 @@ class _RolesTabState extends State<_RolesTab> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Role Name')),
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Role Name',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description')),
+                      TextField(
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.lg),
                       Text('Permissions', style: AppTextStyles.labelMedium),
                       for (final module in permissionsByModule.keys) ...[
                         const SizedBox(height: AppSpacing.sm),
-                        Text(module.toUpperCase(), style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
-                        ...permissionsByModule[module]!.map((p) => CheckboxListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              controlAffinity: ListTileControlAffinity.leading,
-                              title: Text(p.label, style: AppTextStyles.bodyMedium),
-                              value: selected.contains(p.id),
-                              onChanged: (v) => setState(() {
-                                if (v == true) {
-                                  selected.add(p.id);
-                                } else {
-                                  selected.remove(p.id);
-                                }
-                              }),
-                            )),
+                        Text(
+                          module.toUpperCase(),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        ...permissionsByModule[module]!.map(
+                          (p) => CheckboxListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text(
+                              p.label,
+                              style: AppTextStyles.bodyMedium,
+                            ),
+                            value: selected.contains(p.id),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                selected.add(p.id);
+                              } else {
+                                selected.remove(p.id);
+                              }
+                            }),
+                          ),
+                        ),
                       ],
                     ],
                   ),
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     if (nameController.text.trim().isEmpty) return;
@@ -658,7 +819,10 @@ class _RolesTabState extends State<_RolesTab> {
                     Navigator.pop(dialogContext);
                     result.fold(
                       (f) => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save role: ${f.message}'), backgroundColor: AppColors.error),
+                        SnackBar(
+                          content: Text('Failed to save role: ${f.message}'),
+                          backgroundColor: AppColors.error,
+                        ),
                       ),
                       (_) => _load(),
                     );
@@ -675,7 +839,12 @@ class _RolesTabState extends State<_RolesTab> {
 }
 
 class _Dropdown<T> extends StatelessWidget {
-  const _Dropdown({required this.label, required this.value, required this.items, required this.onChanged});
+  const _Dropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
   final String label;
   final T value;
   final List<DropdownMenuItem<T>> items;
@@ -694,7 +863,8 @@ class _Dropdown<T> extends StatelessWidget {
           value: value,
           items: items,
           onChanged: (v) {
-            if (v != null || items.any((i) => i.value == null)) onChanged(v as T);
+            if (v != null || items.any((i) => i.value == null))
+              onChanged(v as T);
           },
           hint: Text(label, style: AppTextStyles.labelMedium),
         ),
