@@ -469,7 +469,7 @@ class _NotificationCard extends StatelessWidget {
       return '${diff.inHours}h ago';
     }
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('MMM d, yyyy').format(date);
+    return DateFormat('MMM d, yyyy').format(date.toLocal());
   }
 
   IconData _getIcon(NotificationType type) {

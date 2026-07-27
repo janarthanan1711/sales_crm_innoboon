@@ -58,10 +58,10 @@ class DateFormatter {
   static final DateFormat _timeOnly = DateFormat('h:mm a');
   static final DateFormat _apiDate = DateFormat('yyyy-MM-dd');
 
-  static String displayDate(DateTime date) => _displayDate.format(date);
-  static String shortDate(DateTime date) => _shortDate.format(date);
-  static String dateTime(DateTime date) => _dateTime.format(date);
-  static String timeOnly(DateTime date) => _timeOnly.format(date);
+  static String displayDate(DateTime date) => _displayDate.format(date.toLocal());
+  static String shortDate(DateTime date) => _shortDate.format(date.toLocal());
+  static String dateTime(DateTime date) => _dateTime.format(date.toLocal());
+  static String timeOnly(DateTime date) => _timeOnly.format(date.toLocal());
   static String apiDate(DateTime date) => _apiDate.format(date);
 
   /// Relative time: "2 hrs ago", "Yesterday", "3 days ago"
@@ -75,7 +75,7 @@ class DateFormatter {
     if (diff.inDays < 2) return 'Yesterday';
     if (diff.inDays < 7) return '${diff.inDays} days ago';
     if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} weeks ago';
-    return _shortDate.format(date);
+    return _shortDate.format(date.toLocal());
   }
 
   /// Days remaining: "(72 days remaining)"
