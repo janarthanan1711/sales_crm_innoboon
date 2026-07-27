@@ -39,7 +39,8 @@ class AccountDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<AccountDetailBloc>()..add(AccountDetailLoadRequested(accountId)),
+      create: (_) =>
+          sl<AccountDetailBloc>()..add(AccountDetailLoadRequested(accountId)),
       child: const _AccountDetailView(),
     );
   }
@@ -52,7 +53,8 @@ class _AccountDetailView extends StatefulWidget {
   State<_AccountDetailView> createState() => _AccountDetailViewState();
 }
 
-class _AccountDetailViewState extends State<_AccountDetailView> with SingleTickerProviderStateMixin {
+class _AccountDetailViewState extends State<_AccountDetailView>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -76,14 +78,13 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
       backgroundColor: AppColors.background,
       body: BlocBuilder<AccountDetailBloc, AccountDetailState>(
         builder: (context, state) {
-          if (state is AccountDetailLoading) return const AppLoadingIndicator(message: 'Loading account...');
+          if (state is AccountDetailLoading)
+            return const AppLoadingIndicator(message: 'Loading account...');
           if (state is AccountDetailError) {
-            return ErrorState(
-              message: state.message,
-              onRetry: () {},
-            );
+            return ErrorState(message: state.message, onRetry: () {});
           }
-          if (state is AccountDetailLoaded) return _buildContent(context, state);
+          if (state is AccountDetailLoaded)
+            return _buildContent(context, state);
           return const SizedBox.shrink();
         },
       ),
@@ -105,92 +106,125 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Builder(builder: (context) {
-                final identity = Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.go('/accounts'),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    InitialsAvatar(name: account.companyName, size: 48),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(child: Text(account.companyName, style: AppTextStyles.h1, overflow: TextOverflow.ellipsis)),
-                              const SizedBox(width: AppSpacing.md),
-                              TierBadge(tier: account.tier),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              if (account.domain != null && account.domain!.isNotEmpty) ...[
-                                Flexible(child: Text(account.domain!, style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary), overflow: TextOverflow.ellipsis)),
-                                const SizedBox(width: AppSpacing.md),
-                              ],
-                              const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
-                              const SizedBox(width: 4),
-                              Flexible(child: Text(account.primaryOwner, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary), overflow: TextOverflow.ellipsis)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-
-                // "New Contact" only makes sense from the Overview / Contacts
-                // tabs (index 0 / 1).
-                final showAddContact = _tabController.index <= 1;
-                final actions = [
-                  OutlinedButton.icon(
-                    onPressed: () => _showEditAccountDialog(context, account),
-                    icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('Edit Account'),
-                  ),
-                  if (showAddContact)
-                    OutlinedButton.icon(
-                      onPressed: () => _tabController.animateTo(1),
-                      icon: const Icon(Icons.person_add_alt_1, size: 16),
-                      label: const Text('New Contact'),
-                    ),
-                  ElevatedButton.icon(
-                    onPressed: () => _openNewDeal(context, account),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('New Deal'),
-                  ),
-                ];
-
-                // On phones the three action buttons won't fit beside the
-                // title — stack them into a Wrap underneath instead.
-                if (context.isMobile) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              Builder(
+                builder: (context) {
+                  final identity = Row(
                     children: [
-                      identity,
-                      const SizedBox(height: AppSpacing.md),
-                      Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: actions),
+                      IconButton(
+                        onPressed: () => context.go('/accounts'),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      InitialsAvatar(name: account.companyName, size: 48),
+                      const SizedBox(width: AppSpacing.lg),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    account.companyName,
+                                    style: AppTextStyles.h1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                TierBadge(tier: account.tier),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                if (account.domain != null &&
+                                    account.domain!.isNotEmpty) ...[
+                                  Flexible(
+                                    child: Text(
+                                      account.domain!,
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: AppColors.primary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                ],
+                                const Icon(
+                                  Icons.person_outline,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    account.primaryOwner,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: identity),
-                    const SizedBox(width: AppSpacing.md),
-                    ...[
-                      for (int i = 0; i < actions.length; i++) ...[
-                        if (i > 0) const SizedBox(width: AppSpacing.sm),
-                        actions[i],
+
+                  // "New Contact" only makes sense from the Overview / Contacts
+                  // tabs (index 0 / 1).
+                  final showAddContact = _tabController.index <= 1;
+                  final actions = [
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditAccountDialog(context, account),
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('Edit Account'),
+                    ),
+                    if (showAddContact)
+                      OutlinedButton.icon(
+                        onPressed: () => _tabController.animateTo(1),
+                        icon: const Icon(Icons.person_add_alt_1, size: 16),
+                        label: const Text('New Contact'),
+                      ),
+                    ElevatedButton.icon(
+                      onPressed: () => _openNewDeal(context, account),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('New Deal'),
+                    ),
+                  ];
+
+                  // On phones the three action buttons won't fit beside the
+                  // title — stack them into a Wrap underneath instead.
+                  if (context.isMobile) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        identity,
+                        const SizedBox(height: AppSpacing.md),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: actions,
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: identity),
+                      const SizedBox(width: AppSpacing.md),
+                      ...[
+                        for (int i = 0; i < actions.length; i++) ...[
+                          if (i > 0) const SizedBox(width: AppSpacing.sm),
+                          actions[i],
+                        ],
                       ],
                     ],
-                  ],
-                );
-              }),
+                  );
+                },
+              ),
               const SizedBox(height: AppSpacing.lg),
               _HeaderStats(state: state),
             ],
@@ -208,8 +242,14 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
           labelStyle: AppTextStyles.labelLarge,
           tabs: [
             const Tab(text: 'Overview'),
-            Tab(text: 'Contacts${_countSuffix(account.contactCount, state.contacts.length)}'),
-            Tab(text: 'Deals${_countSuffix(account.dealCount, state.deals.length)}'),
+            Tab(
+              text:
+                  'Contacts${_countSuffix(account.contactCount, state.contacts.length)}',
+            ),
+            Tab(
+              text:
+                  'Deals${_countSuffix(account.dealCount, state.deals.length)}',
+            ),
             const Tab(text: 'Documents'),
             const Tab(text: 'Activity Log'),
           ],
@@ -251,14 +291,23 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
     if (created != null) bloc.add(AccountDetailLoadRequested(account.id));
   }
 
-  Future<void> _showEditAccountDialog(BuildContext context, Account account) async {
+  Future<void> _showEditAccountDialog(
+    BuildContext context,
+    Account account,
+  ) async {
     final bloc = context.read<AccountDetailBloc>();
     final companyController = TextEditingController(text: account.companyName);
     final domainController = TextEditingController(text: account.domain ?? '');
     final cityController = TextEditingController(text: account.city ?? '');
-    final descriptionController = TextEditingController(text: account.description);
-    final linkedinController = TextEditingController(text: account.linkedinUrl ?? '');
-    String tier = leadTierLabels.containsKey(account.tier) ? account.tier : leadTierLabels.keys.first;
+    final descriptionController = TextEditingController(
+      text: account.description,
+    );
+    final linkedinController = TextEditingController(
+      text: account.linkedinUrl ?? '',
+    );
+    String tier = leadTierLabels.containsKey(account.tier)
+        ? account.tier
+        : leadTierLabels.keys.first;
     String? industry = account.industry;
     int? ownerId = account.ownerId;
     List<OwnerUser> users = [];
@@ -281,40 +330,77 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(controller: companyController, decoration: const InputDecoration(labelText: 'Company')),
+                      TextField(
+                        controller: companyController,
+                        decoration: const InputDecoration(labelText: 'Company'),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: domainController, decoration: const InputDecoration(labelText: 'Domain')),
+                      TextField(
+                        controller: domainController,
+                        decoration: const InputDecoration(labelText: 'Domain'),
+                      ),
                       const SizedBox(height: AppSpacing.md),
                       DropdownButtonFormField<String>(
                         value: tier,
                         decoration: const InputDecoration(labelText: 'Tier'),
                         items: leadTierLabels.entries
-                            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setState(() => tier = v!),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       DropdownButtonFormField<String?>(
                         value: industry,
-                        decoration: const InputDecoration(labelText: 'Industry'),
-                        items: AppConstants.industries.map((i) => DropdownMenuItem<String?>(value: i, child: Text(i))).toList(),
+                        decoration: const InputDecoration(
+                          labelText: 'Industry',
+                        ),
+                        items: AppConstants.industries
+                            .map(
+                              (i) => DropdownMenuItem<String?>(
+                                value: i,
+                                child: Text(i),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (v) => setState(() => industry = v),
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: cityController, decoration: const InputDecoration(labelText: 'City')),
+                      TextField(
+                        controller: cityController,
+                        decoration: const InputDecoration(labelText: 'City'),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: linkedinController, decoration: const InputDecoration(labelText: 'LinkedIn URL')),
+                      TextField(
+                        controller: linkedinController,
+                        decoration: const InputDecoration(
+                          labelText: 'LinkedIn URL',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
                       TextField(
                         controller: descriptionController,
                         maxLines: 3,
-                        decoration: const InputDecoration(labelText: 'Description'),
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       DropdownButtonFormField<int?>(
                         value: ownerId,
                         decoration: const InputDecoration(labelText: 'Owner'),
-                        items: users.map((u) => DropdownMenuItem<int?>(value: u.id, child: Text(u.displayName))).toList(),
+                        items: users
+                            .map(
+                              (u) => DropdownMenuItem<int?>(
+                                value: u.id,
+                                child: Text(u.displayName),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (v) => setState(() => ownerId = v),
                       ),
                     ],
@@ -322,7 +408,10 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final result = await sl<UpdateAccountUseCase>()(
@@ -330,13 +419,19 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                         id: account.id,
                         data: AccountUpsertParams(
                           company: companyController.text.trim(),
-                          domain: domainController.text.trim().isEmpty ? null : domainController.text.trim(),
+                          domain: domainController.text.trim().isEmpty
+                              ? null
+                              : domainController.text.trim(),
                           tier: tier,
                           ownerId: ownerId,
                           industry: industry,
-                          city: cityController.text.trim().isEmpty ? null : cityController.text.trim(),
+                          city: cityController.text.trim().isEmpty
+                              ? null
+                              : cityController.text.trim(),
                           description: descriptionController.text.trim(),
-                          linkedinUrl: linkedinController.text.trim().isEmpty ? null : linkedinController.text.trim(),
+                          linkedinUrl: linkedinController.text.trim().isEmpty
+                              ? null
+                              : linkedinController.text.trim(),
                         ),
                       ),
                     );
@@ -344,7 +439,12 @@ class _AccountDetailViewState extends State<_AccountDetailView> with SingleTicke
                     Navigator.pop(dialogContext);
                     result.fold(
                       (f) => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to update account: ${f.message}'), backgroundColor: AppColors.error),
+                        SnackBar(
+                          content: Text(
+                            'Failed to update account: ${f.message}',
+                          ),
+                          backgroundColor: AppColors.error,
+                        ),
                       ),
                       (_) => bloc.add(AccountDetailLoadRequested(account.id)),
                     );
@@ -388,12 +488,22 @@ class _OverviewTab extends StatelessWidget {
                     child: _labeled(
                       'Domain',
                       (account.domain != null && account.domain!.isNotEmpty)
-                          ? LinkText(text: account.domain!, url: account.domain, maxLines: 1)
+                          ? LinkText(
+                              text: account.domain!,
+                              url: account.domain,
+                              maxLines: 1,
+                            )
                           : Text('Not set', style: AppTextStyles.bodyMedium),
                     ),
                   ),
                   Expanded(
-                    child: _labeled('Industry', Text(account.industry ?? 'Not set', style: AppTextStyles.bodyMedium)),
+                    child: _labeled(
+                      'Industry',
+                      Text(
+                        account.industry ?? 'Not set',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -401,7 +511,9 @@ class _OverviewTab extends StatelessWidget {
               _labeled(
                 'Description',
                 Text(
-                  account.description.isEmpty ? 'No description' : account.description,
+                  account.description.isEmpty
+                      ? 'No description'
+                      : account.description,
                   style: AppTextStyles.bodyMedium,
                 ),
               ),
@@ -414,9 +526,14 @@ class _OverviewTab extends StatelessWidget {
           child: deals.isEmpty
               ? Text(
                   'The pre-sales checklist becomes available once this account has a deal.',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 )
-              : SizedBox(height: 420, child: ChecklistView(dealId: deals.first.id)),
+              : SizedBox(
+                  height: 420,
+                  child: ChecklistView(dealId: deals.first.id),
+                ),
         ),
       ],
     );
@@ -428,15 +545,29 @@ class _OverviewTab extends StatelessWidget {
         SectionCard(
           title: 'Key Contacts',
           child: contacts.isEmpty
-              ? Text('No contacts added yet', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary))
+              ? Text(
+                  'No contacts added yet',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                )
               : Column(children: contacts.take(6).map(_keyContactRow).toList()),
         ),
         const SizedBox(height: AppSpacing.xl),
         SectionCard(
           title: 'Active Deals',
           child: deals.isEmpty
-              ? Text('No active deals', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary))
-              : Column(children: deals.map((d) => _activeDealRow(context, d)).toList()),
+              ? Text(
+                  'No active deals',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                )
+              : Column(
+                  children: deals
+                      .map((d) => _activeDealRow(context, d))
+                      .toList(),
+                ),
         ),
       ],
     );
@@ -446,7 +577,11 @@ class _OverviewTab extends StatelessWidget {
       child: context.isMobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [left, const SizedBox(height: AppSpacing.xl), right],
+              children: [
+                left,
+                const SizedBox(height: AppSpacing.xl),
+                right,
+              ],
             )
           : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,7 +598,12 @@ class _OverviewTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: AppTextStyles.labelMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
         const SizedBox(height: 4),
         value,
       ],
@@ -475,7 +615,10 @@ class _OverviewTab extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
-          InitialsAvatar(name: c.fullName.isEmpty ? (c.email ?? '?') : c.fullName, size: 36),
+          InitialsAvatar(
+            name: c.fullName.isEmpty ? (c.email ?? '?') : c.fullName,
+            size: 36,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -483,7 +626,13 @@ class _OverviewTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(c.fullName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                    Flexible(
+                      child: Text(
+                        c.fullName,
+                        style: AppTextStyles.labelLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     if (c.isPrimary) ...[
                       const SizedBox(width: AppSpacing.xs),
                       const _PrimaryBadge(),
@@ -491,7 +640,10 @@ class _OverviewTab extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  [c.jobTitle, c.email].where((s) => s != null && s.isNotEmpty).join(' • '),
+                  [
+                    c.jobTitle,
+                    c.email,
+                  ].where((s) => s != null && s.isNotEmpty).join(' • '),
                   style: AppTextStyles.bodySmall,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -519,13 +671,24 @@ class _OverviewTab extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: Text(d.name, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis)),
+                Expanded(
+                  child: Text(
+                    d.name,
+                    style: AppTextStyles.labelLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(_money(d.value), style: AppTextStyles.labelMedium),
               ],
             ),
             const SizedBox(height: 2),
-            Text(d.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+            Text(
+              d.stageName,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       ),
@@ -558,7 +721,9 @@ class _ContactsTab extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Manage the people associated with this account.',
-                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -584,47 +749,55 @@ class _ContactsTab extends StatelessWidget {
               child: _mobileScrollTable(
                 context,
                 Container(
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  border: Border.all(color: AppColors.border),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            _headerCell('PRIMARY', flex: 2),
+                            _headerCell('NAME', flex: 4),
+                            _headerCell('JOB TITLE', flex: 3),
+                            _headerCell('EMAIL', flex: 4),
+                            _headerCell('PHONE', flex: 3),
+                            _headerCell('ACTIONS', flex: 2),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: contacts.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final c = contacts[index];
+                            return _ContactRow(
+                              contact: c,
+                              onSetPrimary: c.isPrimary
+                                  ? null
+                                  : () => _setPrimary(context, c),
+                              onEdit: () =>
+                                  _showContactDialog(context, existing: c),
+                              onDelete: () => _confirmDelete(context, c),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: AppColors.border)),
-                      ),
-                      child: Row(
-                        children: [
-                          _headerCell('PRIMARY', flex: 2),
-                          _headerCell('NAME', flex: 4),
-                          _headerCell('JOB TITLE', flex: 3),
-                          _headerCell('EMAIL', flex: 4),
-                          _headerCell('PHONE', flex: 3),
-                          _headerCell('ACTIONS', flex: 2),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: contacts.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final c = contacts[index];
-                          return _ContactRow(
-                            contact: c,
-                            onSetPrimary: c.isPrimary ? null : () => _setPrimary(context, c),
-                            onEdit: () => _showContactDialog(context, existing: c),
-                            onDelete: () => _confirmDelete(context, c),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               ),
             ),
         ],
@@ -632,11 +805,16 @@ class _ContactsTab extends StatelessWidget {
     );
   }
 
-  Widget _headerCell(String label, {int flex = 1}) =>
-      Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+  Widget _headerCell(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
 
-  Widget _mobileScrollTable(BuildContext context, Widget table, {double width = 820}) =>
-      accountTableMobileScroll(context, table, width: width);
+  Widget _mobileScrollTable(
+    BuildContext context,
+    Widget table, {
+    double width = 820,
+  }) => accountTableMobileScroll(context, table, width: width);
 
   /// Promote [target] to primary. Per the API a different existing primary
   /// must be unset first (it 409s otherwise), so demote-then-promote.
@@ -647,24 +825,37 @@ class _ContactsTab extends StatelessWidget {
 
     if (current.isNotEmpty) {
       final demote = await sl<UpsertAccountContactUseCase>()(
-        UpsertAccountContactParams(accountId: _accountId, contactId: current.first.id, isPrimary: false),
+        UpsertAccountContactParams(
+          accountId: _accountId,
+          contactId: current.first.id,
+          isPrimary: false,
+        ),
       );
       final demoteFailed = demote.isLeft();
       if (demoteFailed) {
-        messenger.showSnackBar(const SnackBar(
-          content: Text('Could not update the current primary contact.'),
-          backgroundColor: AppColors.error,
-        ));
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Could not update the current primary contact.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
         return;
       }
     }
 
     final result = await sl<UpsertAccountContactUseCase>()(
-      UpsertAccountContactParams(accountId: _accountId, contactId: target.id, isPrimary: true),
+      UpsertAccountContactParams(
+        accountId: _accountId,
+        contactId: target.id,
+        isPrimary: true,
+      ),
     );
     result.fold(
       (f) => messenger.showSnackBar(
-        SnackBar(content: Text('Could not set primary: ${f.message}'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Could not set primary: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
       ),
       (_) => bloc.add(AccountDetailLoadRequested(account.id)),
     );
@@ -677,9 +868,14 @@ class _ContactsTab extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Contact'),
-        content: Text('Remove ${c.fullName.isEmpty ? 'this contact' : c.fullName}? This cannot be undone.'),
+        content: Text(
+          'Remove ${c.fullName.isEmpty ? 'this contact' : c.fullName}? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
@@ -692,7 +888,10 @@ class _ContactsTab extends StatelessWidget {
     final result = await sl<DeleteContactUseCase>()(c.id);
     result.fold(
       (f) => messenger.showSnackBar(
-        SnackBar(content: Text('Failed to delete: ${f.message}'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Failed to delete: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
       ),
       (_) => bloc.add(AccountDetailLoadRequested(account.id)),
     );
@@ -700,13 +899,23 @@ class _ContactsTab extends StatelessWidget {
 
   void _showContactDialog(BuildContext context, {Contact? existing}) {
     final bloc = context.read<AccountDetailBloc>();
-    final firstNameController = TextEditingController(text: existing?.firstName ?? '');
-    final lastNameController = TextEditingController(text: existing?.lastName ?? '');
-    final jobTitleController = TextEditingController(text: existing?.jobTitle ?? '');
+    final firstNameController = TextEditingController(
+      text: existing?.firstName ?? '',
+    );
+    final lastNameController = TextEditingController(
+      text: existing?.lastName ?? '',
+    );
+    final jobTitleController = TextEditingController(
+      text: existing?.jobTitle ?? '',
+    );
     final emailController = TextEditingController(text: existing?.email ?? '');
     final phoneController = TextEditingController(text: existing?.phone ?? '');
-    final altPhoneController = TextEditingController(text: existing?.alternatePhone ?? '');
-    final linkedinController = TextEditingController(text: existing?.linkedinUrl ?? '');
+    final altPhoneController = TextEditingController(
+      text: existing?.alternatePhone ?? '',
+    );
+    final linkedinController = TextEditingController(
+      text: existing?.linkedinUrl ?? '',
+    );
     bool isPrimary = existing?.isPrimary ?? false;
     final isEdit = existing != null;
 
@@ -726,27 +935,66 @@ class _ContactsTab extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(child: TextField(controller: firstNameController, decoration: const InputDecoration(labelText: 'First Name *'))),
+                          Expanded(
+                            child: TextField(
+                              controller: firstNameController,
+                              decoration: const InputDecoration(
+                                labelText: 'First Name *',
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: AppSpacing.sm),
-                          Expanded(child: TextField(controller: lastNameController, decoration: const InputDecoration(labelText: 'Last Name'))),
+                          Expanded(
+                            child: TextField(
+                              controller: lastNameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Last Name',
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: jobTitleController, decoration: const InputDecoration(labelText: 'Job Title')),
+                      TextField(
+                        controller: jobTitleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Job Title',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+                      TextField(
+                        controller: emailController,
+                        decoration: const InputDecoration(labelText: 'Email'),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                      TextField(
+                        controller: phoneController,
+                        decoration: const InputDecoration(labelText: 'Phone'),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: altPhoneController, decoration: const InputDecoration(labelText: 'Alternate Phone')),
+                      TextField(
+                        controller: altPhoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Alternate Phone',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      TextField(controller: linkedinController, decoration: const InputDecoration(labelText: 'LinkedIn URL')),
+                      TextField(
+                        controller: linkedinController,
+                        decoration: const InputDecoration(
+                          labelText: 'LinkedIn URL',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.xs),
-                      Text('Email or phone is required.', style: AppTextStyles.caption),
+                      Text(
+                        'Email or phone is required.',
+                        style: AppTextStyles.caption,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       CheckboxListTile(
                         value: isPrimary,
-                        onChanged: (v) => setState(() => isPrimary = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => isPrimary = v ?? false),
                         title: const Text('Primary contact for this account'),
                         contentPadding: EdgeInsets.zero,
                         controlAffinity: ListTileControlAffinity.leading,
@@ -756,34 +1004,49 @@ class _ContactsTab extends StatelessWidget {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     if (!isEdit && firstNameController.text.trim().isEmpty) {
-                      messenger.showSnackBar(const SnackBar(
-                        content: Text('First name is required.'),
-                        backgroundColor: AppColors.error,
-                      ));
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('First name is required.'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
                       return;
                     }
-                    if (emailController.text.trim().isEmpty && phoneController.text.trim().isEmpty) {
-                      messenger.showSnackBar(const SnackBar(
-                        content: Text('Enter an email or a phone number.'),
-                        backgroundColor: AppColors.error,
-                      ));
+                    if (emailController.text.trim().isEmpty &&
+                        phoneController.text.trim().isEmpty) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Enter an email or a phone number.'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
                       return;
                     }
 
-                    String? val(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+                    String? val(TextEditingController c) =>
+                        c.text.trim().isEmpty ? null : c.text.trim();
 
                     // If this contact is being made primary and a different
                     // one already is, demote that first to avoid a 409.
                     if (isPrimary) {
-                      final other = contacts.where((c) => c.isPrimary && c.id != existing?.id);
+                      final other = contacts.where(
+                        (c) => c.isPrimary && c.id != existing?.id,
+                      );
                       if (other.isNotEmpty) {
                         await sl<UpsertAccountContactUseCase>()(
-                          UpsertAccountContactParams(accountId: _accountId, contactId: other.first.id, isPrimary: false),
+                          UpsertAccountContactParams(
+                            accountId: _accountId,
+                            contactId: other.first.id,
+                            isPrimary: false,
+                          ),
                         );
                       }
                     }
@@ -806,7 +1069,10 @@ class _ContactsTab extends StatelessWidget {
                     Navigator.pop(dialogContext);
                     result.fold(
                       (f) => messenger.showSnackBar(
-                        SnackBar(content: Text('Failed to save contact: ${f.message}'), backgroundColor: AppColors.error),
+                        SnackBar(
+                          content: Text('Failed to save contact: ${f.message}'),
+                          backgroundColor: AppColors.error,
+                        ),
                       ),
                       (_) => bloc.add(AccountDetailLoadRequested(account.id)),
                     );
@@ -830,6 +1096,7 @@ class _ContactRow extends StatelessWidget {
     required this.onDelete,
   });
   final Contact contact;
+
   /// Null when this contact is already primary (radio shown selected).
   final VoidCallback? onSetPrimary;
   final VoidCallback onEdit;
@@ -838,7 +1105,10 @@ class _ContactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -854,7 +1124,12 @@ class _ContactRow extends StatelessWidget {
             flex: 4,
             child: Row(
               children: [
-                InitialsAvatar(name: contact.fullName.isEmpty ? (contact.email ?? '?') : contact.fullName, size: 32),
+                InitialsAvatar(
+                  name: contact.fullName.isEmpty
+                      ? (contact.email ?? '?')
+                      : contact.fullName,
+                  size: 32,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -866,9 +1141,30 @@ class _ContactRow extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(flex: 3, child: Text(contact.jobTitle ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 4, child: Text(contact.email ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 3, child: Text(contact.phone ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              contact.jobTitle ?? '—',
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              contact.email ?? '—',
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              contact.phone ?? '—',
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           Expanded(
             flex: 2,
             child: Row(
@@ -903,7 +1199,13 @@ class _PrimaryBadge extends StatelessWidget {
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text('PRIMARY', style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600)),
+      child: Text(
+        'PRIMARY',
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -922,7 +1224,11 @@ class _HeaderStats extends StatelessWidget {
       spacing: AppSpacing.xxl,
       runSpacing: AppSpacing.md,
       children: [
-        _stat('Open Deal Value', '₹ ${state.openDealValue.toStringAsFixed(0)}', highlight: true),
+        _stat(
+          'Open Deal Value',
+          '₹ ${state.openDealValue.toStringAsFixed(0)}',
+          highlight: true,
+        ),
         _stat('Last Activity', state.lastActivity ?? na),
         _stat('Next Step', state.nextStep ?? na),
       ],
@@ -1029,10 +1335,12 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     final f = picked.files.first;
     final Uint8List? bytes = f.bytes;
     if (bytes == null) {
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Could not read the selected file.'),
-        backgroundColor: AppColors.error,
-      ));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not read the selected file.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
     setState(() => _uploading = true);
@@ -1047,13 +1355,17 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     result.fold(
       (fail) {
         setState(() => _uploading = false);
-        messenger.showSnackBar(SnackBar(
-          content: Text('Upload failed: ${fail.message}'),
-          backgroundColor: AppColors.error,
-        ));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: ${fail.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       },
       (doc) {
-        messenger.showSnackBar(SnackBar(content: Text('“${f.name}” uploaded.')));
+        messenger.showSnackBar(
+          SnackBar(content: Text('“${f.name}” uploaded.')),
+        );
         // Reflect immediately from the authoritative upload response. A
         // follow-up GET can race the server's write and return a stale list
         // (which is why the doc only appeared after leaving and re-entering
@@ -1076,7 +1388,10 @@ class _DocumentsTabState extends State<_DocumentsTab> {
         title: const Text('Delete document'),
         content: Text('Remove “${doc.name}”? This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
@@ -1087,16 +1402,23 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     );
     if (confirmed != true) return;
     final result = await sl<DeleteAccountDocumentUseCase>()(
-      DeleteAccountDocumentParams(accountId: widget.accountId, documentId: doc.id),
+      DeleteAccountDocumentParams(
+        accountId: widget.accountId,
+        documentId: doc.id,
+      ),
     );
     if (!mounted) return;
     result.fold(
-      (f) => messenger.showSnackBar(SnackBar(
-        content: Text('Failed to delete: ${f.message}'),
-        backgroundColor: AppColors.error,
-      )),
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
       (_) {
-        messenger.showSnackBar(const SnackBar(content: Text('Document deleted.')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Document deleted.')),
+        );
         _load();
       },
     );
@@ -1104,7 +1426,8 @@ class _DocumentsTabState extends State<_DocumentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const AppLoadingIndicator(message: 'Loading documents...');
+    if (_loading)
+      return const AppLoadingIndicator(message: 'Loading documents...');
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final canManage = context.can(Perms.accountsManage);
@@ -1122,7 +1445,9 @@ class _DocumentsTabState extends State<_DocumentsTab> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Account Documents', style: AppTextStyles.h3)),
+              Expanded(
+                child: Text('Account Documents', style: AppTextStyles.h3),
+              ),
               SizedBox(
                 width: 240,
                 child: TextField(
@@ -1145,7 +1470,10 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.upload_outlined, size: 16),
                   label: Text(_uploading ? 'Uploading...' : 'Upload'),
@@ -1166,46 +1494,52 @@ class _DocumentsTabState extends State<_DocumentsTab> {
               child: accountTableMobileScroll(
                 context,
                 Container(
-                decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                  border: Border.all(color: AppColors.border),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            _header('NAME', flex: 5),
+                            _header('UPLOADED BY', flex: 3),
+                            _header('DATE', flex: 2),
+                            _header('ACTIONS', flex: 2),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: pageItems.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final doc = pageItems[index];
+                            return _DocumentRow(
+                              document: doc,
+                              uploaderName: _uploaderName(doc.uploadedBy),
+                              canManage: canManage,
+                              onView: () =>
+                                  launchWebUrl(_mediaUrl(doc.fileUrl)),
+                              onDelete: () => _delete(doc),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: AppColors.border)),
-                      ),
-                      child: Row(
-                        children: [
-                          _header('NAME', flex: 5),
-                          _header('UPLOADED BY', flex: 3),
-                          _header('DATE', flex: 2),
-                          _header('ACTIONS', flex: 2),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: pageItems.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final doc = pageItems[index];
-                          return _DocumentRow(
-                            document: doc,
-                            uploaderName: _uploaderName(doc.uploadedBy),
-                            canManage: canManage,
-                            onView: () => launchWebUrl(_mediaUrl(doc.fileUrl)),
-                            onDelete: () => _delete(doc),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               ),
             ),
           if (filtered.isNotEmpty)
@@ -1215,17 +1549,26 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                 children: [
                   Text(
                     'Showing ${start + 1} to $end of ${filtered.length} documents',
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.chevron_left, size: 20),
-                    onPressed: page > 0 ? () => setState(() => _page = page - 1) : null,
+                    onPressed: page > 0
+                        ? () => setState(() => _page = page - 1)
+                        : null,
                   ),
-                  Text('${page + 1} / $totalPages', style: AppTextStyles.bodySmall),
+                  Text(
+                    '${page + 1} / $totalPages',
+                    style: AppTextStyles.bodySmall,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right, size: 20),
-                    onPressed: page < totalPages - 1 ? () => setState(() => _page = page + 1) : null,
+                    onPressed: page < totalPages - 1
+                        ? () => setState(() => _page = page + 1)
+                        : null,
                   ),
                 ],
               ),
@@ -1235,8 +1578,10 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     );
   }
 
-  Widget _header(String label, {int flex = 1}) =>
-      Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+  Widget _header(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
 }
 
 class _DocumentRow extends StatelessWidget {
@@ -1279,14 +1624,21 @@ class _DocumentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: [
           Expanded(
             flex: 5,
             child: Row(
               children: [
-                Icon(_icon(document.extension), size: 22, color: AppColors.primary),
+                Icon(
+                  _icon(document.extension),
+                  size: 22,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
@@ -1294,7 +1646,11 @@ class _DocumentRow extends StatelessWidget {
                     children: [
                       InkWell(
                         onTap: onView,
-                        child: Text(document.name, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          document.name,
+                          style: AppTextStyles.tableCellLink,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       Text(_typeLabel(), style: AppTextStyles.caption),
                     ],
@@ -1309,11 +1665,23 @@ class _DocumentRow extends StatelessWidget {
               children: [
                 InitialsAvatar(name: uploaderName, size: 24),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(uploaderName, style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+                Expanded(
+                  child: Text(
+                    uploaderName,
+                    style: AppTextStyles.tableCell,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
-          Expanded(flex: 2, child: Text(DateFormat('MMM d, yyyy').format(document.createdAt), style: AppTextStyles.tableCell)),
+          Expanded(
+            flex: 2,
+            child: Text(
+              DateFormat('MMM d, yyyy').format(document.createdAt),
+              style: AppTextStyles.tableCell,
+            ),
+          ),
           Expanded(
             flex: 2,
             child: Row(
@@ -1325,7 +1693,11 @@ class _DocumentRow extends StatelessWidget {
                 ),
                 if (canManage)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
                     tooltip: 'Delete',
                     onPressed: onDelete,
                   ),
@@ -1377,11 +1749,19 @@ class _DealsTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(deal.name, style: AppTextStyles.tableCellLink),
-                        Text(deal.stageName, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        Text(
+                          deal.stageName,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Text('${deal.currency} ${deal.value.toStringAsFixed(0)}', style: AppTextStyles.labelLarge),
+                  Text(
+                    '${deal.currency} ${deal.value.toStringAsFixed(0)}',
+                    style: AppTextStyles.labelLarge,
+                  ),
                 ],
               ),
             ),
@@ -1395,7 +1775,11 @@ class _DealsTab extends StatelessWidget {
 /// Wraps a fixed-column table so it scrolls horizontally on phones (where the
 /// columns can't fit) instead of overflowing. On wider screens the table is
 /// returned unchanged.
-Widget accountTableMobileScroll(BuildContext context, Widget table, {double width = 820}) {
+Widget accountTableMobileScroll(
+  BuildContext context,
+  Widget table, {
+  double width = 820,
+}) {
   if (!context.isMobile) return table;
   return SingleChildScrollView(
     scrollDirection: Axis.horizontal,
@@ -1409,6 +1793,15 @@ const Map<String, IconData> _accountActivityIcons = {
   'call': Icons.call_outlined,
   'comment': Icons.chat_bubble_outline,
   'follow_up': Icons.flag_outlined,
+};
+
+/// Node accent colors per activity type (drives the timeline dots).
+const Map<String, Color> _accountActivityColors = {
+  'note': Color(0xFF8B5CF6),
+  'meeting': Color(0xFF3B82F6),
+  'call': Color(0xFFF97316),
+  'comment': Color(0xFF06B6D4),
+  'follow_up': Color(0xFF10B981),
 };
 
 /// Account → Activity Log tab. Wired to `/accounts/{id}/activities` — list,
@@ -1425,6 +1818,11 @@ class _AccountActivityTab extends StatefulWidget {
 
 class _AccountActivityTabState extends State<_AccountActivityTab> {
   final List<AccountActivity> _activities = [];
+  // Selected type filters (starts with all selected → no server filter);
+  // date range is applied server-side via date_from / date_to.
+  final Set<String> _selectedTypes = {...accountActivityTypeLabels.keys};
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -1436,8 +1834,19 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
   }
 
   Future<void> _load() async {
+    // All (or none) selected → don't send `types` at all (fetch everything);
+    // otherwise send just the checked ones as repeatable `types` params.
+    final all = _selectedTypes.length == accountActivityTypeLabels.length;
+    final types = (all || _selectedTypes.isEmpty)
+        ? null
+        : _selectedTypes.toList();
     final result = await sl<ListAccountActivitiesUseCase>()(
-      ListAccountActivitiesParams(accountId: widget.accountId),
+      ListAccountActivitiesParams(
+        accountId: widget.accountId,
+        types: types,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
+      ),
     );
     if (!mounted) return;
     result.fold(
@@ -1461,6 +1870,45 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
     if (mounted) setState(() => _busy = false);
   }
 
+  void _toggleType(String type) {
+    setState(() {
+      if (_selectedTypes.contains(type)) {
+        _selectedTypes.remove(type);
+      } else {
+        _selectedTypes.add(type);
+      }
+    });
+    _refresh();
+  }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: (_dateFrom != null && _dateTo != null)
+          ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
+          : null,
+    );
+    if (range == null || !mounted) return;
+    setState(() {
+      _dateFrom = range.start;
+      // date_to is exclusive server-side — add a day so the picked end date
+      // is included.
+      _dateTo = range.end.add(const Duration(days: 1));
+    });
+    _refresh();
+  }
+
+  void _clearDateRange() {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    _refresh();
+  }
+
   void _showLogDialog() {
     String type = accountActivityTypeLabels.keys.first;
     final noteController = TextEditingController();
@@ -1481,9 +1929,16 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
                     const SizedBox(height: AppSpacing.sm),
                     DropdownButtonFormField<String>(
                       value: type,
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
                       items: accountActivityTypeLabels.entries
-                          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
                           .toList(),
                       onChanged: (v) => setLocal(() => type = v!),
                     ),
@@ -1502,7 +1957,10 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
                 ElevatedButton(
                   onPressed: () {
                     if (noteController.text.trim().isEmpty) return;
@@ -1523,15 +1981,21 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     final result = await sl<LogAccountActivityUseCase>()(
-      LogAccountActivityParams(accountId: widget.accountId, type: type, note: note),
+      LogAccountActivityParams(
+        accountId: widget.accountId,
+        type: type,
+        note: note,
+      ),
     );
     if (!mounted) return;
     setState(() => _busy = false);
     result.fold(
-      (f) => messenger.showSnackBar(SnackBar(
-        content: Text('Failed to log activity: ${f.message}'),
-        backgroundColor: AppColors.error,
-      )),
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to log activity: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
       (_) => _refresh(),
     );
   }
@@ -1551,13 +2015,19 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Text(accountActivityLabel(activity.type), style: AppTextStyles.bodyMedium),
+                  child: Text(
+                    accountActivityLabel(activity.type),
+                    style: AppTextStyles.bodyMedium,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text('Note'),
@@ -1565,13 +2035,18 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
                 TextField(
                   controller: noteController,
                   maxLines: 4,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () {
                 if (noteController.text.trim().isEmpty) return;
@@ -1599,10 +2074,12 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
     if (!mounted) return;
     setState(() => _busy = false);
     result.fold(
-      (f) => messenger.showSnackBar(SnackBar(
-        content: Text('Failed to update: ${f.message}'),
-        backgroundColor: AppColors.error,
-      )),
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to update: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
       (_) => _refresh(),
     );
   }
@@ -1615,7 +2092,10 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
         title: const Text('Delete this activity?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
@@ -1626,21 +2106,27 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
     );
     if (confirmed != true) return;
     final result = await sl<DeleteAccountActivityUseCase>()(
-      DeleteAccountActivityParams(accountId: widget.accountId, activityId: '${activity.id}'),
+      DeleteAccountActivityParams(
+        accountId: widget.accountId,
+        activityId: '${activity.id}',
+      ),
     );
     if (!mounted) return;
     result.fold(
-      (f) => messenger.showSnackBar(SnackBar(
-        content: Text('Failed to delete: ${f.message}'),
-        backgroundColor: AppColors.error,
-      )),
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
       (_) => _refresh(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const AppLoadingIndicator(message: 'Loading activity...');
+    if (_loading)
+      return const AppLoadingIndicator(message: 'Loading activity...');
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final canManage = context.can(Perms.accountsManage);
@@ -1651,11 +2137,17 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Activity Timeline', style: AppTextStyles.h3)),
+              Expanded(
+                child: Text('Activity Timeline', style: AppTextStyles.h3),
+              ),
               if (_busy)
                 const Padding(
                   padding: EdgeInsets.only(right: AppSpacing.sm),
-                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
               if (canManage)
                 ElevatedButton.icon(
@@ -1666,24 +2158,30 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
+          _buildFilterBar(),
+          const SizedBox(height: AppSpacing.lg),
           if (_activities.isEmpty)
-            const Expanded(
+            Expanded(
               child: EmptyState(
                 icon: Icons.history,
-                title: 'No activity yet',
-                subtitle: 'Log calls, meetings, and notes to build this account\'s timeline.',
+                title: _hasActiveFilter
+                    ? 'No matching activity'
+                    : 'No activity yet',
+                subtitle: _hasActiveFilter
+                    ? 'Try adjusting the type or date filters above.'
+                    : 'Log calls, meetings, and notes to build this account\'s timeline.',
               ),
             )
           else
             Expanded(
-              child: ListView.separated(
+              child: ListView.builder(
                 itemCount: _activities.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   final a = _activities[index];
                   return _AccountActivityRow(
                     activity: a,
                     canManage: canManage,
+                    isLast: index == _activities.length - 1,
                     onEdit: () => _showEditDialog(a),
                     onDelete: () => _delete(a),
                   );
@@ -1694,77 +2192,257 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
       ),
     );
   }
+
+  bool get _hasActiveFilter =>
+      _selectedTypes.length != accountActivityTypeLabels.length ||
+      _dateFrom != null;
+
+  /// The "Filter Activity" bar — per-type checkboxes plus a date-range button,
+  /// all wired to the list API (`types` / `date_from` / `date_to`).
+  Widget _buildFilterBar() {
+    final hasRange = _dateFrom != null && _dateTo != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Wrap(
+        spacing: AppSpacing.lg,
+        runSpacing: AppSpacing.sm,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            'FILTER ACTIVITY',
+            style: AppTextStyles.overline.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          for (final entry in accountActivityTypeLabels.entries)
+            _typeCheck(entry.key, entry.value),
+          OutlinedButton.icon(
+            onPressed: _pickDateRange,
+            icon: const Icon(Icons.calendar_today_outlined, size: 14),
+            label: Text(
+              hasRange
+                  ? '${DateFormat('MMM d').format(_dateFrom!)} - ${DateFormat('MMM d').format(_dateTo!.subtract(const Duration(days: 1)))}'
+                  : 'Date range',
+            ),
+          ),
+          if (_dateFrom != null)
+            IconButton(
+              tooltip: 'Clear date range',
+              onPressed: _clearDateRange,
+              icon: const Icon(Icons.close, size: 16),
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeCheck(String type, String label) {
+    final selected = _selectedTypes.contains(type);
+    final color = AppColors.primary;
+    return InkWell(
+      onTap: () => _toggleType(type),
+      borderRadius: BorderRadius.circular(6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: Checkbox(
+              value: selected,
+              onChanged: (_) => _toggleType(type),
+              activeColor: color,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(
+            _accountActivityIcons[type] ?? Icons.circle,
+            size: 14,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: AppTextStyles.bodyMedium),
+        ],
+      ),
+    );
+  }
 }
 
 class _AccountActivityRow extends StatelessWidget {
   const _AccountActivityRow({
     required this.activity,
     required this.canManage,
+    required this.isLast,
     required this.onEdit,
     required this.onDelete,
   });
   final AccountActivity activity;
   final bool canManage;
+  final bool isLast;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
+    final color = _accountActivityColors[activity.type] ?? AppColors.primary;
+    final byline = activity.updatedAt != null && activity.updatedBy != null
+        ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
+        : 'Logged by ${activity.createdByName ?? 'User ${activity.createdBy}'}';
+
+    return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primaryLight,
-            child: Icon(
-              _accountActivityIcons[activity.type] ?? Icons.circle,
-              size: 16,
-              color: AppColors.primary,
-            ),
+          // Timeline node + connector line.
+          Column(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Icon(
+                  _accountActivityIcons[activity.type] ?? Icons.circle,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  width: 2,
+                  color: isLast ? Colors.transparent : AppColors.border,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(child: Text(accountActivityLabel(activity.type), style: AppTextStyles.labelLarge)),
-                    Text(DateFormat('MMM d, yyyy • h:mm a').format(activity.createdAt.toLocal()), style: AppTextStyles.caption),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            children: [
+                              Text(
+                                accountActivityLabel(activity.type),
+                                style: AppTextStyles.labelLarge.copyWith(
+                                  color: color,
+                                ),
+                              ),
+                              Text(
+                                '•',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              Text(
+                                DateFormat(
+                                  'MMM d, yyyy • h:mm a',
+                                ).format(activity.createdAt.toLocal()),
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (canManage)
+                          SizedBox(
+                            height: 24,
+                            child: PopupMenuButton<String>(
+                              tooltip: 'Actions',
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(
+                                Icons.more_horiz,
+                                size: 18,
+                                color: AppColors.textMuted,
+                              ),
+                              onSelected: (v) {
+                                if (v == 'edit') onEdit();
+                                if (v == 'delete') onDelete();
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_outlined, size: 18),
+                                      SizedBox(width: AppSpacing.sm),
+                                      Text('Edit'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                        color: AppColors.error,
+                                      ),
+                                      SizedBox(width: AppSpacing.sm),
+                                      Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: AppColors.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(activity.note, style: AppTextStyles.bodyMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.person_outline,
+                          size: 14,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            byline,
+                            style: AppTextStyles.caption,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(activity.note, style: AppTextStyles.bodyMedium),
-                const SizedBox(height: 4),
-                Text(
-                  activity.updatedAt != null && activity.updatedBy != null
-                      ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
-                      : 'Logged by ${activity.createdByName ?? 'User ${activity.createdBy}'}',
-                  style: AppTextStyles.caption,
-                ),
-              ],
+              ),
             ),
           ),
-          if (canManage) ...[
-            IconButton(
-              tooltip: 'Edit',
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-            ),
-            IconButton(
-              tooltip: 'Delete',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-            ),
-          ],
         ],
       ),
     );
