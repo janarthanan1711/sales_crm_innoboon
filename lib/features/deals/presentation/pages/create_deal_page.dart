@@ -38,6 +38,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _valueController;
   late final TextEditingController _closeDateController;
+  late final TextEditingController _coldReasonController;
 
   int? _stageId;
   DateTime? _closeDate;
@@ -53,6 +54,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   List<DealStageDef> _stages = [];
   bool get isEdit => widget.deal != null;
 
+  /// True when the currently-selected stage is the terminal "went cold" stage.
+  /// Gates the extra "Reason" field and whether `cold_reason` is sent.
+  bool get _selectedStageIsCold =>
+      _stages.any((s) => s.id == _stageId && s.isCold);
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +71,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
       text: _closeDate != null
           ? '${_closeDate!.month.toString().padLeft(2, '0')}/${_closeDate!.day.toString().padLeft(2, '0')}/${_closeDate!.year}'
           : '',
+    );
+    _coldReasonController = TextEditingController(
+      text: widget.deal?.coldReason ?? '',
     );
     // The API returns tier as '' when unset — normalise to null (and drop any
     // value not in our option list) so the Tier dropdown never asserts.
@@ -122,6 +131,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     _nameController.dispose();
     _valueController.dispose();
     _closeDateController.dispose();
+    _coldReasonController.dispose();
     super.dispose();
   }
 
@@ -144,6 +154,20 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
       return;
     }
 
+    // A cold stage requires a reason; only send cold_reason for cold stages.
+    final coldReason = _selectedStageIsCold
+        ? _coldReasonController.text.trim()
+        : null;
+    if (_selectedStageIsCold && (coldReason == null || coldReason.isEmpty)) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please provide a reason for the cold deal.'),
+        ),
+      );
+      return;
+    }
+
     final result = isEdit
         ? await sl<UpdateDealUseCase>()(
             UpdateDealParams(
@@ -153,6 +177,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId,
               ownerId: _selectedOwnerId,
+              coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
             ),
@@ -165,6 +190,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId!,
               ownerId: _selectedOwnerId,
+              coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
             ),
@@ -444,6 +470,28 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                             ),
                           ],
                         ),
+                        // Extra required field shown only for the terminal
+                        // "cold" stage — captures why the deal went cold and is
+                        // sent to the backend as cold_reason.
+                        if (_selectedStageIsCold) ...[
+                          const SizedBox(height: 16),
+                          _buildField(
+                            'Reason',
+                            true,
+                            TextFormField(
+                              controller: _coldReasonController,
+                              maxLines: 3,
+                              validator: (v) =>
+                                  _selectedStageIsCold &&
+                                      (v == null || v.trim().isEmpty)
+                                  ? 'Please add a reason for the cold deal'
+                                  : null,
+                              decoration: _inputDecoration(
+                                'Why did this deal go cold?',
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         _buildField(
                           'Owner',
