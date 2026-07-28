@@ -42,6 +42,9 @@ class ApiEndpoints {
 
   // ─── Contacts ──────────────────────────────────────────
   static const String contacts = '/contacts';
+  // Bulk import: download a sample template, then POST a filled .csv/.xlsx.
+  static const String contactsImport = '/contacts/import';
+  static const String contactsImportTemplate = '/contacts/import/template';
   static String contactById(String id) => '/contacts/$id';
   static String contactOverview(String id) => '/contacts/$id/overview';
   static String contactDeals(String id) => '/contacts/$id/deals';

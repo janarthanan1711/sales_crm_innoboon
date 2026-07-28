@@ -1,10 +1,13 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/contact.dart';
+import '../../domain/entities/contact_import_result.dart';
 import '../../domain/repositories/contact_repository.dart';
 import '../models/contact_model.dart';
+import '../models/contact_import_result_model.dart';
 
 class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
   final DioClient dioClient;
@@ -117,6 +120,39 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
   Future<void> deleteContact(int id) async {
     try {
       await dioClient.delete(ApiEndpoints.contactById('$id'));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<ContactImportResult> importContacts({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await dioClient.post(
+        ApiEndpoints.contactsImport,
+        data: form,
+      );
+      return contactImportResultFromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> downloadImportTemplate({String format = 'xlsx'}) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.contactsImportTemplate,
+        queryParameters: {'format': format},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _normalize(e);
     }

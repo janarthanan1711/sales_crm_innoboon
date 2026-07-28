@@ -146,7 +146,7 @@ Future<void> initDependencies() async {
       'API_BASE_URL',
       defaultValue: "https://sales-prospecting-crm-api.onrender.com/api/v1",
       // "http://192.168.0.187:8000/api/v1",
-      // 'https://api.saleshub.example.com/api/v1',
+      // 'https://20e1-103-5-113-67.ngrok-free.app/api/v1',
     ),
     authInterceptor: authInterceptor,
   );
@@ -276,6 +276,8 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => UpsertAccountContactUseCase(sl()));
   sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
+  sl.registerLazySingleton(() => ImportContactsUseCase(sl()));
+  sl.registerLazySingleton(() => DownloadContactTemplateUseCase(sl()));
   sl.registerLazySingleton(() => GetContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetContactByIdUseCase(sl()));
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
