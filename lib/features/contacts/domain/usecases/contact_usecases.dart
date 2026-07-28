@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/contact.dart';
+import '../entities/contact_import_result.dart';
 import '../repositories/contact_repository.dart';
 
 /// Filters/pagination for the Contacts List screen.
@@ -125,4 +127,37 @@ class DeleteContactUseCase {
   DeleteContactUseCase(this.repository);
 
   Future<Either<Failure, void>> call(int id) => repository.deleteContact(id);
+}
+
+/// `POST /contacts/import` — bulk-create standalone contacts from a file.
+class ImportContactsParams {
+  final Uint8List bytes;
+  final String filename;
+
+  const ImportContactsParams({required this.bytes, required this.filename});
+}
+
+class ImportContactsUseCase {
+  final ContactRepository repository;
+  ImportContactsUseCase(this.repository);
+
+  Future<Either<Failure, ContactImportResult>> call(
+    ImportContactsParams params,
+  ) {
+    return repository.importContacts(
+      bytes: params.bytes,
+      filename: params.filename,
+    );
+  }
+}
+
+/// `GET /contacts/import/template` — sample file with the exact columns.
+class DownloadContactTemplateUseCase {
+  final ContactRepository repository;
+  DownloadContactTemplateUseCase(this.repository);
+
+  /// [format] is `'xlsx'` (default) or `'csv'`.
+  Future<Either<Failure, Uint8List>> call({String format = 'xlsx'}) {
+    return repository.downloadImportTemplate(format: format);
+  }
 }

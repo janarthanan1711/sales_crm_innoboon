@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/contact.dart';
+import '../entities/contact_import_result.dart';
 
 abstract class ContactRepository {
   /// `GET /contacts` — paginated list with optional filters. `ownerId`,
@@ -42,6 +44,18 @@ abstract class ContactRepository {
   });
 
   Future<Either<Failure, void>> deleteContact(int id);
+
+  /// `POST /contacts/import` — bulk-create standalone contacts from a filled
+  /// `.csv`/`.xlsx`. Returns 200 even with per-row failures, so inspect
+  /// [ContactImportResult.errors].
+  Future<Either<Failure, ContactImportResult>> importContacts({
+    required Uint8List bytes,
+    required String filename,
+  });
+
+  /// `GET /contacts/import/template` — the sample file with the exact columns
+  /// and one example row. [format] is `'xlsx'` (default) or `'csv'`.
+  Future<Either<Failure, Uint8List>> downloadImportTemplate({String format});
 }
 
 abstract class ContactRemoteDataSource {
@@ -70,4 +84,9 @@ abstract class ContactRemoteDataSource {
     bool? isPrimary,
   });
   Future<void> deleteContact(int id);
+  Future<ContactImportResult> importContacts({
+    required Uint8List bytes,
+    required String filename,
+  });
+  Future<Uint8List> downloadImportTemplate({String format});
 }

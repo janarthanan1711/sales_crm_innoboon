@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
 import '../../../users/domain/entities/owner_user.dart';
@@ -12,6 +14,8 @@ import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../domain/entities/contact.dart';
+import '../../domain/entities/contact_import_result.dart';
+import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contacts_list_bloc.dart';
 import '../widgets/contact_form_dialog.dart';
 
@@ -147,9 +151,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
       ],
     );
     final importBtn = OutlinedButton.icon(
-      onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contact import is coming soon.')),
-      ),
+      onPressed: () {
+        final bloc = context.read<ContactsListBloc>();
+        showDialog<void>(
+          context: context,
+          builder: (_) => _ImportContactsDialog(listBloc: bloc),
+        );
+      },
       icon: const Icon(Icons.upload_file_outlined, size: 18),
       label: const Text('Import Contacts'),
     );
@@ -641,6 +649,370 @@ class _PaginationBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Import Contacts Dialog ─────────────────────────────
+const List<String> _kImportAllowedExtensions = ['csv', 'xlsx'];
+
+class _ImportContactsDialog extends StatefulWidget {
+  const _ImportContactsDialog({required this.listBloc});
+
+  /// The list bloc from the page, so a successful import can refresh the
+  /// contacts table (the dialog is shown outside that bloc's provider subtree).
+  final ContactsListBloc listBloc;
+
+  @override
+  State<_ImportContactsDialog> createState() => _ImportContactsDialogState();
+}
+
+class _ImportContactsDialogState extends State<_ImportContactsDialog> {
+  PlatformFile? _pickedFile;
+  bool _picking = false;
+  bool _importing = false;
+  String? _downloadingFormat;
+
+  Future<void> _pickFile() async {
+    setState(() => _picking = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: _kImportAllowedExtensions,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() => _pickedFile = result.files.first);
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  Future<void> _downloadTemplate(String format) async {
+    setState(() => _downloadingFormat = format);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await sl<DownloadContactTemplateUseCase>()(format: format);
+      if (!mounted) return;
+      await result.fold(
+        (f) async => messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to download template: ${f.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        ),
+        (bytes) async =>
+            downloadBytes(bytes, 'contact_import_template.$format'),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingFormat = null);
+    }
+  }
+
+  Future<void> _upload() async {
+    final file = _pickedFile;
+    if (file == null || file.bytes == null) return;
+    setState(() => _importing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final result = await sl<ImportContactsUseCase>()(
+      ImportContactsParams(bytes: file.bytes!, filename: file.name),
+    );
+    if (!mounted) return;
+    setState(() => _importing = false);
+
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Import failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (summary) {
+        // Refresh the table so newly-created contacts appear.
+        widget.listBloc.add(const ContactsListLoadRequested());
+        navigator.pop();
+        if (summary.hasErrors) {
+          showDialog<void>(
+            context: navigator.context,
+            builder: (_) => _ContactImportResultDialog(result: summary),
+          );
+        } else {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Imported ${summary.created} contact(s) successfully.',
+              ),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Expanded(child: Text('Import Contacts')),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Upload File', style: AppTextStyles.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            InkWell(
+              onTap: _picking ? null : _pickFile,
+              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+                ),
+                child: _pickedFile == null
+                    ? Column(
+                        children: [
+                          const Icon(
+                            Icons.upload_file_outlined,
+                            size: 28,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            _picking
+                                ? 'Opening file picker...'
+                                : 'Click to browse for a file',
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          const Icon(
+                            Icons.description_outlined,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _pickedFile!.name,
+                                  style: AppTextStyles.bodyMedium,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  _formatSize(_pickedFile!.size),
+                                  style: AppTextStyles.caption,
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Remove file',
+                            onPressed: () => setState(() => _pickedFile = null),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Only .csv and .xlsx files are supported. Columns must match '
+              'the template. Imported contacts are standalone — link them to '
+              'an account later from the Account Detail page.',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Need a starting point? Download a template with '
+                          'the exact columns and an example row.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: _downloadingFormat == null
+                            ? () => _downloadTemplate('xlsx')
+                            : null,
+                        icon: _downloadingFormat == 'xlsx'
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.grid_on, size: 16),
+                        label: const Text('Excel (.xlsx)'),
+                      ),
+                      TextButton.icon(
+                        onPressed: _downloadingFormat == null
+                            ? () => _downloadTemplate('csv')
+                            : null,
+                        icon: _downloadingFormat == 'csv'
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.description_outlined, size: 16),
+                        label: const Text('CSV (.csv)'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _importing ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: (_pickedFile == null || _importing) ? null : _upload,
+          child: _importing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Upload'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown after an import that had one or more per-row failures — lists which
+/// spreadsheet rows were skipped and why (the created rows still went in).
+class _ContactImportResultDialog extends StatelessWidget {
+  const _ContactImportResultDialog({required this.result});
+  final ContactImportResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Import Completed'),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  size: 18,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  '${result.created} contact(s) created',
+                  style: AppTextStyles.labelLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 18,
+                  color: AppColors.error,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  '${result.errors.length} row(s) skipped',
+                  style: AppTextStyles.labelLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: result.errors
+                      .map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: Text(
+                            'Row ${e.row}: ${e.error}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Done'),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/contact.dart';
+import '../../domain/entities/contact_import_result.dart';
 import '../../domain/repositories/contact_repository.dart';
 
 class ContactRepositoryImpl implements ContactRepository {
@@ -97,6 +99,36 @@ class ContactRepositoryImpl implements ContactRepository {
     try {
       await remoteDataSource.deleteContact(id);
       return const Right(null);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ContactImportResult>> importContacts({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    try {
+      final result = await remoteDataSource.importContacts(
+        bytes: bytes,
+        filename: filename,
+      );
+      return Right(result);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> downloadImportTemplate({
+    String format = 'xlsx',
+  }) async {
+    try {
+      final bytes = await remoteDataSource.downloadImportTemplate(
+        format: format,
+      );
+      return Right(bytes);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
