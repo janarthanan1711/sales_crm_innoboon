@@ -97,6 +97,9 @@ class ApiEndpoints {
   static String staffAugFeedback(String id) =>
       '/staff-aug-opportunities/$id/feedback';
 
+  // ─── Audit Log ─────────────────────────────────────────
+  static const String auditLog = '/audit-log';
+
   // ─── Documents ─────────────────────────────────────────
   static const String documents = '/documents';
   static const String uploadDocument = '/documents/upload';

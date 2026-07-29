@@ -543,35 +543,37 @@ class _DesktopTopBar extends StatelessWidget {
 class _MobileTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: AppSpacing.topBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          // Logo
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(6),
+    return SafeArea(
+      child: Container(
+        height: AppSpacing.topBarHeight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+        ),
+        child: Row(
+          children: [
+            // Logo
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.bar_chart_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
-            child: const Icon(
-              Icons.bar_chart_rounded,
-              color: Colors.white,
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(AppConstants.appName, style: AppTextStyles.h4),
-          const Spacer(),
-          const NotificationBell(),
-          const _UserProfileDropdown(radius: 16),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            Text(AppConstants.appName, style: AppTextStyles.h4),
+            const Spacer(),
+            const NotificationBell(),
+            const _UserProfileDropdown(radius: 16),
+          ],
+        ),
       ),
     );
   }

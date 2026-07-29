@@ -5,9 +5,11 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/account_document.dart';
 import '../../domain/entities/deal_document.dart';
+import '../../domain/entities/document.dart';
 import '../../domain/repositories/document_repository.dart';
 import '../models/account_document_model.dart';
 import '../models/deal_document_model.dart';
+import '../models/document_model.dart';
 
 /// Real API implementation — talks to `saleshub`'s
 /// `/accounts/{account_id}/documents` endpoints. Uploads are multipart with a
@@ -17,6 +19,25 @@ class DocumentRemoteDataSourceImpl implements DocumentDataSource {
   final DioClient dioClient;
 
   DocumentRemoteDataSourceImpl({required this.dioClient});
+
+  @override
+  Future<List<Document>> getDocuments({String? source, String? search}) async {
+    try {
+      final response = await dioClient.get(
+        ApiEndpoints.documents,
+        queryParameters: {
+          if (source != null && source.isNotEmpty) 'source': source,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => documentFromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
 
   @override
   Future<List<AccountDocument>> getAccountDocuments(String accountId) async {

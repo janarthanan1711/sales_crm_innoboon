@@ -20,6 +20,10 @@ import '../../features/roles/data/datasources/role_remote_datasource_impl.dart';
 import '../../features/roles/data/repositories/role_repository_impl.dart';
 import '../../features/roles/domain/repositories/role_repository.dart';
 import '../../features/roles/domain/usecases/role_usecases.dart';
+import '../../features/audit_log/data/datasources/audit_log_remote_datasource_impl.dart';
+import '../../features/audit_log/data/repositories/audit_log_repository_impl.dart';
+import '../../features/audit_log/domain/repositories/audit_log_repository.dart';
+import '../../features/audit_log/domain/usecases/get_audit_log_usecase.dart';
 
 // Leads feature
 import '../../features/leads/data/datasources/lead_remote_datasource_impl.dart';
@@ -123,6 +127,7 @@ import '../../features/documents/data/repositories/document_repository_impl.dart
 import '../../features/documents/domain/repositories/document_repository.dart';
 import '../../features/documents/domain/usecases/get_account_documents_usecase.dart';
 import '../../features/documents/domain/usecases/document_usecases.dart';
+import '../../features/documents/presentation/bloc/documents_list_bloc.dart';
 import '../../features/search/data/datasources/search_remote_datasource_impl.dart';
 import '../../features/search/data/repositories/search_repository_impl.dart';
 import '../../features/search/domain/repositories/search_repository.dart';
@@ -203,6 +208,15 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => CreateRoleUseCase(sl()));
   sl.registerLazySingleton(() => UpdateRoleUseCase(sl()));
   sl.registerLazySingleton(() => DeleteRoleUseCase(sl()));
+
+  // ─── Audit Log Feature ───────────────────────────────
+  sl.registerLazySingleton<AuditLogRemoteDataSource>(
+    () => AuditLogRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<AuditLogRepository>(
+    () => AuditLogRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetAuditLogUseCase(sl()));
 
   // ─── Leads Feature ──────────────────────────────────
   sl.registerLazySingleton<LeadRemoteDataSource>(
@@ -428,6 +442,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealDocumentsUseCase(sl()));
   sl.registerLazySingleton(() => UploadDealDocumentUseCase(sl()));
   sl.registerLazySingleton(() => DeleteDealDocumentUseCase(sl()));
+  sl.registerLazySingleton(() => GetDocumentsUseCase(sl()));
+  sl.registerFactory(() => DocumentsListBloc(getDocumentsUseCase: sl()));
 
   // ─── Search Feature ─────────────────────────────────
   sl.registerLazySingleton<SearchRemoteDataSource>(

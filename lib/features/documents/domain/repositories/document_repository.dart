@@ -3,8 +3,17 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/account_document.dart';
 import '../entities/deal_document.dart';
+import '../entities/document.dart';
 
 abstract class DocumentRepository {
+  /// `GET /documents` — the union of Account + Deal documents the caller can
+  /// see, newest first. [source] is `account`|`deal` (null for both);
+  /// [search] is a case-insensitive substring match on the file name.
+  Future<Either<Failure, List<Document>>> getDocuments({
+    String? source,
+    String? search,
+  });
+
   Future<Either<Failure, List<AccountDocument>>> getAccountDocuments(
     String accountId,
   );
@@ -31,6 +40,8 @@ abstract class DocumentRepository {
 }
 
 abstract class DocumentDataSource {
+  Future<List<Document>> getDocuments({String? source, String? search});
+
   Future<List<AccountDocument>> getAccountDocuments(String accountId);
   Future<AccountDocument> uploadAccountDocument(
     String accountId, {
