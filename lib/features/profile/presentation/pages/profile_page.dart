@@ -271,7 +271,9 @@ class _AvatarCardState extends State<_AvatarCard> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = resolveMediaUrl(widget.user.avatarUrl);
+    // `bustCache` because a replacement photo reuses the same URL — without a
+    // fresh token every image cache would serve the previous one.
+    final avatarUrl = resolveMediaUrl(widget.user.avatarUrl, bustCache: true);
     return SectionCard(
       // SectionCard left-anchors its body by default, which only matters now
       // that the card stretches to the column's full width — center this
@@ -316,9 +318,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                               ),
                             )
                           : Icon(
-                              avatarUrl != null
-                                  ? Icons.edit
-                                  : Icons.camera_alt,
+                              avatarUrl != null ? Icons.edit : Icons.camera_alt,
                               size: 16,
                               color: Colors.white,
                             ),
@@ -356,9 +356,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                       )
                     : const Icon(Icons.delete_outline, size: 16),
                 label: Text(_removing ? 'Removing...' : 'Remove Photo'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                ),
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
               ),
             ],
           ],

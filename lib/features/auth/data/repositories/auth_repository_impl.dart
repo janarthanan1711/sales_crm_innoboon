@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../datasources/auth_local_datasource.dart';
+import '../models/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -74,7 +76,9 @@ class AuthRepositoryImpl implements AuthRepository {
       if (currentRefreshToken == null) {
         return const Left(AuthFailure(message: 'No refresh token'));
       }
-      final newAccessToken = await remoteDataSource.refreshToken(currentRefreshToken);
+      final newAccessToken = await remoteDataSource.refreshToken(
+        currentRefreshToken,
+      );
       await localDataSource.saveAccessToken(newAccessToken);
       return Right(newAccessToken);
     } on Exception catch (e) {
@@ -82,11 +86,29 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  /// Caches [fresh] without losing the caller's permission codes.
+  ///
+  /// Only the login response carries them; every other endpoint returns the
+  /// bare `UserRead` shape, so saving one of those verbatim would wipe the
+  /// codes the UI gates on and collapse the user's navigation until they
+  /// signed in again. Falls back to the cached codes whenever [fresh] has
+  /// none of its own.
+  Future<UserModel> _cacheUser(UserModel fresh) async {
+    var toCache = fresh;
+    if (fresh.permissions.isEmpty) {
+      final cached = await localDataSource.getCachedUser();
+      if (cached != null && cached.permissions.isNotEmpty) {
+        toCache = fresh.withPermissions(cached.permissions);
+      }
+    }
+    await localDataSource.saveUser(toCache);
+    return toCache;
+  }
+
   @override
   Future<Either<Failure, User>> fetchCurrentUser() async {
     try {
-      final userModel = await remoteDataSource.getMe();
-      await localDataSource.saveUser(userModel);
+      final userModel = await _cacheUser(await remoteDataSource.getMe());
       return Right(userModel.toEntity());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -100,12 +122,13 @@ class AuthRepositoryImpl implements AuthRepository {
     String? phoneNumber,
   }) async {
     try {
-      final userModel = await remoteDataSource.updateMe(
-        firstName: firstName,
-        lastName: lastName,
-        phoneNumber: phoneNumber,
+      final userModel = await _cacheUser(
+        await remoteDataSource.updateMe(
+          firstName: firstName,
+          lastName: lastName,
+          phoneNumber: phoneNumber,
+        ),
       );
-      await localDataSource.saveUser(userModel);
       return Right(userModel.toEntity());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -134,8 +157,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String filename,
   }) async {
     try {
-      final userModel = await remoteDataSource.uploadAvatar(bytes: bytes, filename: filename);
-      await localDataSource.saveUser(userModel);
+      final userModel = await _cacheUser(
+        await remoteDataSource.uploadAvatar(bytes: bytes, filename: filename),
+      );
+      // The new photo usually lands on the same URL as the old one (the path
+      // is derived from the user id), so nothing downstream would refetch it
+      // without a new cache-busting token.
+      bumpMediaVersion();
       return Right(userModel.toEntity());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
@@ -145,10 +173,12 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, User>> deleteAvatar() async {
     try {
-      final userModel = await remoteDataSource.deleteAvatar();
       // Re-cache so the shell's header avatar clears too — it reads the
       // locally-stored user, not this response.
-      await localDataSource.saveUser(userModel);
+      final userModel = await _cacheUser(await remoteDataSource.deleteAvatar());
+      // Guards the remove-then-reupload case: the second upload would land on
+      // the URL still cached from before the removal.
+      bumpMediaVersion();
       return Right(userModel.toEntity());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));

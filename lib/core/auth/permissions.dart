@@ -19,6 +19,10 @@ class Perms {
   static const String dealsViewAll = 'deals.view_all';
 
   static const String accountsManage = 'accounts.access';
+  static const String accountsViewAll = 'accounts.view_all';
+
+  // Contacts has no `view_all` counterpart — `contacts.access` is the only
+  // contacts code the backend issues.
   static const String contactsManage = 'contacts.access';
 
   static const String usersManage = 'users.manage';

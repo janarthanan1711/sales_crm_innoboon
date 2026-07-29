@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/permissions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
@@ -389,20 +390,23 @@ class _WebSidebar extends StatelessWidget {
           const Spacer(),
 
           // ── Add New Lead Button ──────────
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.sm,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => context.go(RoutePaths.createLead),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add New Lead'),
+          // Gated like the nav items above: a user who can't create leads
+          // shouldn't be handed a shortcut into the create form.
+          if (_canManageLeads(context))
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => context.go(RoutePaths.createLead),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add New Lead'),
+                ),
               ),
             ),
-          ),
 
           const Divider(),
 
@@ -628,6 +632,12 @@ bool _hasAdminAccess(BuildContext context) {
       user.hasPermission('roles.manage');
 }
 
+/// Whether the user may create leads. Same code the Leads nav item and the
+/// leads-list create/import buttons gate on — `<module>.access` is this
+/// backend's "view and manage own", so there's no finer-grained create code.
+bool _canManageLeads(BuildContext context) =>
+    _currentUser(context)?.hasPermission(Perms.leadsManage) ?? false;
+
 /// The authenticated user, or null if not signed in.
 User? _currentUser(BuildContext context) {
   final state = context.watch<AuthBloc>().state;
@@ -661,148 +671,161 @@ class _UserProfileDropdown extends StatelessWidget {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final user = state is AuthAuthenticated ? state.user : null;
-        final displayName = user?.name ?? 'Sarah Jenkins';
-        final roleName = user?.role.name ?? 'Sales Team';
 
-        final initials = displayName.isNotEmpty
-            ? displayName
-                  .trim()
-                  .split(' ')
-                  .map((e) => e.isNotEmpty ? e[0] : '')
-                  .take(2)
-                  .join()
-                  .toUpperCase()
-            : 'U';
-
-        final avatarUrl = resolveMediaUrl(user?.avatarUrl);
-
-        return PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'logout') {
-              context.read<AuthBloc>().add(const AuthLogoutRequested());
-            } else if (value == 'profile') {
-              context.go(RoutePaths.profile);
-            } else if (value == 'photo') {
-              _changePhoto(context);
-            } else if (value == 'remove_photo') {
-              _removePhoto(context);
-            }
-          },
-          offset: const Offset(0, 48),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              enabled: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: AppTextStyles.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    roleName,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  if (user?.email != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      user!.email,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const PopupMenuDivider(),
-            const PopupMenuItem(
-              value: 'profile',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
-                  SizedBox(width: 8),
-                  Text('View Profile'),
-                ],
-              ),
-            ),
-            // Avatar upload/removal is reachable from any page here, not just
-            // the Profile screen.
-            PopupMenuItem(
-              value: 'photo',
-              child: Row(
-                children: [
-                  Icon(
-                    avatarUrl != null ? Icons.edit_outlined : Icons.camera_alt_outlined,
-                    size: 18,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(avatarUrl != null ? 'Change Photo' : 'Upload Photo'),
-                ],
-              ),
-            ),
-            if (avatarUrl != null)
-              const PopupMenuItem(
-                value: 'remove_photo',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.hide_image_outlined,
-                      size: 18,
-                      color: AppColors.error,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Remove Photo',
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                  ],
-                ),
-              ),
-            const PopupMenuItem(
-              value: 'logout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout, size: 18, color: AppColors.error),
-                  SizedBox(width: 8),
-                  Text('Log Out', style: TextStyle(color: AppColors.error)),
-                ],
-              ),
-            ),
-          ],
-          child: CircleAvatar(
-            radius: radius,
-            backgroundColor: AppColors.primary,
-            // Show the uploaded photo globally; fall back to initials when
-            // the user hasn't set one.
-            backgroundImage: avatarUrl != null
-                ? CachedNetworkImageProvider(avatarUrl)
-                : null,
-            child: avatarUrl != null
-                ? null
-                : Text(
-                    initials,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: radius * 0.8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+        // Listens to [mediaVersion] rather than relying on this bloc state
+        // alone: replacing the photo leaves every field of [User] identical
+        // (the avatar URL is derived from the user id), so the re-read emits a
+        // state equal to the current one and Bloc drops it — this builder
+        // would never run again and the old photo would stay up.
+        return ValueListenableBuilder<int>(
+          valueListenable: mediaVersion,
+          builder: (context, _, _) => _buildMenu(
+            context,
+            user,
+            resolveMediaUrl(user?.avatarUrl, bustCache: true),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMenu(BuildContext context, User? user, String? avatarUrl) {
+    final displayName = user?.name ?? 'Sarah Jenkins';
+    final roleName = user?.role.name ?? 'Sales Team';
+    final initials = displayName.isNotEmpty
+        ? displayName
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0] : '')
+              .take(2)
+              .join()
+              .toUpperCase()
+        : 'U';
+
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'logout') {
+          context.read<AuthBloc>().add(const AuthLogoutRequested());
+        } else if (value == 'profile') {
+          context.go(RoutePaths.profile);
+        } else if (value == 'photo') {
+          _changePhoto(context);
+        } else if (value == 'remove_photo') {
+          _removePhoto(context);
+        }
+      },
+      offset: const Offset(0, 48),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayName,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                roleName,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              if (user?.email != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  user!.email,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(
+                Icons.person_outline,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              SizedBox(width: 8),
+              Text('View Profile'),
+            ],
+          ),
+        ),
+        // Avatar upload/removal is reachable from any page here, not just
+        // the Profile screen.
+        PopupMenuItem(
+          value: 'photo',
+          child: Row(
+            children: [
+              Icon(
+                avatarUrl != null
+                    ? Icons.edit_outlined
+                    : Icons.camera_alt_outlined,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(avatarUrl != null ? 'Change Photo' : 'Upload Photo'),
+            ],
+          ),
+        ),
+        if (avatarUrl != null)
+          const PopupMenuItem(
+            value: 'remove_photo',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.hide_image_outlined,
+                  size: 18,
+                  color: AppColors.error,
+                ),
+                SizedBox(width: 8),
+                Text('Remove Photo', style: TextStyle(color: AppColors.error)),
+              ],
+            ),
+          ),
+        const PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 18, color: AppColors.error),
+              SizedBox(width: 8),
+              Text('Log Out', style: TextStyle(color: AppColors.error)),
+            ],
+          ),
+        ),
+      ],
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: AppColors.primary,
+        // Show the uploaded photo globally; fall back to initials when
+        // the user hasn't set one.
+        backgroundImage: avatarUrl != null
+            ? CachedNetworkImageProvider(avatarUrl)
+            : null,
+        child: avatarUrl != null
+            ? null
+            : Text(
+                initials,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: radius * 0.8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
     );
   }
 
