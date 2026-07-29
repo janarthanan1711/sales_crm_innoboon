@@ -3,13 +3,10 @@ class ServerException implements Exception {
   final String message;
   final int? statusCode;
 
-  const ServerException({
-    required this.message,
-    this.statusCode,
-  });
+  const ServerException({required this.message, this.statusCode});
 
   @override
-  String toString() => 'ServerException($statusCode): $message';
+  String toString() => message;
 }
 
 /// Exception for local cache/storage operations
@@ -26,9 +23,7 @@ class CacheException implements Exception {
 class NetworkException implements Exception {
   final String message;
 
-  const NetworkException({
-    this.message = 'No internet connection',
-  });
+  const NetworkException({this.message = 'No internet connection'});
 
   @override
   String toString() => 'NetworkException: $message';
@@ -38,9 +33,7 @@ class NetworkException implements Exception {
 class AuthException implements Exception {
   final String message;
 
-  const AuthException({
-    this.message = 'Authentication failed',
-  });
+  const AuthException({this.message = 'Authentication failed'});
 
   @override
   String toString() => 'AuthException: $message';
@@ -50,9 +43,7 @@ class AuthException implements Exception {
 class TimeoutException implements Exception {
   final String message;
 
-  const TimeoutException({
-    this.message = 'Request timed out',
-  });
+  const TimeoutException({this.message = 'Request timed out'});
 
   @override
   String toString() => 'TimeoutException: $message';
@@ -62,9 +53,7 @@ class TimeoutException implements Exception {
 class NotFoundException implements Exception {
   final String message;
 
-  const NotFoundException({
-    this.message = 'Resource not found',
-  });
+  const NotFoundException({this.message = 'Resource not found'});
 
   @override
   String toString() => 'NotFoundException: $message';

@@ -380,6 +380,10 @@ class _DealDetailView extends StatelessWidget {
             ),
             _infoRow('Owner', deal.owner),
             _infoRow(
+              'Contacts',
+              deal.contacts.isEmpty ? '—' : deal.contactNames,
+            ),
+            _infoRow(
               'Description',
               deal.description.isEmpty ? '—' : deal.description,
             ),
@@ -531,7 +535,30 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
+  /// Contact tab — driven by the wire's `contacts` array (`[{id, name}]`).
+  /// Falls back to the primary stakeholder / legacy `contactName` when the
+  /// deal has no linked contacts, so nothing regresses for older data.
   Widget _contactTab(Deal deal) {
+    if (deal.contacts.isNotEmpty) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: SectionCard(
+          title: deal.contacts.length == 1
+              ? 'Contact'
+              : 'Contacts (${deal.contacts.length})',
+          child: Column(
+            children: [
+              for (int i = 0; i < deal.contacts.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _contactRow(deal.contacts[i].name),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Fallback: primary stakeholder, else the legacy contactName ──
     final primary = deal.stakeholders.where((s) => s.isPrimary).toList();
     final name = primary.isNotEmpty
         ? primary.first.name
@@ -543,8 +570,8 @@ class _DealDetailView extends StatelessWidget {
         padding: EdgeInsets.all(AppSpacing.xxl),
         child: EmptyState(
           icon: Icons.person_outline,
-          title: 'No primary contact',
-          subtitle: 'Set a primary stakeholder to see it here.',
+          title: 'No contacts linked',
+          subtitle: 'Link a contact to this deal to see it here.',
         ),
       );
     }
@@ -575,6 +602,29 @@ class _DealDetailView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// One row in the Contact tab. The `/deals` payload carries only id + name,
+  /// so there's no email/title to show here — the contact's own detail page
+  /// holds those.
+  Widget _contactRow(String name) {
+    final display = name.trim().isEmpty ? 'Unnamed contact' : name.trim();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          InitialsAvatar(name: display, size: 40),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              display,
+              style: AppTextStyles.labelMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
