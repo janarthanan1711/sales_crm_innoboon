@@ -279,22 +279,38 @@ class _DealsListViewState extends State<_DealsListView> {
     ];
 
     if (context.isMobile) {
+      // Keep every control within the narrow width: title + toggle share a row
+      // via a Spacer, the pipeline figure sits on its own line, and the two
+      // action buttons split the width with Expanded. Previously these were in
+      // fixed Rows that overflowed and clipped the toggle/buttons off-screen —
+      // which silently swallowed their taps.
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          title,
+          Row(
+            children: [
+              Text('Deals', style: AppTextStyles.h1),
+              const Spacer(),
+              _ViewToggle(
+                isBoard: _isKanbanView,
+                onChanged: (b) => setState(() => _isKanbanView = b),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Align(alignment: Alignment.centerLeft, child: _pipelineValue(context)),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              _pipelineValue(context),
-              const Spacer(),
-              _exportButton(context),
+              Expanded(child: _exportButton(context)),
               if (canManage) ...[
                 const SizedBox(width: AppSpacing.sm),
-                ElevatedButton.icon(
-                  onPressed: () => _openCreateDealDialog(context),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('New Deal'),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openCreateDealDialog(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('New Deal'),
+                  ),
                 ),
               ],
             ],
@@ -555,12 +571,13 @@ class _DealsTable extends StatelessWidget {
     );
 
     if (context.isMobile) {
+      // A fixed (tight) width — NOT just a minWidth — so the table's Row-based
+      // header/rows get a bounded width for their Expanded children. Inside a
+      // horizontal scroll view the max width is unbounded, and ConstrainedBox
+      // with only minWidth leaves it unbounded, which fails Expanded's layout.
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 800),
-          child: table,
-        ),
+        child: SizedBox(width: 800, child: table),
       );
     }
     return table;
