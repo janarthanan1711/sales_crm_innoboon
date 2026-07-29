@@ -5,10 +5,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
+import '../../domain/usecases/export_accounts_usecase.dart';
 import '../../../leads/domain/entities/lead_enums.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
@@ -42,11 +44,67 @@ class _AccountsListViewState extends State<_AccountsListView> {
   String? _tier;
   String? _industry;
   final Set<String> _selected = {};
+  bool _exporting = false;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+  }
+
+  /// Exports the currently-filtered accounts as an `.xlsx` via
+  /// `GET /accounts?to_export=true`. Reads the active filters from the bloc
+  /// so the file matches the on-screen list.
+  Future<void> _onExport(BuildContext context) async {
+    if (_exporting) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final state = context.read<AccountsListBloc>().state;
+    setState(() => _exporting = true);
+
+    final search = state is AccountsListLoaded ? state.search : null;
+    final industry = state is AccountsListLoaded ? state.industryFilter : null;
+    final tier = state is AccountsListLoaded ? state.tierFilter : null;
+    final ownerId = state is AccountsListLoaded ? state.ownerFilter : null;
+
+    final result = await sl<ExportAccountsUseCase>()(
+      ExportAccountsParams(
+        search: search,
+        industry: industry,
+        tier: tier,
+        ownerId: ownerId,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _exporting = false);
+
+    await result.fold(
+      (f) async => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (bytes) async {
+        await downloadBytes(bytes, 'accounts.xlsx');
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Accounts exported.')),
+        );
+      },
+    );
+  }
+
+  Widget _exportButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _exporting ? null : () => _onExport(context),
+      icon: _exporting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.file_download_outlined, size: 18),
+      label: Text(_exporting ? 'Exporting...' : 'Export'),
+    );
   }
 
   Future<void> _loadUsers() async {
@@ -123,26 +181,46 @@ class _AccountsListViewState extends State<_AccountsListView> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Text('Accounts', style: AppTextStyles.h1),
+        const SizedBox(height: 4),
+        Text(
+          'Manage your customer accounts and relationships',
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+    final newBtn = ElevatedButton.icon(
+      onPressed: () => context.go(RoutePaths.createAccount),
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text('New Account'),
+    );
+
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          title,
+          const SizedBox(height: AppSpacing.md),
+          Row(
             children: [
-              Text('Accounts', style: AppTextStyles.h1),
-              const SizedBox(height: 4),
-              Text(
-                'Manage your customer accounts and relationships',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-              ),
+              Expanded(child: _exportButton(context)),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: newBtn),
             ],
           ),
-        ),
-        ElevatedButton.icon(
-          onPressed: () => context.go(RoutePaths.createAccount),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New Account'),
-        ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: title),
+        _exportButton(context),
+        const SizedBox(width: AppSpacing.sm),
+        newBtn,
       ],
     );
   }

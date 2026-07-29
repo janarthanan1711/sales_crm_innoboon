@@ -41,6 +41,7 @@ import '../../features/leads/domain/usecases/update_lead_activity_usecase.dart';
 import '../../features/leads/domain/usecases/delete_lead_activity_usecase.dart';
 import '../../features/leads/domain/usecases/import_leads_usecase.dart';
 import '../../features/leads/domain/usecases/download_import_template_usecase.dart';
+import '../../features/leads/domain/usecases/export_leads_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
 
@@ -63,6 +64,7 @@ import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_overview_usecase.dart';
 import '../../features/accounts/domain/usecases/account_activity_usecases.dart';
+import '../../features/accounts/domain/usecases/export_accounts_usecase.dart';
 import '../../features/accounts/presentation/bloc/accounts_list_bloc.dart';
 import '../../features/accounts/presentation/bloc/account_detail_bloc.dart';
 
@@ -237,6 +239,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DeleteLeadActivityUseCase(sl()));
   sl.registerLazySingleton(() => ImportLeadsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadImportTemplateUseCase(sl()));
+  sl.registerLazySingleton(() => ExportLeadsUseCase(sl()));
   sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
   sl.registerFactory(
     () => LeadDetailBloc(
@@ -278,6 +281,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LogAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAccountActivityUseCase(sl()));
+  sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -297,6 +301,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
   sl.registerLazySingleton(() => ImportContactsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadContactTemplateUseCase(sl()));
+  sl.registerLazySingleton(() => ExportContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetContactByIdUseCase(sl()));
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));

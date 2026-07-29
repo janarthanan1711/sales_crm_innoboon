@@ -62,6 +62,15 @@ abstract class LeadRepository {
   /// Downloads the sample import template as raw bytes. [format] is
   /// `'xlsx'` (default) or `'csv'`.
   Future<Either<Failure, Uint8List>> downloadImportTemplate({String format});
+
+  /// Exports the filtered leads as an `.xlsx` byte stream
+  /// (`GET /leads?to_export=true`). Role-scoped server-side.
+  Future<Either<Failure, Uint8List>> exportLeads({
+    int? ownerId,
+    String? source,
+    String? status,
+    String? search,
+  });
 }
 
 /// Datasource interface for the data layer
@@ -98,4 +107,10 @@ abstract class LeadRemoteDataSource {
     required String filename,
   });
   Future<Uint8List> downloadImportTemplate({String format});
+  Future<Uint8List> exportLeads({
+    int? ownerId,
+    String? source,
+    String? status,
+    String? search,
+  });
 }

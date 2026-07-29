@@ -218,6 +218,31 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
     }
   }
 
+  @override
+  Future<Uint8List> exportLeads({
+    int? ownerId,
+    String? source,
+    String? status,
+    String? search,
+  }) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.leads,
+        queryParameters: {
+          'to_export': true,
+          if (ownerId != null) 'owner_id': ownerId,
+          if (source != null && source.isNotEmpty) 'source': source,
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   String _formatDate(DateTime date) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${date.year}-${two(date.month)}-${two(date.day)}';

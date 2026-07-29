@@ -133,4 +133,26 @@ class ContactRepositoryImpl implements ContactRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+  }) async {
+    try {
+      final bytes = await remoteDataSource.exportContacts(
+        ownerId: ownerId,
+        accountId: accountId,
+        tier: tier,
+        isPrimary: isPrimary,
+        search: search,
+      );
+      return Right(bytes);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

@@ -161,3 +161,35 @@ class DownloadContactTemplateUseCase {
     return repository.downloadImportTemplate(format: format);
   }
 }
+
+/// `GET /contacts?to_export=true` — filtered contacts as an `.xlsx` stream.
+class ExportContactsParams {
+  final int? ownerId;
+  final int? accountId;
+  final String? tier;
+  final bool? isPrimary;
+  final String? search;
+
+  const ExportContactsParams({
+    this.ownerId,
+    this.accountId,
+    this.tier,
+    this.isPrimary,
+    this.search,
+  });
+}
+
+class ExportContactsUseCase {
+  final ContactRepository repository;
+  ExportContactsUseCase(this.repository);
+
+  Future<Either<Failure, Uint8List>> call(ExportContactsParams params) {
+    return repository.exportContacts(
+      ownerId: params.ownerId,
+      accountId: params.accountId,
+      tier: params.tier,
+      isPrimary: params.isPrimary,
+      search: params.search,
+    );
+  }
+}

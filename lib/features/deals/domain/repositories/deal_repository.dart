@@ -69,7 +69,7 @@ abstract class DealRepository {
   );
 
   /// Downloads the filtered deals as an `.xlsx` byte stream
-  /// (`GET /deals/export`). Role-scoped server-side; no owner filter.
+  /// (`GET /deals?to_export=true`). Role-scoped server-side; no owner filter.
   Future<Either<Failure, Uint8List>> exportDeals({
     int? stageId,
     String? tier,

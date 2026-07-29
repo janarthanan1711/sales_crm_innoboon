@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
@@ -222,6 +223,32 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
       await _dioClient.delete(
         ApiEndpoints.accountActivityById(accountId, activityId),
       );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  }) async {
+    try {
+      final response = await _dioClient.get<List<int>>(
+        ApiEndpoints.accounts,
+        queryParameters: {
+          'to_export': true,
+          if (search != null && search.isNotEmpty) 'search': search,
+          if (tier != null && tier.isNotEmpty && tier != 'All') 'tier': tier,
+          if (industry != null && industry.isNotEmpty && industry != 'All')
+            'industry': industry,
+          'owner_id': ?ownerId,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _normalize(e);
     }

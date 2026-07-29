@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
@@ -190,6 +191,25 @@ class AccountRepositoryImpl implements AccountRepository {
     try {
       await remoteDataSource.deleteActivity(accountId, activityId);
       return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  }) async {
+    try {
+      return Right(await remoteDataSource.exportAccounts(
+        search: search,
+        industry: industry,
+        tier: tier,
+        ownerId: ownerId,
+      ));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

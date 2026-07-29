@@ -158,6 +158,33 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     }
   }
 
+  @override
+  Future<Uint8List> exportContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+  }) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.contacts,
+        queryParameters: {
+          'to_export': true,
+          'owner_id': ?ownerId,
+          'account_id': ?accountId,
+          'tier': ?tier,
+          'is_primary': ?isPrimary,
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   Exception _normalize(DioException e) {
     final normalized = e.error;
     if (normalized is Exception) return normalized;

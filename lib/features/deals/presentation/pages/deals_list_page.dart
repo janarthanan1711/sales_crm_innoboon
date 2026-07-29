@@ -186,7 +186,7 @@ class _DealsListViewState extends State<_DealsListView> {
     });
   }
 
-  /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals/export`.
+  /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals?to_export=true`.
   /// The export API supports `search`/`tier`/`stage_id` (owner is role-scoped
   /// server-side, so it isn't sent). `tier` is only passed when exactly one
   /// tier checkbox is selected, since the endpoint takes a single tier.

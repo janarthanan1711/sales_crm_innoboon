@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
@@ -65,6 +66,15 @@ abstract class AccountRepository {
     String accountId,
     String activityId,
   );
+
+  /// Exports the filtered accounts as an `.xlsx` byte stream
+  /// (`GET /accounts?to_export=true`). Role-scoped server-side.
+  Future<Either<Failure, Uint8List>> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  });
 }
 
 abstract class AccountRemoteDataSource {
@@ -120,4 +130,11 @@ abstract class AccountRemoteDataSource {
     String? note,
   });
   Future<void> deleteActivity(String accountId, String activityId);
+
+  Future<Uint8List> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  });
 }
