@@ -333,13 +333,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
           children: [
             Text('${_selected.length} contacts selected', style: AppTextStyles.labelMedium),
             const SizedBox(width: AppSpacing.lg),
-            TextButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reassigning owners is coming soon.')),
-              ),
-              icon: const Icon(Icons.person_pin_outlined, size: 16),
-              label: const Text('Reassign Owner'),
-            ),
+            // "Reassign Owner" was removed — a Contact has no owner of its own
+            // (it's derived from the representative Account link), so there is
+            // no endpoint to reassign one.
             TextButton.icon(
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Export is coming soon.')),

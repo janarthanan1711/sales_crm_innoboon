@@ -1,3 +1,5 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +7,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/responsive.dart';
+import '../../core/utils/media_url.dart';
 import '../../core/constants/app_constants.dart';
+import '../di/injector.dart';
 import '../router/route_paths.dart';
+import '../../features/auth/domain/usecases/profile_usecases.dart';
 import '../../features/notifications/presentation/widgets/notification_bell.dart';
 import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -54,18 +59,18 @@ const List<NavItem> _mainNavItems = [
     requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
-    label: 'Deals',
-    icon: Icons.handshake_outlined,
-    activeIcon: Icons.handshake,
-    path: RoutePaths.deals,
-    requiredPermissions: ['deals.access', 'deals.view_all'],
-  ),
-  NavItem(
     label: 'Accounts',
     icon: Icons.business_outlined,
     activeIcon: Icons.business,
     path: RoutePaths.accounts,
     requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Deals',
+    icon: Icons.handshake_outlined,
+    activeIcon: Icons.handshake,
+    path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
     label: 'Contacts',
@@ -74,12 +79,6 @@ const List<NavItem> _mainNavItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  // NavItem(
-  //   label: 'Analytics',
-  //   icon: Icons.analytics_outlined,
-  //   activeIcon: Icons.analytics,
-  //   path: RoutePaths.analytics,
-  // ),
   // Settings is intentionally NOT here — on mobile/tablet it lives in the
   // top app bar (see the settings action in the top bars), not the bottom
   // nav / rail.
@@ -121,24 +120,12 @@ const List<NavItem> _sidebarMainItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  // NavItem(
-  //   label: 'Staff Augmentation',
-  //   icon: Icons.groups_outlined,
-  //   activeIcon: Icons.groups,
-  //   path: RoutePaths.staffAugmentation,
-  // ),
   NavItem(
     label: 'Documents',
     icon: Icons.description_outlined,
     activeIcon: Icons.description,
     path: RoutePaths.documents,
   ),
-  // NavItem(
-  //   label: 'Activity',
-  //   icon: Icons.timeline_outlined,
-  //   activeIcon: Icons.timeline,
-  //   path: RoutePaths.activity,
-  // ),
 ];
 
 const List<NavItem> _sidebarBottomItems = [
@@ -687,12 +674,18 @@ class _UserProfileDropdown extends StatelessWidget {
                   .toUpperCase()
             : 'U';
 
+        final avatarUrl = resolveMediaUrl(user?.avatarUrl);
+
         return PopupMenuButton<String>(
           onSelected: (value) {
             if (value == 'logout') {
               context.read<AuthBloc>().add(const AuthLogoutRequested());
             } else if (value == 'profile') {
               context.go(RoutePaths.profile);
+            } else if (value == 'photo') {
+              _changePhoto(context);
+            } else if (value == 'remove_photo') {
+              _removePhoto(context);
             }
           },
           offset: const Offset(0, 48),
@@ -744,6 +737,40 @@ class _UserProfileDropdown extends StatelessWidget {
                 ],
               ),
             ),
+            // Avatar upload/removal is reachable from any page here, not just
+            // the Profile screen.
+            PopupMenuItem(
+              value: 'photo',
+              child: Row(
+                children: [
+                  Icon(
+                    avatarUrl != null ? Icons.edit_outlined : Icons.camera_alt_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(avatarUrl != null ? 'Change Photo' : 'Upload Photo'),
+                ],
+              ),
+            ),
+            if (avatarUrl != null)
+              const PopupMenuItem(
+                value: 'remove_photo',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.hide_image_outlined,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Remove Photo',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ],
+                ),
+              ),
             const PopupMenuItem(
               value: 'logout',
               child: Row(
@@ -758,16 +785,99 @@ class _UserProfileDropdown extends StatelessWidget {
           child: CircleAvatar(
             radius: radius,
             backgroundColor: AppColors.primary,
-            child: Text(
-              initials,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: radius * 0.8,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            // Show the uploaded photo globally; fall back to initials when
+            // the user hasn't set one.
+            backgroundImage: avatarUrl != null
+                ? CachedNetworkImageProvider(avatarUrl)
+                : null,
+            child: avatarUrl != null
+                ? null
+                : Text(
+                    initials,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: radius * 0.8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         );
+      },
+    );
+  }
+
+  /// Picks an image and uploads it as the avatar, then refreshes AuthBloc so
+  /// every avatar in the shell repaints from the newly-cached user.
+  Future<void> _changePhoto(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final authBloc = context.read<AuthBloc>();
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    final file = (picked != null && picked.files.isNotEmpty)
+        ? picked.files.first
+        : null;
+    if (file?.bytes == null) return;
+
+    final result = await sl<UploadAvatarUseCase>()(
+      UploadAvatarParams(bytes: file!.bytes!, filename: file.name),
+    );
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload photo: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (_) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Profile photo updated.')),
+        );
+        authBloc.add(const AuthCheckRequested());
+      },
+    );
+  }
+
+  Future<void> _removePhoto(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final authBloc = context.read<AuthBloc>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove profile photo?'),
+        content: const Text(
+          'Your photo will be deleted and replaced with your initials. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final result = await sl<DeleteAvatarUseCase>()();
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove photo: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (_) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Profile photo removed.')),
+        );
+        authBloc.add(const AuthCheckRequested());
       },
     );
   }

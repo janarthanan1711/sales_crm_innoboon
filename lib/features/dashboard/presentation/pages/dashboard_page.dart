@@ -424,6 +424,7 @@ class _FunnelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ordered = _byCount(stages);
     return SectionCard(
       title: 'Pipeline Funnel',
       child: Column(
@@ -431,17 +432,33 @@ class _FunnelCard extends StatelessWidget {
         // centered for the stack to read as a funnel.
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          for (var i = 0; i < stages.length; i++) ...[
+          for (var i = 0; i < ordered.length; i++) ...[
             if (i > 0) const SizedBox(height: AppSpacing.sm),
             _FunnelBar(
-              stage: stages[i],
+              stage: ordered[i],
               palette: _funnelPalettes[i % _funnelPalettes.length],
-              widthFactor: _taper(i, stages.length),
+              widthFactor: _taper(i, ordered.length),
             ),
           ],
         ],
       ),
     );
+  }
+
+  /// Orders the stages by count, biggest first, so the widest bar carries the
+  /// largest number and the stack tapers downward.
+  ///
+  /// The API returns stages in pipeline (`sort_order`) order, which routinely
+  /// puts a near-empty early stage above a busier later one — the taper then
+  /// reads backwards. Ties keep their pipeline order (`List.sort` isn't
+  /// guaranteed stable, hence the explicit index tie-break).
+  List<FunnelStage> _byCount(List<FunnelStage> input) {
+    final indexed = input.indexed.toList()
+      ..sort((a, b) {
+        final byCount = b.$2.count.compareTo(a.$2.count);
+        return byCount != 0 ? byCount : a.$1.compareTo(b.$1);
+      });
+    return indexed.map((e) => e.$2).toList(growable: false);
   }
 
   /// Width of bar [index] as a fraction of the card body, tapering linearly
@@ -880,36 +897,45 @@ class _DropOffCard extends StatelessWidget {
   const _DropOffCard({required this.entries});
   final List<DropOffReason> entries;
 
+  /// Below this the five columns squeeze into unreadable slivers, so the table
+  /// scrolls sideways instead of shrinking.
+  static const double _minTableWidth = 720;
+
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      title: 'Drop-off Reasons (Lost Deals)',
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: context.isMobile ? 720 : 0),
-          child: SizedBox(
-            width: context.isMobile ? 720 : double.maxFinite,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Row(
-                    children: [
-                      _h('Reason Category', flex: 4),
-                      _h('Stage Lost', flex: 3),
-                      _h('Count', flex: 2),
-                      _h('Impact (₹)', flex: 3),
-                      _h('Trend', flex: 2),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                for (final e in entries) _DropOffRow(reason: e),
-              ],
-            ),
+    final table = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Row(
+            children: [
+              _h('Reason Category', flex: 4),
+              _h('Stage Lost', flex: 3),
+              _h('Count', flex: 2),
+              _h('Impact (₹)', flex: 3),
+              _h('Trend', flex: 2),
+            ],
           ),
         ),
+        const Divider(height: 1),
+        for (final e in entries) _DropOffRow(reason: e),
+      ],
+    );
+
+    return SectionCard(
+      title: 'Drop-off Reasons (Lost Deals)',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Lay the table out at the card's own width when there's room.
+          // Wrapping it in a horizontal scroll view unconditionally hands the
+          // rows unbounded width, which pushes every column after the reason
+          // name off-screen.
+          if (constraints.maxWidth >= _minTableWidth) return table;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: _minTableWidth, child: table),
+          );
+        },
       ),
     );
   }

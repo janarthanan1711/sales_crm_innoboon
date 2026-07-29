@@ -45,11 +45,31 @@ class _AccountsListViewState extends State<_AccountsListView> {
   String? _industry;
   final Set<String> _selected = {};
   bool _exporting = false;
+  // Owned here so "Clear Filters" can wipe the search text, not just the
+  // bloc-side query.
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() {
+      _tier = null;
+      _industry = null;
+      _ownerId = null;
+      _selected.clear();
+    });
+    context.read<AccountsListBloc>().add(const AccountsListCleared());
   }
 
   /// Exports the currently-filtered accounts as an `.xlsx` via
@@ -232,8 +252,9 @@ class _AccountsListViewState extends State<_AccountsListView> {
       child: Row(
         children: [
           SizedBox(
-            width: 280,
+            width: context.isMobile ? 200 : 280,
             child: AppSearchField(
+              controller: _searchController,
               hintText: 'Search by company name or domain',
               onChanged: (query) => bloc.add(AccountsListSearchChanged(query)),
             ),
@@ -272,6 +293,12 @@ class _AccountsListViewState extends State<_AccountsListView> {
               setState(() => _industry = v == 'All' ? null : v);
               bloc.add(AccountsListFilterChanged(industry: v));
             },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          TextButton.icon(
+            onPressed: _clearFilters,
+            icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+            label: const Text('Clear Filters'),
           ),
         ],
       ),
@@ -321,8 +348,8 @@ class _AccountsTable extends StatelessWidget {
                 _header('INDUSTRY', flex: 2),
                 _header('TIER', flex: 2),
                 _header('PRIMARY OWNER', flex: 2),
-                _header('# CONTACTS', flex: 1),
-                _header('# DEALS', flex: 1),
+                _header('CONTACTS', flex: 1),
+                _header('DEALS', flex: 1),
               ],
             ),
           ),

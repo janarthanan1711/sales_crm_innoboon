@@ -304,7 +304,7 @@ class _Header extends StatelessWidget {
                   spacing: AppSpacing.lg,
                   runSpacing: AppSpacing.sm,
                   crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [_tierMeta(), _ownerMeta()],
+                  children: [_ownerMeta(), _exportAction()],
                 ),
                 if (canManage) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -317,11 +317,11 @@ class _Header extends StatelessWidget {
               children: [
                 Expanded(child: identity),
                 const SizedBox(width: AppSpacing.lg),
-                _tierMeta(),
-                const SizedBox(width: AppSpacing.xl),
                 _ownerMeta(),
+                const SizedBox(width: AppSpacing.lg),
+                _exportAction(),
                 if (canManage) ...[
-                  const SizedBox(width: AppSpacing.xl),
+                  const SizedBox(width: AppSpacing.sm),
                   _actions(context),
                 ],
               ],
@@ -329,30 +329,18 @@ class _Header extends StatelessWidget {
     );
   }
 
-  // Leads have no tier of their own — it's assigned at conversion — so this is
-  // always a placeholder, matching the mockup's "Tier: —".
-  Widget _tierMeta() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Export is read-only, so it sits outside the `canManage` actions —
-        // view-only users can download the record too.
-        RecordExportButton(
-          iconOnly: false,
-          tooltip: 'Export this lead to Excel',
-          fileName: 'lead_${lead.id}.xlsx',
-          successMessage: 'Lead exported.',
-          fetch: () => sl<ExportLeadDetailUseCase>()(lead.id),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text(
-          'Tier: ',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        Text('—', style: AppTextStyles.labelMedium),
-      ],
+  /// Export is read-only, so it sits outside the `canManage` actions —
+  /// view-only users can download the record too.
+  ///
+  /// The "Tier: —" meta that used to sit beside this was removed: a Lead has
+  /// no tier of its own (it's assigned at conversion), so it was always an
+  /// em-dash placeholder.
+  Widget _exportAction() {
+    return RecordExportButton(
+      tooltip: 'Export this lead to Excel',
+      fileName: 'lead_${lead.id}.xlsx',
+      successMessage: 'Lead exported.',
+      fetch: () => sl<ExportLeadDetailUseCase>()(lead.id),
     );
   }
 
@@ -395,24 +383,15 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.swap_horiz, size: 16),
             label: const Text('Convert to Account'),
           ),
+        // Only Delete lives in the overflow — the "Edit Lead" item that used
+        // to be here duplicated the Edit button beside it.
         PopupMenuButton<String>(
           tooltip: 'More actions',
           icon: const Icon(Icons.more_vert),
           onSelected: (value) {
-            if (value == 'edit') _editLead(context, lead);
             if (value == 'delete') _confirmDelete(context, lead.id);
           },
           itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, size: 18),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Edit Lead'),
-                ],
-              ),
-            ),
             PopupMenuItem(
               value: 'delete',
               child: Row(
@@ -614,11 +593,17 @@ class _ContactInfoCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(width: AppSpacing.xs),
+                // Long profile URLs used to ellipsize into uselessness in this
+                // narrow side panel, so show a compact label (scheme/`www.`
+                // stripped, tail elided) and keep the full URL in a tooltip.
                 Expanded(
-                  child: LinkText(
-                    text: lead.linkedinUrl!,
-                    url: lead.linkedinUrl,
-                    maxLines: 1,
+                  child: Tooltip(
+                    message: lead.linkedinUrl!,
+                    child: LinkText(
+                      text: _shortLinkLabel(lead.linkedinUrl!),
+                      url: lead.linkedinUrl,
+                      maxLines: 1,
+                    ),
                   ),
                 ),
               ],
@@ -750,6 +735,20 @@ class _DashedBoxPainter extends CustomPainter {
   bool shouldRepaint(covariant _DashedBoxPainter oldDelegate) => false;
 }
 
+/// Compact, readable label for a profile URL: drops the scheme and any
+/// leading `www.`, and elides the middle of very long paths so the
+/// recognisable head and tail both stay visible in a narrow column.
+String _shortLinkLabel(String rawUrl, {int maxLength = 34}) {
+  var label = rawUrl.trim().replaceFirst(RegExp(r'^https?://'), '');
+  label = label.replaceFirst(RegExp(r'^www\.'), '');
+  if (label.endsWith('/')) label = label.substring(0, label.length - 1);
+  if (label.length <= maxLength) return label;
+  // Keep more of the head than the tail — the domain/handle prefix carries
+  // most of the meaning.
+  final headLength = maxLength - 9;
+  return '${label.substring(0, headLength)}…${label.substring(label.length - 6)}';
+}
+
 /// Small indirection so the Related Records panel can reuse the exact same
 /// convert dialog as the header button without duplicating it.
 class _HeaderConvertProxy {
@@ -757,9 +756,6 @@ class _HeaderConvertProxy {
     return _Header(lead: lead)._showConvertDialog(context, lead);
   }
 
-  static Future<void> edit(BuildContext context, Lead lead) {
-    return _Header(lead: lead)._editLead(context, lead);
-  }
 }
 
 class _OverviewCenter extends StatelessWidget {
@@ -814,15 +810,8 @@ class _OverviewCenter extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                ElevatedButton(
-                  onPressed: () => _HeaderConvertProxy.show(context, lead),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                  ),
-                  child: const Text('Convert to Account'),
-                ),
+                // The banner's own "Convert to Account" button was removed —
+                // it duplicated the one in the header actions.
               ],
             ),
           ),
@@ -845,15 +834,9 @@ class _OverviewCenter extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xl),
         SectionCard(
+          // No trailing edit icon here — editing is done from the single Edit
+          // button in the page header.
           title: 'Initial Notes',
-          trailing: context.can(Perms.leadsManage)
-              ? IconButton(
-                  tooltip: 'Edit lead',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  onPressed: () => _HeaderConvertProxy.edit(context, lead),
-                )
-              : null,
           child: lead.followUpNote != null && lead.followUpNote!.isNotEmpty
               ? Container(
                   width: double.infinity,
@@ -977,6 +960,14 @@ class _ActivityCenterState extends State<_ActivityCenter> {
       context: context,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 1),
+      // By default this picker takes over the whole window. Constrain it into
+      // a centered dialog-sized card so it reads as a filter popover.
+      builder: (context, child) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
+          child: child,
+        ),
+      ),
       initialDateRange:
           widget.state.activityDateFrom != null &&
               widget.state.activityDateTo != null

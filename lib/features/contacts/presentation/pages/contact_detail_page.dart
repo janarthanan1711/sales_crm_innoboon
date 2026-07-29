@@ -22,7 +22,8 @@ class ContactDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final id = int.tryParse(contactId) ?? 0;
     return BlocProvider(
-      create: (_) => sl<ContactDetailBloc>()..add(ContactDetailLoadRequested(id)),
+      create: (_) =>
+          sl<ContactDetailBloc>()..add(ContactDetailLoadRequested(id)),
       child: const _ContactDetailView(),
     );
   }
@@ -55,7 +56,9 @@ class _ContactDetailView extends StatelessWidget {
   Widget _buildContent(BuildContext context, ContactDetailLoaded state) {
     final c = state.overview.contact;
     return DefaultTabController(
-      length: 4,
+      // Overview / Deals / Activity — the "Notes" tab was removed (no notes
+      // resource exists on the API).
+      length: 3,
       child: SingleChildScrollView(
         padding: EdgeInsets.all(context.pagePadding),
         child: Column(
@@ -94,13 +97,26 @@ class _ContactDetailView extends StatelessWidget {
       children: [
         InkWell(
           onTap: () => context.go('/contacts'),
-          child: Text('Contacts', style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+          child: Text(
+            'Contacts',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+          ),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 6),
-          child: Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
+          child: Icon(
+            Icons.chevron_right,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
         ),
-        Flexible(child: Text(c.fullName, style: AppTextStyles.bodySmall, overflow: TextOverflow.ellipsis)),
+        Flexible(
+          child: Text(
+            c.fullName,
+            style: AppTextStyles.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
@@ -113,13 +129,19 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitleParts = <String>[
-      if (contact.jobTitle != null && contact.jobTitle!.isNotEmpty) contact.jobTitle!,
+      if (contact.jobTitle != null && contact.jobTitle!.isNotEmpty)
+        contact.jobTitle!,
       if (contact.accountName != null) contact.accountName!,
     ];
     return SectionCard(
       child: Row(
         children: [
-          InitialsAvatar(name: contact.fullName.isEmpty ? contact.firstName : contact.fullName, size: 56),
+          InitialsAvatar(
+            name: contact.fullName.isEmpty
+                ? contact.firstName
+                : contact.fullName,
+            size: 56,
+          ),
           const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
@@ -136,15 +158,26 @@ class _HeaderCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(subtitleParts.join('  •  '),
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                Text(
+                  subtitleParts.join('  •  '),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 if (contact.ownerName != null) ...[
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
-                      Text('Owner: ${contact.ownerName}', style: AppTextStyles.caption),
+                      Text(
+                        'Owner: ${contact.ownerName}',
+                        style: AppTextStyles.caption,
+                      ),
                     ],
                   ),
                 ],
@@ -152,7 +185,7 @@ class _HeaderCard extends StatelessWidget {
             ),
           ),
           RecordExportButton(
-            iconOnly: true,
+            iconOnly: false,
             tooltip: 'Export this contact to Excel',
             fileName: 'contact_${contact.id}.xlsx',
             successMessage: 'Contact exported.',
@@ -177,7 +210,11 @@ class _ContactInfoCard extends StatelessWidget {
         children: [
           _row('Email', contact.email, email: contact.email),
           _row('Phone', contact.phone, phone: contact.phone),
-          _row('Alternate Phone', contact.alternatePhone, phone: contact.alternatePhone),
+          _row(
+            'Alternate Phone',
+            contact.alternatePhone,
+            phone: contact.alternatePhone,
+          ),
           _row('Social', contact.linkedinUrl, url: contact.linkedinUrl),
           _row('Account', contact.accountName),
           _row('Owner', contact.ownerName),
@@ -186,7 +223,13 @@ class _ContactInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String? value, {String? email, String? url, String? phone}) {
+  Widget _row(
+    String label,
+    String? value, {
+    String? email,
+    String? url,
+    String? phone,
+  }) {
     final hasValue = value != null && value.isNotEmpty;
     final isLink = hasValue && (email != null || url != null || phone != null);
     return Padding(
@@ -194,10 +237,19 @@ class _ContactInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+          ),
           const SizedBox(height: 2),
           if (isLink)
-            LinkText(text: value, email: email, url: url, phone: phone, maxLines: 1)
+            LinkText(
+              text: value,
+              email: email,
+              url: url,
+              phone: phone,
+              maxLines: 1,
+            )
           else
             Text(hasValue ? value : '—', style: AppTextStyles.bodyMedium),
         ],
@@ -225,7 +277,6 @@ class _MainPanel extends StatelessWidget {
             Tab(text: 'Overview'),
             Tab(text: 'Deals'),
             Tab(text: 'Activity'),
-            Tab(text: 'Notes'),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -240,10 +291,6 @@ class _MainPanel extends StatelessWidget {
               const _EmptyTab(
                 icon: Icons.timeline_outlined,
                 message: 'Contact activity timeline isn’t available yet.',
-              ),
-              const _EmptyTab(
-                icon: Icons.sticky_note_2_outlined,
-                message: 'Notes aren’t available yet.',
               ),
             ],
           ),
@@ -267,9 +314,13 @@ class _OverviewTab extends StatelessWidget {
           SectionCard(
             title: 'About This Contact',
             child: Text(
-              (o.about != null && o.about!.isNotEmpty) ? o.about! : 'No description added yet.',
+              (o.about != null && o.about!.isNotEmpty)
+                  ? o.about!
+                  : 'No description added yet.',
               style: AppTextStyles.bodyMedium.copyWith(
-                color: (o.about != null && o.about!.isNotEmpty) ? AppColors.textPrimary : AppColors.textMuted,
+                color: (o.about != null && o.about!.isNotEmpty)
+                    ? AppColors.textPrimary
+                    : AppColors.textMuted,
               ),
             ),
           ),
@@ -289,13 +340,19 @@ class _OverviewTab extends StatelessWidget {
             title: 'Quick Stats',
             child: Row(
               children: [
-                const Icon(Icons.access_time, size: 18, color: AppColors.textMuted),
+                const Icon(
+                  Icons.access_time,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   o.lastActivity != null
                       ? 'Last activity ${DateFormatter.relativeTime(o.lastActivity!)}'
                       : 'No recent activity recorded',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -311,7 +368,12 @@ class _OverviewTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(value, style: AppTextStyles.h2),
-          Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -348,10 +410,18 @@ class _DealsTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(d.dealName, style: AppTextStyles.labelLarge, overflow: TextOverflow.ellipsis),
+                    Text(
+                      d.dealName,
+                      style: AppTextStyles.labelLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     if (d.expectedCloseDate != null)
-                      Text('Closes ${DateFormatter.shortDate(d.expectedCloseDate!)}',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+                      Text(
+                        'Closes ${DateFormatter.shortDate(d.expectedCloseDate!)}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -383,7 +453,13 @@ class _EmptyTab extends StatelessWidget {
         children: [
           Icon(icon, size: 40, color: AppColors.textMuted),
           const SizedBox(height: AppSpacing.md),
-          Text(message, textAlign: TextAlign.center, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -406,7 +482,13 @@ class _PrimaryPill extends StatelessWidget {
         children: [
           const Icon(Icons.star, size: 12, color: AppColors.success),
           const SizedBox(width: 4),
-          Text('Primary Contact', style: AppTextStyles.caption.copyWith(color: AppColors.success, fontWeight: FontWeight.w600)),
+          Text(
+            'Primary Contact',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.success,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

@@ -33,6 +33,11 @@ class AccountsListFilterChanged extends AccountsListEvent {
   List<Object?> get props => [industry, tier, ownerId];
 }
 
+/// Resets search + tier/owner/industry filters and returns to the first page.
+class AccountsListCleared extends AccountsListEvent {
+  const AccountsListCleared();
+}
+
 class AccountsListPageChanged extends AccountsListEvent {
   final int offset;
   const AccountsListPageChanged(this.offset);

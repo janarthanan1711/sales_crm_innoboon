@@ -62,6 +62,7 @@ import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
+import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_overview_usecase.dart';
 import '../../features/accounts/domain/usecases/account_activity_usecases.dart';
 import '../../features/accounts/domain/usecases/export_accounts_usecase.dart';
@@ -286,11 +287,15 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DeleteAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
   sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
       getAccountOverviewUseCase: sl(),
       getAccountContactsUseCase: sl(),
+      getAccountDealsUseCase: sl(),
+      getDealStagesUseCase: sl(),
+      getUsersUseCase: sl(),
     ),
   );
 

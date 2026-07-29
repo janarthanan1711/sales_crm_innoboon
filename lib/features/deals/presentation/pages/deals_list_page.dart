@@ -378,9 +378,12 @@ class _DealsListViewState extends State<_DealsListView> {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        TextButton(
+        // Icon + label to match the Leads/Accounts filter bars — as a bare
+        // text button this read as body copy and was easy to miss.
+        TextButton.icon(
           onPressed: _clearFilters,
-          child: const Text('Clear Filters'),
+          icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+          label: const Text('Clear Filters'),
         ),
       ],
     );

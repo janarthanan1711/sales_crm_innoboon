@@ -5,6 +5,8 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../contacts/data/models/contact_model.dart';
 import '../../../contacts/domain/entities/contact.dart';
+import '../../../deals/data/models/deal_model.dart';
+import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/account_activity.dart';
 import '../../domain/entities/account_overview.dart';
@@ -139,6 +141,23 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
       final items = data['items'] as List<dynamic>;
       return items
           .map((e) => ContactModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<Deal>> getAccountDeals(String accountId) async {
+    try {
+      // `GET /accounts/{id}/deals` returns full DealRead objects — unlike the
+      // overview's `active_deals`, which only carry id/name/stage_id/value.
+      final response = await _dioClient.get(
+        ApiEndpoints.accountDeals(accountId),
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => DealModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw _normalize(e);

@@ -29,7 +29,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    // Users / Roles / Audit Log. The "Configuration" tab was dropped —
+    // permissions are already managed in the Roles tab.
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -79,7 +81,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
             tabs: const [
               Tab(text: 'Users'),
               Tab(text: 'Roles'),
-              // Tab(text: 'Configuration'),
               Tab(text: 'Audit Log'),
             ],
           ),
@@ -90,10 +91,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
               children: const [
                 _UsersTab(),
                 _RolesTab(),
-                // _ComingSoonTab(
-                //   message:
-                //       'Global configuration options aren\'t available yet.',
-                // ),
                 _AuditLogTab(),
               ],
             ),
@@ -104,33 +101,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
   }
 }
 
-class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.construction_outlined,
-            size: 48,
-            color: AppColors.textMuted,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            message,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────
 // Users tab
