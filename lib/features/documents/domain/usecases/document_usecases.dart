@@ -3,7 +3,25 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/account_document.dart';
 import '../entities/deal_document.dart';
+import '../entities/document.dart';
 import '../repositories/document_repository.dart';
+
+// ─── Combined documents list (sidebar Documents page) ────
+
+class GetDocumentsParams {
+  final String? source; // 'account' | 'deal' | null (both)
+  final String? search;
+  const GetDocumentsParams({this.source, this.search});
+}
+
+class GetDocumentsUseCase {
+  final DocumentRepository repository;
+  GetDocumentsUseCase(this.repository);
+
+  Future<Either<Failure, List<Document>>> call(GetDocumentsParams params) {
+    return repository.getDocuments(source: params.source, search: params.search);
+  }
+}
 
 class UploadAccountDocumentParams {
   final String accountId;

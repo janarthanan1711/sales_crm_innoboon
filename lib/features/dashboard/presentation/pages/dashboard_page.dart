@@ -1,12 +1,16 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../performance_dashboard/presentation/bloc/analytics_bloc.dart';
+import '../../domain/entities/dashboard_data.dart';
+import '../bloc/dashboard_bloc.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -14,11 +18,18 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<AnalyticsBloc>()..add(const AnalyticsLoadRequested()),
+      create: (_) => sl<DashboardBloc>()..add(const DashboardLoadRequested()),
       child: const _DashboardView(),
     );
   }
 }
+
+/// (label, wire value) for the period toggle.
+const List<(String, String)> _kPeriods = [
+  ('Today', 'today'),
+  ('This Week', 'this_week'),
+  ('This Month', 'this_month'),
+];
 
 class _DashboardView extends StatelessWidget {
   const _DashboardView();
@@ -28,73 +39,289 @@ class _DashboardView extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: EdgeInsets.all(context.pagePadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Dashboard', style: AppTextStyles.h1),
-            const SizedBox(height: 4),
-            BlocBuilder<AuthBloc, AuthState>(
+            _buildHeader(context),
+            const SizedBox(height: AppSpacing.xl),
+            BlocBuilder<DashboardBloc, DashboardState>(
               builder: (context, state) {
-                final name = state is AuthAuthenticated ? state.user.name : 'Sarah Jenkins';
-                return Text('Welcome back, $name', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary));
-              },
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Quick stats
-            BlocBuilder<AnalyticsBloc, AnalyticsState>(
-              builder: (context, state) {
-                if (state is AnalyticsLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (state is AnalyticsError) {
-                  return Text('Error loading stats: ${state.message}', style: const TextStyle(color: Colors.red));
-                }
-                if (state is AnalyticsLoaded) {
-                  final totalLeads = state.metrics.funnel.firstWhere((f) => f.stageName == 'Leads').count;
-                  final activeDeals = state.metrics.funnel.firstWhere((f) => f.stageName == 'Proposals').count;
-                  final pipelineValue = state.metrics.funnel.firstWhere((f) => f.stageName == 'Proposals').value;
-                  
-                  return Wrap(
-                    spacing: AppSpacing.lg,
-                    runSpacing: AppSpacing.lg,
-                    children: [
-                      _StatCard(title: 'Total Leads', value: '$totalLeads', icon: Icons.people_outline, color: AppColors.primary),
-                      _StatCard(title: 'Active Deals (Proposals)', value: '$activeDeals', icon: Icons.handshake_outlined, color: const Color(0xFF7C3AED)),
-                      _StatCard(title: 'Pipeline Value', value: CurrencyFormatter.formatINR(pipelineValue), icon: Icons.account_balance_wallet_outlined, color: AppColors.success),
-                      _StatCard(title: 'Win Rate', value: '${(state.metrics.overallWinRate * 100).toStringAsFixed(1)}%', icon: Icons.trending_up, color: AppColors.warning),
-                    ],
+                if (state is DashboardLoading || state is DashboardInitial) {
+                  return const Padding(
+                    padding: EdgeInsets.only(top: AppSpacing.xxxl),
+                    child: AppLoadingIndicator(message: 'Loading dashboard...'),
                   );
+                }
+                if (state is DashboardError) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xxxl),
+                    child: ErrorState(
+                      message: state.message,
+                      onRetry: () => context.read<DashboardBloc>().add(
+                        const DashboardLoadRequested(),
+                      ),
+                    ),
+                  );
+                }
+                if (state is DashboardLoaded) {
+                  return _buildContent(context, state.data);
                 }
                 return const SizedBox.shrink();
               },
             ),
-            const SizedBox(height: AppSpacing.xxxl),
-
-            // Recent Activity
-            Text('Recent Activity', style: AppTextStyles.h2),
-            const SizedBox(height: AppSpacing.lg),
-            _ActivityItem(icon: Icons.phone, color: AppColors.error, title: 'Call with Nexbridge Tech', subtitle: 'Sarah Jenkins • 2 hrs ago'),
-            _ActivityItem(icon: Icons.email, color: AppColors.primary, title: 'Email sent to Cloudverge', subtitle: 'M. Chen • 4 hrs ago'),
-            _ActivityItem(icon: Icons.swap_horiz, color: AppColors.success, title: 'Lead converted: DataSpire Analytics', subtitle: 'Karthick • Yesterday'),
-            _ActivityItem(icon: Icons.note_add, color: const Color(0xFFD97706), title: 'Note added on TechCorp deal', subtitle: 'Sarah Jenkins • Yesterday'),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildHeader(BuildContext context) {
+    final period = context.select<DashboardBloc, String>((b) {
+      final s = b.state;
+      if (s is DashboardLoaded) return s.period;
+      if (s is DashboardLoading) return s.period;
+      if (s is DashboardError) return s.period;
+      return 'this_month';
+    });
+
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Performance Overview', style: AppTextStyles.h1),
+        const SizedBox(height: 4),
+        Text(
+          "Track your team's sales pipeline and conversion metrics.",
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+
+    final toggle = _PeriodToggle(
+      selected: period,
+      onSelected: (p) =>
+          context.read<DashboardBloc>().add(DashboardLoadRequested(period: p)),
+    );
+
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          titleBlock,
+          const SizedBox(height: AppSpacing.md),
+          toggle,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: titleBlock),
+        toggle,
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, DashboardData data) {
+    // Conversion trend: sum transitions per period across all stages so the
+    // chart reflects whatever the API returns, not just "Closed Won".
+    final trend = _aggregateTrend(data.conversionTrend);
+    final dealTotal = data.dealDistribution.fold<int>(0, (a, e) => a + e.count);
+
+    // Half-width section cards — only the ones that actually have data.
+    final halfCards = <Widget>[
+      if (data.funnel.isNotEmpty) _FunnelCard(stages: data.funnel),
+      if (trend.isNotEmpty) _ConversionTrendCard(points: trend),
+      if (dealTotal > 0)
+        _DealDistributionCard(entries: data.dealDistribution, total: dealTotal),
+      if (data.leaderboard.isNotEmpty)
+        _LeaderboardCard(entries: data.leaderboard),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SummaryTiles(summary: data.summary),
+        if (halfCards.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _halfGrid(context, halfCards),
+        ],
+        if (data.activityFeed.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _ActivityFeedCard(entries: data.activityFeed),
+        ],
+        if (data.dropOffReasons.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _DropOffCard(entries: data.dropOffReasons),
+        ],
+      ],
+    );
+  }
+
+  /// Lays out the half-width cards two-per-row on wide screens, stacked on
+  /// phones. Handles an odd count (a lone card just takes one column).
+  Widget _halfGrid(BuildContext context, List<Widget> cards) {
+    if (context.isMobile) {
+      return Column(
+        children: [
+          for (var i = 0; i < cards.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.xl),
+            cards[i],
+          ],
+        ],
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = AppSpacing.xl;
+        final w = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: cards.map((c) => SizedBox(width: w, child: c)).toList(),
+        );
+      },
+    );
+  }
+
+  /// Collapses the raw per-stage trend series into one point per period
+  /// (total transitions), sorted chronologically.
+  List<({DateTime period, int count})> _aggregateTrend(
+    List<ConversionTrendEntry> entries,
+  ) {
+    final byPeriod = <DateTime, int>{};
+    for (final e in entries) {
+      byPeriod[e.period] = (byPeriod[e.period] ?? 0) + e.count;
+    }
+    final points =
+        byPeriod.entries.map((e) => (period: e.key, count: e.value)).toList()
+          ..sort((a, b) => a.period.compareTo(b.period));
+    return points;
+  }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value, required this.icon, required this.color});
-  final String title; final String value; final IconData icon; final Color color;
+// ─── Period toggle ──────────────────────────────────────
+class _PeriodToggle extends StatelessWidget {
+  const _PeriodToggle({required this.selected, required this.onSelected});
+  final String selected;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 220,
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: _kPeriods.map((p) {
+          final active = p.$2 == selected;
+          return GestureDetector(
+            onTap: () => onSelected(p.$2),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: active ? AppColors.primaryLight : Colors.transparent,
+                borderRadius: BorderRadius.circular(
+                  AppSpacing.buttonRadius - 2,
+                ),
+              ),
+              child: Text(
+                p.$1,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: active ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ─── Summary stat tiles ─────────────────────────────────
+class _SummaryTiles extends StatelessWidget {
+  const _SummaryTiles({required this.summary});
+  final DashboardSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = [
+      _StatTile(
+        title: 'Leads Generated',
+        stat: summary.leadsGenerated,
+        icon: Icons.person_add_alt_1_outlined,
+        color: AppColors.primary,
+      ),
+      _StatTile(
+        title: 'Qualified Leads',
+        stat: summary.qualifiedLeads,
+        icon: Icons.verified_outlined,
+        color: const Color(0xFF7C3AED),
+      ),
+      _StatTile(
+        title: 'Deals in Pipeline',
+        stat: summary.dealsInPipeline,
+        icon: Icons.trending_up,
+        color: const Color(0xFFD97706),
+      ),
+      _StatTile(
+        title: 'Deals Closed',
+        stat: summary.dealsClosed,
+        icon: Icons.emoji_events_outlined,
+        color: AppColors.success,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 4-up on wide, 2-up on tablet, 1-up on phone.
+        final cols = constraints.maxWidth >= 1000
+            ? 4
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        const gap = AppSpacing.lg;
+        final tileWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: tiles
+              .map((t) => SizedBox(width: tileWidth, child: t))
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.title,
+    required this.stat,
+    required this.icon,
+    required this.color,
+  });
+  final String title;
+  final DashboardStat stat;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -105,38 +332,469 @@ class _StatCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, size: 20, color: color),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: color),
               ),
-              const Spacer(),
-              const Icon(Icons.trending_up, size: 16, color: AppColors.success),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(value, style: AppTextStyles.h1),
-          const SizedBox(height: 4),
-          Text(title, style: AppTextStyles.bodySmall),
+          Text('${stat.value}', style: AppTextStyles.h1),
+          const SizedBox(height: 6),
+          _ChangeBadge(changePct: stat.changePct),
         ],
       ),
     );
   }
 }
 
-class _ActivityItem extends StatelessWidget {
-  const _ActivityItem({required this.icon, required this.color, required this.title, required this.subtitle});
-  final IconData icon; final Color color; final String title; final String subtitle;
+/// The "+12% vs last month" pill. Renders nothing meaningful when the change
+/// is null (e.g. deals-in-pipeline is a snapshot with no trend).
+class _ChangeBadge extends StatelessWidget {
+  const _ChangeBadge({required this.changePct});
+  final double? changePct;
 
   @override
   Widget build(BuildContext context) {
+    if (changePct == null) {
+      return Text(
+        'Current snapshot',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+      );
+    }
+    final up = changePct! >= 0;
+    final color = up ? AppColors.success : AppColors.error;
+    final pct = changePct!.abs().toStringAsFixed(changePct! % 1 == 0 ? 0 : 1);
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                up ? Icons.trending_up : Icons.trending_down,
+                size: 12,
+                color: color,
+              ),
+              const SizedBox(width: 2),
+              Text(
+                '${up ? '+' : '-'}$pct%',
+                style: AppTextStyles.overline.copyWith(color: color),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            'vs prev. period',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Pipeline funnel ────────────────────────────────────
+class _FunnelCard extends StatelessWidget {
+  const _FunnelCard({required this.stages});
+  final List<FunnelStage> stages;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxCount = stages
+        .map((s) => s.count)
+        .fold(0, (a, b) => a > b ? a : b);
+    return SectionCard(
+      title: 'Pipeline Funnel',
+      child: Column(
+        children: [
+          for (var i = 0; i < stages.length; i++)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: i == stages.length - 1 ? 0 : AppSpacing.md,
+              ),
+              child: _FunnelRow(
+                stage: stages[i],
+                maxCount: maxCount,
+                color: _funnelColors[i % _funnelColors.length],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+const List<Color> _funnelColors = [
+  Color(0xFF2563EB),
+  Color(0xFF7C3AED),
+  Color(0xFFD97706),
+  Color(0xFF0891B2),
+  Color(0xFF059669),
+  Color(0xFFDB2777),
+];
+
+class _FunnelRow extends StatelessWidget {
+  const _FunnelRow({
+    required this.stage,
+    required this.maxCount,
+    required this.color,
+  });
+  final FunnelStage stage;
+  final int maxCount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = maxCount == 0 ? 0.0 : stage.count / maxCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                stage.stageName,
+                style: AppTextStyles.labelMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              '${stage.count}',
+              style: AppTextStyles.labelLarge.copyWith(color: color),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: fraction.clamp(0.05, 1.0),
+            minHeight: 10,
+            backgroundColor: color.withValues(alpha: 0.12),
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Conversion trend (transitions per period) ──────────
+class _ConversionTrendCard extends StatelessWidget {
+  const _ConversionTrendCard({required this.points});
+  final List<({DateTime period, int count})> points;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      titleWidget: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Conversion Trend', style: AppTextStyles.h3),
+          SizedBox(width: 5),
+          Text(
+            'Stage transitions',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        height: 368,
+        child: Padding(
+          // Extra right room so the last x-axis label (centered on the
+          // right-most point) doesn't spill past the card edge.
+          padding: const EdgeInsets.only(
+            top: AppSpacing.md,
+            left: 4,
+            right: 24,
+          ),
+          child: LineChart(_chartData()),
+        ),
+      ),
+    );
+  }
+
+  LineChartData _chartData() {
+    final maxY = points.map((e) => e.count).fold(0, (a, b) => a > b ? a : b);
+    final niceMax = (maxY <= 5 ? 5 : ((maxY / 5).ceil() * 5)).toDouble();
+    // A single period would give minX == maxX (divide-by-zero on intervals);
+    // pad the axis to 1 so a lone point still renders as a dot.
+    final maxX = points.length <= 1 ? 1.0 : points.length.toDouble() - 1;
+    return LineChartData(
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: niceMax / 5,
+        getDrawingHorizontalLine: (v) =>
+            FlLine(color: AppColors.border, strokeWidth: 1, dashArray: [5, 5]),
+      ),
+      titlesData: FlTitlesData(
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 28,
+            interval: 1,
+            getTitlesWidget: (value, meta) {
+              final i = value.toInt();
+              // Only label real data points (x may fall between them when a
+              // single period pads the axis to maxX = 1).
+              if (i < 0 || i >= points.length || value != i.toDouble()) {
+                return const SizedBox.shrink();
+              }
+              // SideTitleWidget lets fl_chart fit edge labels within the axis
+              // area; the compact "MMM d" keeps them narrow.
+              return SideTitleWidget(
+                meta: meta,
+                space: 6,
+                child: Text(
+                  DateFormat('MMM d').format(points[i].period.toLocal()),
+                  style: AppTextStyles.caption,
+                ),
+              );
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 32,
+            interval: niceMax / 5,
+            getTitlesWidget: (value, meta) =>
+                Text(value.toInt().toString(), style: AppTextStyles.caption),
+          ),
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      minX: 0,
+      maxX: maxX,
+      minY: 0,
+      maxY: niceMax,
+      lineBarsData: [
+        LineChartBarData(
+          spots: points
+              .asMap()
+              .entries
+              .map((e) => FlSpot(e.key.toDouble(), e.value.count.toDouble()))
+              .toList(),
+          isCurved: points.length > 1,
+          color: AppColors.primary,
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(show: true),
+          belowBarData: BarAreaData(
+            show: true,
+            color: AppColors.primary.withValues(alpha: 0.1),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Deal distribution donut ────────────────────────────
+const Map<String, Color> _tierColors = {
+  'diamond': AppColors.tierDiamondText,
+  'gold': AppColors.tierGoldText,
+  'silver': AppColors.tierSilverText,
+  'bronze': AppColors.tierBronzeText,
+};
+
+class _DealDistributionCard extends StatelessWidget {
+  const _DealDistributionCard({required this.entries, required this.total});
+  final List<DealDistributionEntry> entries;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: 'Deal Distribution',
+      child: SizedBox(
+        height: 240,
+        child: Row(
+          children: [
+            Expanded(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 55,
+                      sections: entries.map((e) {
+                        final color =
+                            _tierColors[e.tier.toLowerCase()] ??
+                            AppColors.textMuted;
+                        return PieChartSectionData(
+                          color: color,
+                          value: e.count.toDouble(),
+                          title: '',
+                          radius: 22,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('$total', style: AppTextStyles.h1),
+                      Text('Total Deals', style: AppTextStyles.caption),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: entries.map((e) {
+                final color =
+                    _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_titleCase(e.tier)} (${e.count})',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Sales leaderboard (no % target, no progress line) ──
+class _LeaderboardCard extends StatelessWidget {
+  const _LeaderboardCard({required this.entries});
+  final List<LeaderboardEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: 'Sales Leaderboard',
+      child: Column(
+        children: [
+          for (var i = 0; i < entries.length; i++)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: i == entries.length - 1 ? 0 : AppSpacing.md,
+              ),
+              child: Row(
+                children: [
+                  InitialsAvatar(name: entries[i].ownerName, size: 36),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entries[i].ownerName,
+                          style: AppTextStyles.labelLarge,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '${entries[i].dealsClosed} deals closed',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    CurrencyFormatter.formatCompact(entries[i].revenue),
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Activity feed ──────────────────────────────────────
+class _ActivityFeedCard extends StatelessWidget {
+  const _ActivityFeedCard({required this.entries});
+  final List<DashboardActivity> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: 'Activity Feed',
+      child: Column(
+        children: entries.map((a) => _ActivityRow(activity: a)).toList(),
+      ),
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.activity});
+  final DashboardActivity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color) = _activityStyle(activity.type);
+    final who = activity.createdByName ?? 'Someone';
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -144,8 +802,35 @@ class _ActivityItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.labelLarge),
-                Text(subtitle, style: AppTextStyles.caption),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: who, style: AppTextStyles.labelLarge),
+                      TextSpan(
+                        text:
+                            ' · ${_titleCase(activity.type.replaceAll('_', ' '))} on ${activity.entityType}',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (activity.note != null && activity.note!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      activity.note!,
+                      style: AppTextStyles.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                const SizedBox(height: 2),
+                Text(
+                  DateFormatter.relativeTime(activity.createdAt),
+                  style: AppTextStyles.caption,
+                ),
               ],
             ),
           ),
@@ -154,3 +839,153 @@ class _ActivityItem extends StatelessWidget {
     );
   }
 }
+
+(IconData, Color) _activityStyle(String type) {
+  switch (type) {
+    case 'call':
+      return (Icons.phone, AppColors.primary);
+    case 'meeting':
+      return (Icons.event, const Color(0xFF7C3AED));
+    case 'note':
+      return (Icons.sticky_note_2_outlined, AppColors.textSecondary);
+    case 'comment':
+      return (Icons.chat_bubble_outline, const Color(0xFF0891B2));
+    case 'follow_up':
+      return (Icons.flag_outlined, AppColors.success);
+    default:
+      return (Icons.bolt, AppColors.textMuted);
+  }
+}
+
+// ─── Drop-off reasons table ─────────────────────────────
+class _DropOffCard extends StatelessWidget {
+  const _DropOffCard({required this.entries});
+  final List<DropOffReason> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: 'Drop-off Reasons (Lost Deals)',
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: context.isMobile ? 720 : 0),
+          child: SizedBox(
+            width: context.isMobile ? 720 : double.maxFinite,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Row(
+                    children: [
+                      _h('Reason Category', flex: 4),
+                      _h('Stage Lost', flex: 3),
+                      _h('Count', flex: 2),
+                      _h('Impact (₹)', flex: 3),
+                      _h('Trend', flex: 2),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                for (final e in entries) _DropOffRow(reason: e),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _h(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
+}
+
+class _DropOffRow extends StatelessWidget {
+  const _DropOffRow({required this.reason});
+  final DropOffReason reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    reason.reason,
+                    style: AppTextStyles.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(reason.stageLost, style: AppTextStyles.tableCell),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text('${reason.count}', style: AppTextStyles.tableCell),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              CurrencyFormatter.formatINR(reason.lostValue),
+              style: AppTextStyles.tableCell,
+            ),
+          ),
+          Expanded(flex: 2, child: _TrendCell(changePct: reason.changePct)),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrendCell extends StatelessWidget {
+  const _TrendCell({required this.changePct});
+  final double? changePct;
+
+  @override
+  Widget build(BuildContext context) {
+    if (changePct == null || changePct == 0) {
+      return Text(
+        '— 0%',
+        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+      );
+    }
+    // A rising loss count is bad (red); a falling one is good (green).
+    final up = changePct! > 0;
+    final color = up ? AppColors.error : AppColors.success;
+    final pct = changePct!.abs().toStringAsFixed(changePct! % 1 == 0 ? 0 : 1);
+    return Row(
+      children: [
+        Icon(
+          up ? Icons.arrow_upward : Icons.arrow_downward,
+          size: 14,
+          color: color,
+        ),
+        const SizedBox(width: 2),
+        Text('$pct%', style: AppTextStyles.bodySmall.copyWith(color: color)),
+      ],
+    );
+  }
+}
+
+String _titleCase(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);

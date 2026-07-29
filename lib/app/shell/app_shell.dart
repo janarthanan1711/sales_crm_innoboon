@@ -74,19 +74,15 @@ const List<NavItem> _mainNavItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  NavItem(
-    label: 'Analytics',
-    icon: Icons.analytics_outlined,
-    activeIcon: Icons.analytics,
-    path: RoutePaths.analytics,
-  ),
-  NavItem(
-    label: 'Settings',
-    icon: Icons.settings_outlined,
-    activeIcon: Icons.settings,
-    path: RoutePaths.settings,
-    requiredPermissions: ['users.manage', 'roles.manage'],
-  ),
+  // NavItem(
+  //   label: 'Analytics',
+  //   icon: Icons.analytics_outlined,
+  //   activeIcon: Icons.analytics,
+  //   path: RoutePaths.analytics,
+  // ),
+  // Settings is intentionally NOT here — on mobile/tablet it lives in the
+  // top app bar (see the settings action in the top bars), not the bottom
+  // nav / rail.
 ];
 
 /// Full sidebar items (web only)
@@ -105,18 +101,18 @@ const List<NavItem> _sidebarMainItems = [
     requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
-    label: 'Deals',
-    icon: Icons.handshake_outlined,
-    activeIcon: Icons.handshake,
-    path: RoutePaths.deals,
-    requiredPermissions: ['deals.access', 'deals.view_all'],
-  ),
-  NavItem(
     label: 'Accounts',
     icon: Icons.business_outlined,
     activeIcon: Icons.business,
     path: RoutePaths.accounts,
     requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Deals',
+    icon: Icons.handshake_outlined,
+    activeIcon: Icons.handshake,
+    path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
     label: 'Contacts',
@@ -125,12 +121,12 @@ const List<NavItem> _sidebarMainItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  NavItem(
-    label: 'Staff Augmentation',
-    icon: Icons.groups_outlined,
-    activeIcon: Icons.groups,
-    path: RoutePaths.staffAugmentation,
-  ),
+  // NavItem(
+  //   label: 'Staff Augmentation',
+  //   icon: Icons.groups_outlined,
+  //   activeIcon: Icons.groups,
+  //   path: RoutePaths.staffAugmentation,
+  // ),
   NavItem(
     label: 'Documents',
     icon: Icons.description_outlined,
@@ -146,12 +142,12 @@ const List<NavItem> _sidebarMainItems = [
 ];
 
 const List<NavItem> _sidebarBottomItems = [
-  NavItem(
-    label: 'Support',
-    icon: Icons.help_outline,
-    activeIcon: Icons.help,
-    path: RoutePaths.support,
-  ),
+  // NavItem(
+  //   label: 'Support',
+  //   icon: Icons.help_outline,
+  //   activeIcon: Icons.help,
+  //   path: RoutePaths.support,
+  // ),
 ];
 
 /// Responsive app shell that switches between
@@ -193,22 +189,29 @@ class _MobileShell extends StatelessWidget {
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex.clamp(0, navItems.length - 1),
-          onTap: (index) => _onNavTap(context, navItems[index].path),
-          items: navItems.map((item) {
-            return BottomNavigationBarItem(
-              icon: Icon(item.icon),
-              activeIcon: Icon(item.activeIcon),
-              label: item.label,
-            );
-          }).toList(),
-        ),
-      ),
+      // BottomNavigationBar asserts items.length >= 2. During the brief
+      // window on restart before auth resolves, only permission-free items
+      // are visible (just Dashboard), so omit the bar until there are ≥2.
+      bottomNavigationBar: navItems.length < 2
+          ? null
+          : Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AppColors.border, width: 1),
+                ),
+              ),
+              child: BottomNavigationBar(
+                currentIndex: currentIndex.clamp(0, navItems.length - 1),
+                onTap: (index) => _onNavTap(context, navItems[index].path),
+                items: navItems.map((item) {
+                  return BottomNavigationBarItem(
+                    icon: Icon(item.icon),
+                    activeIcon: Icon(item.activeIcon),
+                    label: item.label,
+                  );
+                }).toList(),
+              ),
+            ),
     );
   }
 }
@@ -226,32 +229,36 @@ class _TabletShell extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          NavigationRail(
-            selectedIndex: currentIndex.clamp(0, navItems.length - 1),
-            onDestinationSelected: (index) =>
-                _onNavTap(context, navItems[index].path),
-            labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: Icon(
-                Icons.bar_chart_rounded,
-                color: AppColors.primary,
-                size: 32,
+          // NavigationRail asserts destinations.length >= 2 — skip the rail
+          // during the pre-auth window when only Dashboard is visible.
+          if (navItems.length >= 2) ...[
+            NavigationRail(
+              selectedIndex: currentIndex.clamp(0, navItems.length - 1),
+              onDestinationSelected: (index) =>
+                  _onNavTap(context, navItems[index].path),
+              labelType: NavigationRailLabelType.all,
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Icon(
+                  Icons.bar_chart_rounded,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
               ),
+              destinations: navItems.map((item) {
+                return NavigationRailDestination(
+                  icon: Icon(item.icon),
+                  selectedIcon: Icon(item.activeIcon),
+                  label: Text(item.label),
+                );
+              }).toList(),
             ),
-            destinations: navItems.map((item) {
-              return NavigationRailDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.activeIcon),
-                label: Text(item.label),
-              );
-            }).toList(),
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
+            const VerticalDivider(width: 1, thickness: 1),
+          ],
           Expanded(
             child: Column(
               children: [
-                _DesktopTopBar(),
+                _DesktopTopBar(showSettingsAction: true),
                 Expanded(child: child),
               ],
             ),
@@ -500,6 +507,13 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
 
 /// ─── Top Bar (Desktop/Tablet) ───────────────────────────
 class _DesktopTopBar extends StatelessWidget {
+  const _DesktopTopBar({this.showSettingsAction = false});
+
+  /// Tablet has no sidebar Admin Settings entry (Settings was moved out of
+  /// its nav rail), so it surfaces Settings here. Web keeps its sidebar entry
+  /// and leaves this off.
+  final bool showSettingsAction;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -517,6 +531,7 @@ class _DesktopTopBar extends StatelessWidget {
 
           // Action buttons
           const NotificationBell(),
+          if (showSettingsAction) const _SettingsAction(),
           const SizedBox(width: AppSpacing.sm),
           // IconButton(
           //   onPressed: () {},
@@ -543,36 +558,59 @@ class _DesktopTopBar extends StatelessWidget {
 class _MobileTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: AppSpacing.topBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        children: [
-          // Logo
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(6),
+    return SafeArea(
+      child: Container(
+        height: AppSpacing.topBarHeight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+        ),
+        child: Row(
+          children: [
+            // Logo
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.bar_chart_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
-            child: const Icon(
-              Icons.bar_chart_rounded,
-              color: Colors.white,
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(AppConstants.appName, style: AppTextStyles.h4),
-          const Spacer(),
-          const NotificationBell(),
-          const _UserProfileDropdown(radius: 16),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            Text(AppConstants.appName, style: AppTextStyles.h4),
+            const Spacer(),
+            const NotificationBell(),
+            const _SettingsAction(),
+            const _UserProfileDropdown(radius: 16),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// Admin Settings entry point for the mobile/tablet top bar — replaces the
+/// bottom-nav / rail Settings tab. Only rendered for users who can manage
+/// users or roles (same gate as the web sidebar's Admin Settings entry).
+class _SettingsAction extends StatelessWidget {
+  const _SettingsAction();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasAdminAccess(context)) return const SizedBox.shrink();
+    final active =
+        GoRouterState.of(context).matchedLocation == RoutePaths.settings;
+    return IconButton(
+      tooltip: 'Admin Settings',
+      icon: Icon(active ? Icons.settings : Icons.settings_outlined),
+      color: active ? AppColors.primary : AppColors.textSecondary,
+      onPressed: () => _onNavTap(context, RoutePaths.settings),
     );
   }
 }

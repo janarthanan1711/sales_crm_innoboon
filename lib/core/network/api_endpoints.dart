@@ -86,6 +86,8 @@ class ApiEndpoints {
   static const String search = '/search';
 
   // ─── Dashboard ─────────────────────────────────────────
+  // Single combined endpoint powering the whole dashboard page in one call.
+  static const String dashboard = '/dashboard';
   static const String dashboardPerformance = '/dashboard/performance';
   static const String dashboardStats = '/dashboard/stats';
 
@@ -94,6 +96,9 @@ class ApiEndpoints {
   static const String staffAugOpportunities = '/staff-aug-opportunities';
   static String staffAugFeedback(String id) =>
       '/staff-aug-opportunities/$id/feedback';
+
+  // ─── Audit Log ─────────────────────────────────────────
+  static const String auditLog = '/audit-log';
 
   // ─── Documents ─────────────────────────────────────────
   static const String documents = '/documents';

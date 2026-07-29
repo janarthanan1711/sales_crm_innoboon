@@ -38,6 +38,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _valueController;
   late final TextEditingController _closeDateController;
+  late final TextEditingController _coldReasonController;
 
   int? _stageId;
   DateTime? _closeDate;
@@ -53,6 +54,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   List<DealStageDef> _stages = [];
   bool get isEdit => widget.deal != null;
 
+  /// True when the currently-selected stage is the terminal "went cold" stage.
+  /// Gates the extra "Reason" field and whether `cold_reason` is sent.
+  bool get _selectedStageIsCold =>
+      _stages.any((s) => s.id == _stageId && s.isCold);
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +71,9 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
       text: _closeDate != null
           ? '${_closeDate!.month.toString().padLeft(2, '0')}/${_closeDate!.day.toString().padLeft(2, '0')}/${_closeDate!.year}'
           : '',
+    );
+    _coldReasonController = TextEditingController(
+      text: widget.deal?.coldReason ?? '',
     );
     // The API returns tier as '' when unset — normalise to null (and drop any
     // value not in our option list) so the Tier dropdown never asserts.
@@ -122,6 +131,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     _nameController.dispose();
     _valueController.dispose();
     _closeDateController.dispose();
+    _coldReasonController.dispose();
     super.dispose();
   }
 
@@ -144,6 +154,20 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
       return;
     }
 
+    // A cold stage requires a reason; only send cold_reason for cold stages.
+    final coldReason = _selectedStageIsCold
+        ? _coldReasonController.text.trim()
+        : null;
+    if (_selectedStageIsCold && (coldReason == null || coldReason.isEmpty)) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please provide a reason for the cold deal.'),
+        ),
+      );
+      return;
+    }
+
     final result = isEdit
         ? await sl<UpdateDealUseCase>()(
             UpdateDealParams(
@@ -153,6 +177,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId,
               ownerId: _selectedOwnerId,
+              coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
             ),
@@ -165,6 +190,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               expectedCloseDate: _closeDate,
               stageId: _stageId!,
               ownerId: _selectedOwnerId,
+              coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
             ),
@@ -221,19 +247,22 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            RichText(
-              text: TextSpan(
-                text: label,
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: const Color(0xFF334155),
+            Flexible(
+              child: RichText(
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  text: label,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: const Color(0xFF334155),
+                  ),
+                  children: [
+                    if (required)
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                  ],
                 ),
-                children: [
-                  if (required)
-                    const TextSpan(
-                      text: ' *',
-                      style: TextStyle(color: AppColors.error),
-                    ),
-                ],
               ),
             ),
             if (rightAction != null) rightAction,
@@ -242,6 +271,29 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
         const SizedBox(height: 6),
         field,
       ],
+    );
+  }
+
+  /// Two fields side by side on wide dialogs, stacked on narrow (phone)
+  /// widths so the dropdowns/inputs never overflow horizontally.
+  Widget _twoCol(Widget left, Widget right) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 480) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [left, const SizedBox(height: 16), right],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 16),
+            Expanded(child: right),
+          ],
+        );
+      },
     );
   }
 
@@ -299,156 +351,166 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildField(
-                                'Associated Account',
-                                true,
-                                DropdownButtonFormField<Account>(
-                                  // Resolve to the actual list instance by id so
-                                  // the value always equals exactly one item
-                                  // (a preset account is a different instance).
-                                  value:
-                                      _accounts
-                                          .where(
-                                            (a) => a.id == _selectedAccount?.id,
-                                          )
-                                          .isEmpty
-                                      ? null
-                                      : _accounts.firstWhere(
-                                          (a) => a.id == _selectedAccount!.id,
-                                        ),
-                                  decoration: _inputDecoration(
-                                    'Select account',
-                                  ),
-                                  items: _accounts
-                                      .map(
-                                        (a) => DropdownMenuItem(
-                                          value: a,
-                                          child: Text(
-                                            a.companyName,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
+                        _twoCol(
+                          _buildField(
+                            'Associated Account',
+                            true,
+                            DropdownButtonFormField<Account>(
+                              isExpanded: true,
+                              // Resolve to the actual list instance by id so
+                              // the value always equals exactly one item
+                              // (a preset account is a different instance).
+                              value:
+                                  _accounts
+                                      .where(
+                                        (a) => a.id == _selectedAccount?.id,
                                       )
-                                      .toList(),
-                                  onChanged: widget.presetAccount != null
-                                      ? null
-                                      : (v) {
-                                          setState(() {
-                                            _selectedAccount = v;
-                                            _contactId = null;
-                                            _contacts = [];
-                                          });
-                                          _loadContacts();
-                                        },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildField(
-                                'Deal Value',
-                                true,
-                                TextFormField(
-                                  controller: _valueController,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  validator: (v) => v == null || v.isEmpty
-                                      ? 'Required'
-                                      : null,
-                                  decoration: _inputDecoration(
-                                    '0.00',
-                                    prefix: const Padding(
-                                      padding: EdgeInsets.only(
-                                        left: 12,
-                                        right: 8,
-                                        top: 12,
-                                        bottom: 12,
-                                      ),
+                                      .isEmpty
+                                  ? null
+                                  : _accounts.firstWhere(
+                                      (a) => a.id == _selectedAccount!.id,
+                                    ),
+                              decoration: _inputDecoration('Select account'),
+                              items: _accounts
+                                  .map(
+                                    (a) => DropdownMenuItem(
+                                      value: a,
                                       child: Text(
-                                        '₹',
-                                        style: TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 16,
-                                        ),
+                                        a.companyName,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: widget.presetAccount != null
+                                  ? null
+                                  : (v) {
+                                      setState(() {
+                                        _selectedAccount = v;
+                                        _contactId = null;
+                                        _contacts = [];
+                                      });
+                                      _loadContacts();
+                                    },
+                            ),
+                          ),
+                          _buildField(
+                            'Deal Value',
+                            true,
+                            TextFormField(
+                              controller: _valueController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Required' : null,
+                              decoration: _inputDecoration(
+                                '0.00',
+                                prefix: const Padding(
+                                  padding: EdgeInsets.only(
+                                    left: 12,
+                                    right: 8,
+                                    top: 12,
+                                    bottom: 12,
+                                  ),
+                                  child: Text(
+                                    '₹',
+                                    style: TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildField(
-                                'Stage',
-                                false,
-                                DropdownButtonFormField<int>(
-                                  value: _stages.any((s) => s.id == _stageId)
-                                      ? _stageId
-                                      : null,
-                                  decoration: _inputDecoration('Select stage'),
-                                  items: _stages
-                                      .map(
-                                        (s) => DropdownMenuItem(
-                                          value: s.id,
-                                          child: Text(s.name),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      setState(() => _stageId = v),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildField(
-                                'Expected Close Date',
-                                false,
-                                TextFormField(
-                                  controller: _closeDateController,
-                                  readOnly: true,
-                                  decoration: _inputDecoration(
-                                    'mm/dd/yyyy',
-                                    suffix: const Icon(
-                                      Icons.calendar_today,
-                                      size: 18,
-                                      color: AppColors.textMuted,
+                        _twoCol(
+                          _buildField(
+                            'Stage',
+                            false,
+                            DropdownButtonFormField<int>(
+                              isExpanded: true,
+                              value: _stages.any((s) => s.id == _stageId)
+                                  ? _stageId
+                                  : null,
+                              decoration: _inputDecoration('Select stage'),
+                              items: _stages
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s.id,
+                                      child: Text(
+                                        s.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
-                                  onTap: () async {
-                                    final date = await showDatePicker(
-                                      context: context,
-                                      initialDate: DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
-                                    );
-                                    if (date != null) {
-                                      setState(() {
-                                        _closeDate = date;
-                                        _closeDateController.text =
-                                            '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
-                                      });
-                                    }
-                                  },
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setState(() => _stageId = v),
+                            ),
+                          ),
+                          _buildField(
+                            'Expected Close Date',
+                            false,
+                            TextFormField(
+                              controller: _closeDateController,
+                              readOnly: true,
+                              decoration: _inputDecoration(
+                                'mm/dd/yyyy',
+                                suffix: const Icon(
+                                  Icons.calendar_today,
+                                  size: 18,
+                                  color: AppColors.textMuted,
                                 ),
                               ),
+                              onTap: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (date != null) {
+                                  setState(() {
+                                    _closeDate = date;
+                                    _closeDateController.text =
+                                        '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
+                                  });
+                                }
+                              },
                             ),
-                          ],
+                          ),
                         ),
+                        // Extra required field shown only for the terminal
+                        // "cold" stage — captures why the deal went cold and is
+                        // sent to the backend as cold_reason.
+                        if (_selectedStageIsCold) ...[
+                          const SizedBox(height: 16),
+                          _buildField(
+                            'Reason',
+                            true,
+                            TextFormField(
+                              controller: _coldReasonController,
+                              maxLines: 3,
+                              validator: (v) =>
+                                  _selectedStageIsCold &&
+                                      (v == null || v.trim().isEmpty)
+                                  ? 'Please add a reason for the cold deal'
+                                  : null,
+                              decoration: _inputDecoration(
+                                'Why did this deal go cold?',
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         _buildField(
                           'Owner',
                           false,
                           DropdownButtonFormField<int?>(
+                            isExpanded: true,
                             value: _users.any((u) => u.id == _selectedOwnerId)
                                 ? _selectedOwnerId
                                 : null,
@@ -480,64 +542,56 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildField(
-                                'Tier',
-                                false,
-                                DropdownButtonFormField<String>(
-                                  value: _kDealTiers.contains(_tier)
-                                      ? _tier
-                                      : null,
-                                  decoration: _inputDecoration('Select tier'),
-                                  items: _kDealTiers
-                                      .map(
-                                        (t) => DropdownMenuItem(
-                                          value: t,
-                                          child: Text(
-                                            '${t[0].toUpperCase()}${t.substring(1)}',
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) => setState(() => _tier = v),
-                                ),
-                              ),
+                        _twoCol(
+                          _buildField(
+                            'Tier',
+                            false,
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              value: _kDealTiers.contains(_tier) ? _tier : null,
+                              decoration: _inputDecoration('Select tier'),
+                              items: _kDealTiers
+                                  .map(
+                                    (t) => DropdownMenuItem(
+                                      value: t,
+                                      child: Text(
+                                        '${t[0].toUpperCase()}${t.substring(1)}',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setState(() => _tier = v),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildField(
-                                'Contact',
-                                false,
-                                DropdownButtonFormField<int?>(
-                                  value:
-                                      _contacts.any((c) => c.id == _contactId)
-                                      ? _contactId
-                                      : null,
-                                  decoration: _inputDecoration(
-                                    _selectedAccount == null
-                                        ? 'Select an account first'
-                                        : 'Select contact',
-                                  ),
-                                  items: _contacts
-                                      .map(
-                                        (c) => DropdownMenuItem<int?>(
-                                          value: c.id,
-                                          child: Text(
-                                            c.fullName,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: _contacts.isEmpty
-                                      ? null
-                                      : (v) => setState(() => _contactId = v),
-                                ),
+                          ),
+                          _buildField(
+                            'Contact',
+                            false,
+                            DropdownButtonFormField<int?>(
+                              isExpanded: true,
+                              value: _contacts.any((c) => c.id == _contactId)
+                                  ? _contactId
+                                  : null,
+                              decoration: _inputDecoration(
+                                _selectedAccount == null
+                                    ? 'Select an account first'
+                                    : 'Select contact',
                               ),
+                              items: _contacts
+                                  .map(
+                                    (c) => DropdownMenuItem<int?>(
+                                      value: c.id,
+                                      child: Text(
+                                        c.fullName,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: _contacts.isEmpty
+                                  ? null
+                                  : (v) => setState(() => _contactId = v),
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),

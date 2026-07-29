@@ -12,6 +12,8 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
+import '../../../audit_log/domain/entities/audit_log_entry.dart';
+import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({super.key});
@@ -77,7 +79,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
             tabs: const [
               Tab(text: 'Users'),
               Tab(text: 'Roles'),
-              Tab(text: 'Configuration'),
+              // Tab(text: 'Configuration'),
               Tab(text: 'Audit Log'),
             ],
           ),
@@ -88,11 +90,11 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
               children: const [
                 _UsersTab(),
                 _RolesTab(),
-                _ComingSoonTab(
-                  message:
-                      'Global configuration options aren\'t available yet.',
-                ),
-                _ComingSoonTab(message: 'Audit logging isn\'t available yet.'),
+                // _ComingSoonTab(
+                //   message:
+                //       'Global configuration options aren\'t available yet.',
+                // ),
+                _AuditLogTab(),
               ],
             ),
           ),
@@ -837,6 +839,433 @@ class _RolesTabState extends State<_RolesTab> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────
+// Audit Log tab
+// ─────────────────────────────────────────────────────────
+
+class _AuditLogTab extends StatefulWidget {
+  const _AuditLogTab();
+
+  @override
+  State<_AuditLogTab> createState() => _AuditLogTabState();
+}
+
+class _AuditLogTabState extends State<_AuditLogTab> {
+  List<AuditLogEntry> _entries = [];
+  List<OwnerUser> _users = [];
+  bool _loading = true;
+  String? _error;
+
+  String? _tableFilter;
+  String? _actionFilter;
+  int? _actorFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+
+  static const int _limit = 20;
+  int _offset = 0;
+  int _total = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Actors dropdown is populated once; the log list reloads on filter/page.
+    final usersResult = await sl<GetUsersUseCase>()();
+    if (!mounted) return;
+    usersResult.fold((_) {}, (u) => _users = u);
+    await _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final result = await sl<GetAuditLogUseCase>()(
+      GetAuditLogParams(
+        tableName: _tableFilter,
+        action: _actionFilter,
+        actorId: _actorFilter,
+        dateFrom: _dateFrom != null ? DateFormatter.apiDate(_dateFrom!) : null,
+        dateTo: _dateTo != null ? DateFormatter.apiDate(_dateTo!) : null,
+        limit: _limit,
+        offset: _offset,
+      ),
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => setState(() {
+        _error = f.message;
+        _loading = false;
+      }),
+      (page) => setState(() {
+        _entries = page.items;
+        _total = page.total;
+        _error = null;
+        _loading = false;
+      }),
+    );
+  }
+
+  /// Reset to the first page whenever a filter changes, then reload.
+  void _applyFilter(VoidCallback change) {
+    setState(() {
+      change();
+      _offset = 0;
+    });
+    _load();
+  }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: _dateFrom != null && _dateTo != null
+          ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
+          : null,
+    );
+    if (picked != null) {
+      _applyFilter(() {
+        _dateFrom = picked.start;
+        _dateTo = picked.end;
+      });
+    }
+  }
+
+  bool get _hasDateRange => _dateFrom != null && _dateTo != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _Dropdown<String?>(
+                label: 'All Tables',
+                value: _tableFilter,
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All Tables'),
+                  ),
+                  ...kAuditTableNames.map(
+                    (t) =>
+                        DropdownMenuItem(value: t, child: Text(_titleCase(t))),
+                  ),
+                ],
+                onChanged: (v) => _applyFilter(() => _tableFilter = v),
+              ),
+              _Dropdown<String?>(
+                label: 'All Actions',
+                value: _actionFilter,
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All Actions'),
+                  ),
+                  ...kAuditActions.map(
+                    (a) =>
+                        DropdownMenuItem(value: a, child: Text(_titleCase(a))),
+                  ),
+                ],
+                onChanged: (v) => _applyFilter(() => _actionFilter = v),
+              ),
+              _Dropdown<int?>(
+                label: 'All Actors',
+                value: _actorFilter,
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All Actors'),
+                  ),
+                  ..._users.map(
+                    (u) => DropdownMenuItem(
+                      value: u.id,
+                      child: Text(u.displayName),
+                    ),
+                  ),
+                ],
+                onChanged: (v) => _applyFilter(() => _actorFilter = v),
+              ),
+              OutlinedButton.icon(
+                onPressed: _pickDateRange,
+                icon: const Icon(Icons.date_range, size: 18),
+                label: Text(
+                  _hasDateRange
+                      ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                      : 'Date Range',
+                ),
+              ),
+              if (_hasDateRange ||
+                  _tableFilter != null ||
+                  _actionFilter != null ||
+                  _actorFilter != null)
+                TextButton(
+                  onPressed: () => _applyFilter(() {
+                    _tableFilter = null;
+                    _actionFilter = null;
+                    _actorFilter = null;
+                    _dateFrom = null;
+                    _dateTo = null;
+                  }),
+                  child: const Text('Clear Filters'),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Expanded(
+            child: _loading
+                ? const AppLoadingIndicator(message: 'Loading audit log...')
+                : _error != null
+                ? ErrorState(message: _error!, onRetry: _load)
+                : _entries.isEmpty
+                ? const EmptyState(
+                    icon: Icons.history,
+                    title: 'No audit entries',
+                    subtitle: 'Try adjusting your filters or date range.',
+                  )
+                : _AuditTable(entries: _entries),
+          ),
+          if (!_loading && _error == null && _total > 0)
+            _AuditPagination(
+              offset: _offset,
+              limit: _limit,
+              total: _total,
+              count: _entries.length,
+              onPrev: _offset > 0
+                  ? () {
+                      setState(() => _offset -= _limit);
+                      _load();
+                    }
+                  : null,
+              onNext: _offset + _entries.length < _total
+                  ? () {
+                      setState(() => _offset += _limit);
+                      _load();
+                    }
+                  : null,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuditTable extends StatelessWidget {
+  const _AuditTable({required this.entries});
+  final List<AuditLogEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final table = Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
+            child: Row(
+              children: [
+                _header('TIMESTAMP', flex: 3),
+                _header('ACTOR', flex: 3),
+                _header('ACTION', flex: 2),
+                _header('TABLE', flex: 2),
+                _header('DESCRIPTION', flex: 6),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.separated(
+              itemCount: entries.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) => _AuditRow(entry: entries[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // The 5-column table needs room; on phones let it scroll horizontally.
+    final isMobile = MediaQuery.sizeOf(context).width < 800;
+    if (isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(width: 900, child: table),
+      );
+    }
+    return table;
+  }
+
+  Widget _header(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
+}
+
+class _AuditRow extends StatelessWidget {
+  const _AuditRow({required this.entry});
+  final AuditLogEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              DateFormatter.dateTime(entry.createdAt),
+              style: AppTextStyles.tableCell,
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                InitialsAvatar(name: entry.actorName, size: 28),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    entry.actorName,
+                    style: AppTextStyles.tableCell,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(flex: 2, child: _ActionBadge(action: entry.action)),
+          Expanded(
+            flex: 2,
+            child: Text(
+              _titleCase(entry.tableName),
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 6,
+            child: Text(entry.description, style: AppTextStyles.bodyMedium),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionBadge extends StatelessWidget {
+  const _ActionBadge({required this.action});
+  final String action;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    switch (action) {
+      case 'created':
+        color = AppColors.success;
+        break;
+      case 'updated':
+        color = AppColors.primary;
+        break;
+      case 'deleted':
+      case 'deactivated':
+        color = AppColors.error;
+        break;
+      case 'login':
+      case 'logout':
+        color = AppColors.warning;
+        break;
+      default:
+        color = AppColors.textMuted;
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          action.toUpperCase(),
+          style: AppTextStyles.badge.copyWith(color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuditPagination extends StatelessWidget {
+  const _AuditPagination({
+    required this.offset,
+    required this.limit,
+    required this.total,
+    required this.count,
+    required this.onPrev,
+    required this.onNext,
+  });
+  final int offset;
+  final int limit;
+  final int total;
+  final int count;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = total == 0 ? 0 : offset + 1;
+    final end = offset + count;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Row(
+        children: [
+          Text(
+            'Showing $start–$end of $total',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: 20),
+            onPressed: onPrev,
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, size: 20),
+            onPressed: onNext,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _titleCase(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 class _Dropdown<T> extends StatelessWidget {
   const _Dropdown({
