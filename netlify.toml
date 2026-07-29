@@ -1,0 +1,11 @@
+# Netlify build config for the SalesHub Flutter web app.
+# Flutter isn't preinstalled on Netlify's build image, so we clone it,
+# put it on PATH, then build the web release into build/web.
+#
+# `[ -d flutter ] ||` skips the clone when Netlify's build cache already hass
+# the checkout — a bare `git clone` fails with "destination path already
+# exists" on any cached (non-first) build. If the cached copy ever goes
+# stale, swap the guard for `rm -rf flutter &&` to force a fresh clone.
+[build]
+  command = "[ -d flutter ] || git clone https://github.com/flutter/flutter.git -b stable --depth 1 && export PATH=\"$PATH:$PWD/flutter/bin\" && flutter config --enable-web && flutter pub get && flutter build web --release"
+  publish = "build/web"
