@@ -9,14 +9,17 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_activity.dart';
+import '../../domain/entities/deal_contact.dart';
 import '../../domain/entities/deal_enums.dart';
 import '../../domain/entities/deal_stage_history.dart';
+import '../../domain/usecases/export_deals_usecase.dart';
 import '../bloc/deal_detail_bloc.dart';
 import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
 import '../../../../core/utils/link_launcher.dart';
@@ -175,12 +178,19 @@ class _DealDetailView extends StatelessWidget {
                       style: AppTextStyles.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    if (context.can(Perms.dealsManage))
-                      ElevatedButton.icon(
-                        onPressed: () => _openEditDealDialog(context, deal),
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text('Edit Deal'),
-                      ),
+                    Row(
+                      children: [
+                        _exportButton(deal),
+                        if (context.can(Perms.dealsManage)) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          ElevatedButton.icon(
+                            onPressed: () => _openEditDealDialog(context, deal),
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('Edit Deal'),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 )
               : Row(
@@ -250,12 +260,21 @@ class _DealDetailView extends StatelessWidget {
                           style: AppTextStyles.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        if (context.can(Perms.dealsManage))
-                          ElevatedButton.icon(
-                            onPressed: () => _openEditDealDialog(context, deal),
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: const Text('Edit Deal'),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _exportButton(deal),
+                            if (context.can(Perms.dealsManage)) ...[
+                              const SizedBox(width: AppSpacing.sm),
+                              ElevatedButton.icon(
+                                onPressed: () =>
+                                    _openEditDealDialog(context, deal),
+                                icon: const Icon(Icons.edit, size: 16),
+                                label: const Text('Edit Deal'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                   ],
@@ -342,6 +361,16 @@ class _DealDetailView extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+
+  /// Single-deal xlsx export. Read-only, so it's not gated behind
+  /// `deals.manage` — anyone who can open the deal can download it.
+  Widget _exportButton(Deal deal) {
+    return RecordExportButton(
+      fileName: 'deal_${deal.id}.xlsx',
+      successMessage: 'Deal exported.',
+      fetch: () => sl<ExportDealDetailUseCase>()(deal.id),
     );
   }
 
@@ -535,9 +564,10 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
-  /// Contact tab — driven by the wire's `contacts` array (`[{id, name}]`).
-  /// Falls back to the primary stakeholder / legacy `contactName` when the
-  /// deal has no linked contacts, so nothing regresses for older data.
+  /// Contact tab — driven by the wire's `contacts` array
+  /// (`[{id, name, email, phone}]`). Falls back to the primary stakeholder /
+  /// legacy `contactName` when the deal has no linked contacts, so nothing
+  /// regresses for older data.
   Widget _contactTab(Deal deal) {
     if (deal.contacts.isNotEmpty) {
       return SingleChildScrollView(
@@ -550,7 +580,7 @@ class _DealDetailView extends StatelessWidget {
             children: [
               for (int i = 0; i < deal.contacts.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
-                _contactRow(deal.contacts[i].name),
+                _contactRow(deal.contacts[i]),
               ],
             ],
           ),
@@ -606,22 +636,81 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
-  /// One row in the Contact tab. The `/deals` payload carries only id + name,
-  /// so there's no email/title to show here — the contact's own detail page
-  /// holds those.
-  Widget _contactRow(String name) {
-    final display = name.trim().isEmpty ? 'Unnamed contact' : name.trim();
+  /// One row in the Contact tab — name, then tappable email / phone from the
+  /// `/deals` payload. Either contact detail may be absent, in which case its
+  /// line is omitted rather than showing an empty link.
+  Widget _contactRow(DealContact contact) {
+    final display = contact.name.isEmpty ? 'Unnamed contact' : contact.name;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InitialsAvatar(name: display, size: 40),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Text(
-              display,
-              style: AppTextStyles.labelMedium,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  display,
+                  style: AppTextStyles.labelMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (contact.hasEmail) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.mail_outline,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: LinkText(
+                          text: contact.email!,
+                          email: contact.email,
+                          style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (contact.hasPhone) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: LinkText(
+                          text: contact.phone!,
+                          phone: contact.phone,
+                          style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Neither field recorded — say so instead of rendering a bare
+                // name with unexplained blank space.
+                if (!contact.hasEmail && !contact.hasPhone) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'No email or phone on file',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

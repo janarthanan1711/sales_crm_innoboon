@@ -29,3 +29,12 @@ class ExportLeadsUseCase {
     );
   }
 }
+
+/// Single-lead export — `GET /leads/{id}?to_export=true`, an xlsx with the
+/// lead's fields plus a sheet of its logged activities.
+class ExportLeadDetailUseCase {
+  final LeadRepository repository;
+  ExportLeadDetailUseCase(this.repository);
+
+  Future<Either<Failure, Uint8List>> call(int id) => repository.exportLead(id);
+}

@@ -28,4 +28,8 @@ abstract class AuthRepository {
     required Uint8List bytes,
     required String filename,
   });
+
+  /// `DELETE /users/me/avatar` — removes the uploaded avatar and returns the
+  /// updated user with `avatarUrl` cleared. Succeeds even if none was set.
+  Future<Either<Failure, User>> deleteAvatar();
 }

@@ -214,4 +214,13 @@ class LeadRepositoryImpl implements LeadRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportLead(int id) async {
+    try {
+      return Right(await remoteDataSource.exportLead(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

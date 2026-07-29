@@ -155,4 +155,13 @@ class ContactRepositoryImpl implements ContactRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportContact(int id) async {
+    try {
+      return Right(await remoteDataSource.exportContact(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

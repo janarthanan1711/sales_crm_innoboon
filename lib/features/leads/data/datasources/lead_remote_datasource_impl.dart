@@ -243,6 +243,20 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
     }
   }
 
+  @override
+  Future<Uint8List> exportLead(int id) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.leadById('$id'),
+        queryParameters: {'to_export': true},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   String _formatDate(DateTime date) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${date.year}-${two(date.month)}-${two(date.day)}';

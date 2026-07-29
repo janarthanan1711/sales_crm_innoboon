@@ -239,7 +239,20 @@ Example Response: `204 No Content`. `new_password` requires min length 8 plus at
 
 Example Response: `UserRead` with `avatar_url` set (e.g. `/media/avatars/12.png`, served via the `/media` static mount). Errors: `400` unsupported file type.
 
-### 2.6. List Users
+### 2.6. Delete Avatar
+**To** remove the logged-in user's uploaded avatar (deletes the file on disk and clears `avatar_url`). No-op (still `200`) if no avatar is set.
+
+| | |
+|---|---|
+| Endpoint | `/api/v1/users/me/avatar` |
+| Method | `DELETE` |
+| Header Parameter | Bearer access token required |
+| Permission Required | None (any authenticated user) |
+| Params | N/A |
+
+Example Response: `UserRead` with `avatar_url: null`.
+
+### 2.7. List Users
 **To** list users, e.g. for owner-assignment dropdowns.
 
 | | |
@@ -252,7 +265,7 @@ Example Response: `UserRead` with `avatar_url` set (e.g. `/media/avatars/12.png`
 
 Example Response: `list[UserRead]` (no pagination).
 
-### 2.7. Delete User
+### 2.8. Delete User
 **To** soft-delete (deactivate) a user.
 
 | | |
@@ -939,9 +952,11 @@ Example Response (`201`)
   "id": 33, "deal_name": "Acme Corp - Enterprise Plan", "account_id": 55,
   "value": 50000, "currency": "USD", "expected_close_date": "2026-09-30",
   "stage_id": 1, "tier": "gold", "cold_reason": null, "owner_id": 12,
-  "contact_ids": [8]
+  "contacts": [ { "id": 8, "name": "Alex Kim", "email": "alex.kim@acme.com", "phone": "+1-555-0111" } ]
 }
 ```
+`contact_ids` (request field, still `list[int]`) is write-only — the response returns `contacts`, each with the contact's `id`, display `name`, `email`, and `phone`, so the UI doesn't need a separate contact lookup to render them.
+
 Errors: `404` account/stage/contact not found · `400` `cold_reason` required.
 
 ### 6.2. Generic Patch
@@ -1002,7 +1017,7 @@ Example Response (`view=board`) — groups the same filtered results by stage wi
 
 Response: `DealRead` (see 6.1). Errors: `404` / `403`.
 
-**`to_export=true`:** returns an `xlsx` file stream (`Content-Disposition: attachment; filename="deal_{deal_id}.xlsx"`) instead of the JSON body above. Two sheets: "Deal" (Field/Value pairs — all `DealRead` fields plus `contact_ids`) and "Stage History" (From Stage ID, To Stage ID, Changed By, Note, Created At — one row per stage transition).
+**`to_export=true`:** returns an `xlsx` file stream (`Content-Disposition: attachment; filename="deal_{deal_id}.xlsx"`) instead of the JSON body above. Two sheets: "Deal" (Field/Value pairs — all `DealRead` scalar fields plus a comma-joined "Contacts" name list) and "Stage History" (From Stage ID, To Stage ID, Changed By, Note, Created At — one row per stage transition).
 
 ### 6.5. Update Deal
 `note` is write-only — it populates the resulting `DealStageHistory` row on a stage change, it is not a `Deal` column.

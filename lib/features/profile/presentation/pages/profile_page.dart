@@ -94,7 +94,16 @@ class _ProfilePageState extends State<ProfilePage> {
     final left = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _AvatarCard(user: user, onUploaded: (u) => setState(() => _user = u)),
+        _AvatarCard(
+          user: user,
+          onChanged: (u) {
+            setState(() => _user = u);
+            // The shell's header avatar renders from the cached user, so nudge
+            // AuthBloc to re-read it — otherwise the old photo lingers up
+            // there after an upload or removal.
+            context.read<AuthBloc>().add(const AuthCheckRequested());
+          },
+        ),
         const SizedBox(height: AppSpacing.lg),
         SectionCard(
           title: 'Account Details',
@@ -329,9 +338,11 @@ class _NotificationPreferencesDialogState
 }
 
 class _AvatarCard extends StatefulWidget {
-  const _AvatarCard({required this.user, required this.onUploaded});
+  const _AvatarCard({required this.user, required this.onChanged});
   final User user;
-  final ValueChanged<User> onUploaded;
+
+  /// Fired after a successful upload *or* removal, with the updated user.
+  final ValueChanged<User> onChanged;
 
   @override
   State<_AvatarCard> createState() => _AvatarCardState();
@@ -339,6 +350,11 @@ class _AvatarCard extends StatefulWidget {
 
 class _AvatarCardState extends State<_AvatarCard> {
   bool _uploading = false;
+  bool _removing = false;
+
+  /// True while either avatar call is in flight — both buttons disable so a
+  /// removal can't race an upload.
+  bool get _busy => _uploading || _removing;
 
   Future<void> _pickAndUpload() async {
     final result = await FilePicker.platform.pickFiles(
@@ -362,7 +378,54 @@ class _AvatarCardState extends State<_AvatarCard> {
           backgroundColor: AppColors.error,
         ),
       ),
-      widget.onUploaded,
+      widget.onChanged,
+    );
+  }
+
+  /// Deletes the avatar via `DELETE /users/me/avatar`. Confirms first, since
+  /// the backend also removes the file from disk — this isn't undoable.
+  Future<void> _confirmAndRemove() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove profile photo?'),
+        content: const Text(
+          'Your photo will be deleted and replaced with your initials. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _removing = true);
+    final result = await sl<DeleteAvatarUseCase>()();
+    if (!mounted) return;
+    setState(() => _removing = false);
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove photo: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (user) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Profile photo removed.')),
+        );
+        widget.onChanged(user);
+      },
     );
   }
 
@@ -399,7 +462,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                   bottom: 0,
                   right: 0,
                   child: InkWell(
-                    onTap: _uploading ? null : _pickAndUpload,
+                    onTap: _busy ? null : _pickAndUpload,
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: AppColors.primary,
@@ -412,8 +475,10 @@ class _AvatarCardState extends State<_AvatarCard> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(
-                              Icons.camera_alt,
+                          : Icon(
+                              avatarUrl != null
+                                  ? Icons.edit
+                                  : Icons.camera_alt,
                               size: 16,
                               color: Colors.white,
                             ),
@@ -436,6 +501,26 @@ class _AvatarCardState extends State<_AvatarCard> {
                 style: AppTextStyles.caption.copyWith(color: AppColors.primary),
               ),
             ),
+            // Only offer removal when there's actually a photo to remove —
+            // the endpoint is a no-op otherwise, so showing it would be a
+            // button that appears to do nothing.
+            if (avatarUrl != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TextButton.icon(
+                onPressed: _busy ? null : _confirmAndRemove,
+                icon: _removing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline, size: 16),
+                label: Text(_removing ? 'Removing...' : 'Remove Photo'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                ),
+              ),
+            ],
           ],
         ),
       ),

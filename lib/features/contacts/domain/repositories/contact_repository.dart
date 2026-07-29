@@ -66,6 +66,10 @@ abstract class ContactRepository {
     bool? isPrimary,
     String? search,
   });
+
+  /// Exports one contact as an `.xlsx` byte stream
+  /// (`GET /contacts/{id}?to_export=true`) — sheets "Contact" and "Deals".
+  Future<Either<Failure, Uint8List>> exportContact(int id);
 }
 
 abstract class ContactRemoteDataSource {
@@ -106,4 +110,5 @@ abstract class ContactRemoteDataSource {
     bool? isPrimary,
     String? search,
   });
+  Future<Uint8List> exportContact(int id);
 }

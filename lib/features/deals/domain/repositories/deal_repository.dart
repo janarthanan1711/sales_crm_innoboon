@@ -75,6 +75,10 @@ abstract class DealRepository {
     String? tier,
     String? search,
   });
+
+  /// Exports one deal as an `.xlsx` byte stream
+  /// (`GET /deals/{id}?to_export=true`) — sheets "Deal" and "Stage History".
+  Future<Either<Failure, Uint8List>> exportDeal(String id);
 }
 
 abstract class DealRemoteDataSource {
@@ -135,4 +139,5 @@ abstract class DealRemoteDataSource {
   Future<void> deleteActivity(String dealId, String activityId);
 
   Future<Uint8List> exportDeals({int? stageId, String? tier, String? search});
+  Future<Uint8List> exportDeal(String id);
 }

@@ -71,6 +71,10 @@ abstract class LeadRepository {
     String? status,
     String? search,
   });
+
+  /// Exports one lead as an `.xlsx` byte stream
+  /// (`GET /leads/{id}?to_export=true`) — sheets "Lead" and "Activities".
+  Future<Either<Failure, Uint8List>> exportLead(int id);
 }
 
 /// Datasource interface for the data layer
@@ -113,4 +117,5 @@ abstract class LeadRemoteDataSource {
     String? status,
     String? search,
   });
+  Future<Uint8List> exportLead(int id);
 }

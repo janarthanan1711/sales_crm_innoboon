@@ -8,8 +8,10 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/link_launcher.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../app/di/injector.dart';
 import '../../domain/entities/contact.dart';
+import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contact_detail_bloc.dart';
 
 class ContactDetailPage extends StatelessWidget {
@@ -148,6 +150,13 @@ class _HeaderCard extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+          RecordExportButton(
+            iconOnly: true,
+            tooltip: 'Export this contact to Excel',
+            fileName: 'contact_${contact.id}.xlsx',
+            successMessage: 'Contact exported.',
+            fetch: () => sl<ExportContactDetailUseCase>()(contact.id),
           ),
         ],
       ),

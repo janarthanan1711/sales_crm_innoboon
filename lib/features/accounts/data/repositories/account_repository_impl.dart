@@ -214,4 +214,13 @@ class AccountRepositoryImpl implements AccountRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportAccount(String id) async {
+    try {
+      return Right(await remoteDataSource.exportAccount(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

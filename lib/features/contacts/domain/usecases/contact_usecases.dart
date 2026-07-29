@@ -193,3 +193,13 @@ class ExportContactsUseCase {
     );
   }
 }
+
+/// Single-contact export — `GET /contacts/{id}?to_export=true`, an xlsx with
+/// the contact's fields plus a sheet of the deals they're on.
+class ExportContactDetailUseCase {
+  final ContactRepository repository;
+  ExportContactDetailUseCase(this.repository);
+
+  Future<Either<Failure, Uint8List>> call(int id) =>
+      repository.exportContact(id);
+}

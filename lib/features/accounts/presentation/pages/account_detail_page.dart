@@ -9,6 +9,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
@@ -19,6 +20,7 @@ import '../../domain/entities/account_activity.dart';
 import '../../domain/usecases/create_account_usecase.dart';
 import '../../domain/usecases/update_account_usecase.dart';
 import '../../domain/usecases/account_activity_usecases.dart';
+import '../../domain/usecases/export_accounts_usecase.dart';
 import '../bloc/account_detail_bloc.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
@@ -177,6 +179,12 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                   // tabs (index 0 / 1).
                   final showAddContact = _tabController.index <= 1;
                   final actions = [
+                    RecordExportButton(
+                      fileName: 'account_${account.id}.xlsx',
+                      successMessage: 'Account exported.',
+                      fetch: () =>
+                          sl<ExportAccountDetailUseCase>()(account.id),
+                    ),
                     OutlinedButton.icon(
                       onPressed: () => _showEditAccountDialog(context, account),
                       icon: const Icon(Icons.edit, size: 16),

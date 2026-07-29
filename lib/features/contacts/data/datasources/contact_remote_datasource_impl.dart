@@ -185,6 +185,20 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     }
   }
 
+  @override
+  Future<Uint8List> exportContact(int id) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.contactById('$id'),
+        queryParameters: {'to_export': true},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   Exception _normalize(DioException e) {
     final normalized = e.error;
     if (normalized is Exception) return normalized;

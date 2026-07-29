@@ -189,6 +189,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
   sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAvatarUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -241,6 +242,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ImportLeadsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadImportTemplateUseCase(sl()));
   sl.registerLazySingleton(() => ExportLeadsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportLeadDetailUseCase(sl()));
   sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
   sl.registerFactory(
     () => LeadDetailBloc(
@@ -283,6 +285,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -303,6 +306,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ImportContactsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadContactTemplateUseCase(sl()));
   sl.registerLazySingleton(() => ExportContactsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportContactDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetContactByIdUseCase(sl()));
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
@@ -343,6 +347,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportDealDetailUseCase(sl()));
   sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));

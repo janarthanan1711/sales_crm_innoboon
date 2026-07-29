@@ -141,4 +141,17 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, User>> deleteAvatar() async {
+    try {
+      final userModel = await remoteDataSource.deleteAvatar();
+      // Re-cache so the shell's header avatar clears too — it reads the
+      // locally-stored user, not this response.
+      await localDataSource.saveUser(userModel);
+      return Right(userModel.toEntity());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

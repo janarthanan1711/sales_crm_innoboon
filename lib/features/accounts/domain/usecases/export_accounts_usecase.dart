@@ -29,3 +29,13 @@ class ExportAccountsUseCase {
     );
   }
 }
+
+/// Single-account export — `GET /accounts/{id}?to_export=true`, an xlsx with
+/// the account's fields plus sheets for its contacts and deals.
+class ExportAccountDetailUseCase {
+  final AccountRepository repository;
+  ExportAccountDetailUseCase(this.repository);
+
+  Future<Either<Failure, Uint8List>> call(String id) =>
+      repository.exportAccount(id);
+}

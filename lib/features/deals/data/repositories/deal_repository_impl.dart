@@ -221,4 +221,13 @@ class DealRepositoryImpl implements DealRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportDeal(String id) async {
+    try {
+      return Right(await remoteDataSource.exportDeal(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }
