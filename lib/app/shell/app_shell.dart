@@ -74,12 +74,12 @@ const List<NavItem> _mainNavItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  NavItem(
-    label: 'Analytics',
-    icon: Icons.analytics_outlined,
-    activeIcon: Icons.analytics,
-    path: RoutePaths.analytics,
-  ),
+  // NavItem(
+  //   label: 'Analytics',
+  //   icon: Icons.analytics_outlined,
+  //   activeIcon: Icons.analytics,
+  //   path: RoutePaths.analytics,
+  // ),
   NavItem(
     label: 'Settings',
     icon: Icons.settings_outlined,
@@ -105,18 +105,18 @@ const List<NavItem> _sidebarMainItems = [
     requiredPermissions: ['leads.access', 'leads.view_all'],
   ),
   NavItem(
-    label: 'Deals',
-    icon: Icons.handshake_outlined,
-    activeIcon: Icons.handshake,
-    path: RoutePaths.deals,
-    requiredPermissions: ['deals.access', 'deals.view_all'],
-  ),
-  NavItem(
     label: 'Accounts',
     icon: Icons.business_outlined,
     activeIcon: Icons.business,
     path: RoutePaths.accounts,
     requiredPermissions: ['accounts.access', 'accounts.view_all'],
+  ),
+  NavItem(
+    label: 'Deals',
+    icon: Icons.handshake_outlined,
+    activeIcon: Icons.handshake,
+    path: RoutePaths.deals,
+    requiredPermissions: ['deals.access', 'deals.view_all'],
   ),
   NavItem(
     label: 'Contacts',
@@ -125,12 +125,12 @@ const List<NavItem> _sidebarMainItems = [
     path: RoutePaths.contacts,
     requiredPermissions: ['contacts.access'],
   ),
-  NavItem(
-    label: 'Staff Augmentation',
-    icon: Icons.groups_outlined,
-    activeIcon: Icons.groups,
-    path: RoutePaths.staffAugmentation,
-  ),
+  // NavItem(
+  //   label: 'Staff Augmentation',
+  //   icon: Icons.groups_outlined,
+  //   activeIcon: Icons.groups,
+  //   path: RoutePaths.staffAugmentation,
+  // ),
   NavItem(
     label: 'Documents',
     icon: Icons.description_outlined,
@@ -146,12 +146,12 @@ const List<NavItem> _sidebarMainItems = [
 ];
 
 const List<NavItem> _sidebarBottomItems = [
-  NavItem(
-    label: 'Support',
-    icon: Icons.help_outline,
-    activeIcon: Icons.help,
-    path: RoutePaths.support,
-  ),
+  // NavItem(
+  //   label: 'Support',
+  //   icon: Icons.help_outline,
+  //   activeIcon: Icons.help,
+  //   path: RoutePaths.support,
+  // ),
 ];
 
 /// Responsive app shell that switches between

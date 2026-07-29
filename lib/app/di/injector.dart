@@ -69,6 +69,11 @@ import '../../features/contacts/domain/repositories/contact_repository.dart';
 import '../../features/contacts/domain/usecases/contact_usecases.dart';
 import '../../features/contacts/presentation/bloc/contacts_list_bloc.dart';
 import '../../features/contacts/presentation/bloc/contact_detail_bloc.dart';
+import '../../features/dashboard/data/datasources/dashboard_remote_datasource_impl.dart';
+import '../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import '../../features/dashboard/domain/repositories/dashboard_repository.dart';
+import '../../features/dashboard/domain/usecases/get_dashboard_usecase.dart';
+import '../../features/dashboard/presentation/bloc/dashboard_bloc.dart';
 
 // Deals feature
 import '../../features/deals/data/datasources/deal_remote_datasource_impl.dart';
@@ -292,6 +297,16 @@ Future<void> initDependencies() async {
       getContactDealsUseCase: sl(),
     ),
   );
+
+  // ─── Dashboard Feature ──────────────────────────────
+  sl.registerLazySingleton<DashboardRemoteDataSource>(
+    () => DashboardRemoteDataSourceImpl(dioClient: sl()),
+  );
+  sl.registerLazySingleton<DashboardRepository>(
+    () => DashboardRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetDashboardUseCase(sl()));
+  sl.registerFactory(() => DashboardBloc(getDashboardUseCase: sl()));
 
   // ─── Deals Feature ──────────────────────────────────
   sl.registerLazySingleton<DealRemoteDataSource>(
