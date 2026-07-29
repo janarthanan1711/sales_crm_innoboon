@@ -16,7 +16,9 @@ class SalesHubApp extends StatelessWidget {
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            sl<AuthNotifier>().setAuthenticated(true);
+            // The user rides along so the router can gate routes on the
+            // login response's permission codes.
+            sl<AuthNotifier>().setAuthenticated(true, user: state.user);
           } else if (state is AuthUnauthenticated || state is AuthError) {
             sl<AuthNotifier>().setAuthenticated(false);
           }

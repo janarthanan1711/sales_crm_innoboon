@@ -82,13 +82,15 @@ class UserModel {
         'name': role.name,
         'description': role.description,
         'permissions': role.permissions
-            .map((p) => {
-                  'id': p.id,
-                  'code': p.code,
-                  'label': p.label,
-                  'description': p.description,
-                  'module': p.module,
-                })
+            .map(
+              (p) => {
+                'id': p.id,
+                'code': p.code,
+                'label': p.label,
+                'description': p.description,
+                'module': p.module,
+              },
+            )
             .toList(),
       },
       'is_active': isActive,
@@ -97,6 +99,30 @@ class UserModel {
       'last_login_at': lastLoginAt?.toIso8601String(),
       'permissions': permissions,
     };
+  }
+
+  /// A copy carrying [codes] as the effective permission codes.
+  ///
+  /// Needed because every endpoint other than login returns the bare
+  /// `UserRead` shape, which has no `permissions` array — re-caching such a
+  /// response verbatim would drop the codes the UI gates on.
+  UserModel withPermissions(List<String> codes) {
+    return UserModel(
+      id: id,
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+      avatarUrl: avatarUrl,
+      role: role,
+      isActive: isActive,
+      status: status,
+      createdAt: createdAt,
+      lastLoginAt: lastLoginAt,
+      permissions: codes,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
   }
 
   User toEntity() {

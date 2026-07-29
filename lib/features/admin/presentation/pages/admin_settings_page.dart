@@ -88,11 +88,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [
-                _UsersTab(),
-                _RolesTab(),
-                _AuditLogTab(),
-              ],
+              children: const [_UsersTab(), _RolesTab(), _AuditLogTab()],
             ),
           ),
         ],
@@ -100,7 +96,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage>
     );
   }
 }
-
 
 // ─────────────────────────────────────────────────────────
 // Users tab
@@ -290,8 +285,9 @@ class _UsersTabState extends State<_UsersTab> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (emailController.text.trim().isEmpty || roleId == null)
+                    if (emailController.text.trim().isEmpty || roleId == null) {
                       return;
+                    }
                     final result = await sl<CreateUserUseCase>()(
                       CreateUserParams(
                         email: emailController.text.trim(),
@@ -1262,8 +1258,9 @@ class _Dropdown<T> extends StatelessWidget {
           value: value,
           items: items,
           onChanged: (v) {
-            if (v != null || items.any((i) => i.value == null))
+            if (v != null || items.any((i) => i.value == null)) {
               onChanged(v as T);
+            }
           },
           hint: Text(label, style: AppTextStyles.labelMedium),
         ),

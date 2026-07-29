@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/auth/permissions.dart';
 import '../di/injector.dart';
 import 'auth_notifier.dart';
 import 'route_paths.dart';
@@ -33,6 +34,30 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
     GlobalKey<NavigatorState>();
 
+/// Permission codes required to open a route, keyed by its path *pattern*
+/// (matched against [GoRouterState.fullPath], so `:id` routes are covered).
+/// Holding ANY listed code grants access; routes absent from this map are
+/// open to every signed-in user.
+///
+/// These mirror the nav-item gates in [AppShell] and the page-level gates on
+/// the create/edit screens, so a hidden button can't be reached by typing its
+/// URL either. Create/edit paths need `<module>.access` ("view and manage
+/// own"); list/detail paths also accept `.view_all` (read-only visibility).
+const Map<String, List<String>> _routePermissions = {
+  RoutePaths.leads: [Perms.leadsManage, Perms.leadsViewAll],
+  RoutePaths.leadDetail: [Perms.leadsManage, Perms.leadsViewAll],
+  RoutePaths.createLead: [Perms.leadsManage],
+  RoutePaths.editLead: [Perms.leadsManage],
+  RoutePaths.accounts: [Perms.accountsManage, Perms.accountsViewAll],
+  RoutePaths.accountDetail: [Perms.accountsManage, Perms.accountsViewAll],
+  RoutePaths.createAccount: [Perms.accountsManage],
+  RoutePaths.deals: [Perms.dealsManage, Perms.dealsViewAll],
+  RoutePaths.dealDetail: [Perms.dealsManage, Perms.dealsViewAll],
+  RoutePaths.contacts: [Perms.contactsManage],
+  RoutePaths.contactDetail: [Perms.contactsManage],
+  RoutePaths.settings: [Perms.usersManage, Perms.rolesManage],
+};
+
 /// App router configuration using go_router
 class AppRouter {
   AppRouter._();
@@ -58,6 +83,17 @@ class AppRouter {
       }
       if (isAuthenticated && loggingIn) {
         return RoutePaths.dashboard;
+      }
+
+      // Permission gate. Keeps a route the user can't act on out of reach even
+      // when its button is hidden — typed URLs, bookmarks and stale links all
+      // land here. The dashboard requires no permission, so it's always a safe
+      // place to bounce to.
+      if (isAuthenticated) {
+        final required = _routePermissions[state.fullPath ?? ''];
+        if (required != null && !authNotifier.hasAnyPermission(required)) {
+          return RoutePaths.dashboard;
+        }
       }
       return null;
     },
