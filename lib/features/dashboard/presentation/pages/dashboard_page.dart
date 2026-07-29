@@ -416,88 +416,106 @@ class _ChangeBadge extends StatelessWidget {
 }
 
 // ─── Pipeline funnel ────────────────────────────────────
+/// Pipeline Funnel — a centered stack of tinted pills that taper toward the
+/// bottom, one per `funnel.stages` entry from `GET /dashboard`.
 class _FunnelCard extends StatelessWidget {
   const _FunnelCard({required this.stages});
   final List<FunnelStage> stages;
 
   @override
   Widget build(BuildContext context) {
-    final maxCount = stages
-        .map((s) => s.count)
-        .fold(0, (a, b) => a > b ? a : b);
     return SectionCard(
       title: 'Pipeline Funnel',
       child: Column(
+        // Each bar is narrower than the one above it, so they have to be
+        // centered for the stack to read as a funnel.
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          for (var i = 0; i < stages.length; i++)
-            Padding(
-              padding: EdgeInsets.only(
-                bottom: i == stages.length - 1 ? 0 : AppSpacing.md,
-              ),
-              child: _FunnelRow(
-                stage: stages[i],
-                maxCount: maxCount,
-                color: _funnelColors[i % _funnelColors.length],
-              ),
+          for (var i = 0; i < stages.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.sm),
+            _FunnelBar(
+              stage: stages[i],
+              palette: _funnelPalettes[i % _funnelPalettes.length],
+              widthFactor: _taper(i, stages.length),
             ),
+          ],
         ],
       ),
     );
   }
+
+  /// Width of bar [index] as a fraction of the card body, tapering linearly
+  /// from full width to [_narrowest].
+  ///
+  /// Deliberately independent of the counts: scaling by count would render
+  /// late stages (84 out of 842) as unreadable slivers, and the funnel shape
+  /// already conveys the drop-off — the numbers carry the exact values.
+  double _taper(int index, int count) {
+    if (count <= 1) return 1;
+    const narrowest = 0.34;
+    return 1 - (index / (count - 1)) * (1 - narrowest);
+  }
 }
 
-const List<Color> _funnelColors = [
-  Color(0xFF2563EB),
-  Color(0xFF7C3AED),
-  Color(0xFFD97706),
-  Color(0xFF0891B2),
-  Color(0xFF059669),
-  Color(0xFFDB2777),
+typedef _FunnelPalette = ({Color background, Color foreground});
+
+/// Tint per funnel step. Cycles if the pipeline has more stages than entries
+/// (stages are admin-configurable, so the count isn't fixed).
+const List<_FunnelPalette> _funnelPalettes = [
+  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+  (background: Color(0xFFE0E7FF), foreground: Color(0xFF4338CA)), // indigo
+  (background: Color(0xFFFFEDD5), foreground: Color(0xFFC2410C)), // orange
+  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+  (background: Color(0xFFD1FAE5), foreground: Color(0xFF047857)), // green
+  (background: Color(0xFFFCE7F3), foreground: Color(0xFFBE185D)), // pink
 ];
 
-class _FunnelRow extends StatelessWidget {
-  const _FunnelRow({
+class _FunnelBar extends StatelessWidget {
+  const _FunnelBar({
     required this.stage,
-    required this.maxCount,
-    required this.color,
+    required this.palette,
+    required this.widthFactor,
   });
   final FunnelStage stage;
-  final int maxCount;
-  final Color color;
+  final _FunnelPalette palette;
+  final double widthFactor;
 
   @override
   Widget build(BuildContext context) {
-    final fraction = maxCount == 0 ? 0.0 : stage.count / maxCount;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: palette.background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
           children: [
-            Flexible(
+            // Narrow bars leave little room, so let long stage names wrap to a
+            // second line rather than stealing space from the count.
+            Expanded(
               child: Text(
                 stage.stageName,
-                style: AppTextStyles.labelMedium,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: palette.foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: AppSpacing.sm),
             Text(
               '${stage.count}',
-              style: AppTextStyles.labelLarge.copyWith(color: color),
+              style: AppTextStyles.labelMedium.copyWith(
+                color: palette.foreground,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: fraction.clamp(0.05, 1.0),
-            minHeight: 10,
-            backgroundColor: color.withValues(alpha: 0.12),
-            valueColor: AlwaysStoppedAnimation(color),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
