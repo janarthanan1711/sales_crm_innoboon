@@ -56,6 +56,20 @@ abstract class ContactRepository {
   /// `GET /contacts/import/template` — the sample file with the exact columns
   /// and one example row. [format] is `'xlsx'` (default) or `'csv'`.
   Future<Either<Failure, Uint8List>> downloadImportTemplate({String format});
+
+  /// Exports the filtered contacts as an `.xlsx` byte stream
+  /// (`GET /contacts?to_export=true`).
+  Future<Either<Failure, Uint8List>> exportContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+  });
+
+  /// Exports one contact as an `.xlsx` byte stream
+  /// (`GET /contacts/{id}?to_export=true`) — sheets "Contact" and "Deals".
+  Future<Either<Failure, Uint8List>> exportContact(int id);
 }
 
 abstract class ContactRemoteDataSource {
@@ -89,4 +103,12 @@ abstract class ContactRemoteDataSource {
     required String filename,
   });
   Future<Uint8List> downloadImportTemplate({String format});
+  Future<Uint8List> exportContacts({
+    int? ownerId,
+    int? accountId,
+    String? tier,
+    bool? isPrimary,
+    String? search,
+  });
+  Future<Uint8List> exportContact(int id);
 }

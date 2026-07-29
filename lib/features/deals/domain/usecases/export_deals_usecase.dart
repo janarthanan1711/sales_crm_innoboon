@@ -22,3 +22,13 @@ class ExportDealsUseCase {
     );
   }
 }
+
+/// Single-deal export — `GET /deals/{id}?to_export=true`, an xlsx with the
+/// deal's fields plus a sheet of its stage-transition history.
+class ExportDealDetailUseCase {
+  final DealRepository repository;
+  ExportDealDetailUseCase(this.repository);
+
+  Future<Either<Failure, Uint8List>> call(String id) =>
+      repository.exportDeal(id);
+}

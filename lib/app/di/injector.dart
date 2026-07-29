@@ -41,6 +41,7 @@ import '../../features/leads/domain/usecases/update_lead_activity_usecase.dart';
 import '../../features/leads/domain/usecases/delete_lead_activity_usecase.dart';
 import '../../features/leads/domain/usecases/import_leads_usecase.dart';
 import '../../features/leads/domain/usecases/download_import_template_usecase.dart';
+import '../../features/leads/domain/usecases/export_leads_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
 
@@ -61,8 +62,10 @@ import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
+import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_overview_usecase.dart';
 import '../../features/accounts/domain/usecases/account_activity_usecases.dart';
+import '../../features/accounts/domain/usecases/export_accounts_usecase.dart';
 import '../../features/accounts/presentation/bloc/accounts_list_bloc.dart';
 import '../../features/accounts/presentation/bloc/account_detail_bloc.dart';
 
@@ -154,8 +157,9 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: "https://sales-prospecting-crm-api.onrender.com/api/v1",
-      // "http://192.168.0.187:8000/api/v1",
+      defaultValue:
+          // "https://sales-prospecting-crm-api.onrender.com/api/v1",
+          "http://192.168.0.187:8000/api/v1",
       // 'https://20e1-103-5-113-67.ngrok-free.app/api/v1',
     ),
     authInterceptor: authInterceptor,
@@ -186,6 +190,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
   sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAvatarUseCase(sl()));
 
   // Bloc
   sl.registerFactory(
@@ -237,6 +242,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DeleteLeadActivityUseCase(sl()));
   sl.registerLazySingleton(() => ImportLeadsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadImportTemplateUseCase(sl()));
+  sl.registerLazySingleton(() => ExportLeadsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportLeadDetailUseCase(sl()));
   sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
   sl.registerFactory(
     () => LeadDetailBloc(
@@ -278,11 +285,17 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LogAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateAccountActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAccountActivityUseCase(sl()));
+  sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
       getAccountOverviewUseCase: sl(),
       getAccountContactsUseCase: sl(),
+      getAccountDealsUseCase: sl(),
+      getDealStagesUseCase: sl(),
+      getUsersUseCase: sl(),
     ),
   );
 
@@ -297,6 +310,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DeleteContactUseCase(sl()));
   sl.registerLazySingleton(() => ImportContactsUseCase(sl()));
   sl.registerLazySingleton(() => DownloadContactTemplateUseCase(sl()));
+  sl.registerLazySingleton(() => ExportContactsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportContactDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetContactsUseCase(sl()));
   sl.registerLazySingleton(() => GetContactByIdUseCase(sl()));
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
@@ -337,6 +352,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealsUseCase(sl()));
+  sl.registerLazySingleton(() => ExportDealDetailUseCase(sl()));
   sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));

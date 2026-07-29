@@ -29,16 +29,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   String? _error;
 
-  /// Notification preference toggles. Kept in-memory for this session — there
-  /// is no preferences endpoint in the API yet, so these don't sync to the
-  /// backend (the dialog says as much).
-  final Map<String, bool> _notifPrefs = {
-    'New lead assigned': true,
-    'Deal stage changed': true,
-    'Task overdue': true,
-    'Weekly summary email': false,
-  };
-
   @override
   void initState() {
     super.initState();
@@ -94,7 +84,16 @@ class _ProfilePageState extends State<ProfilePage> {
     final left = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _AvatarCard(user: user, onUploaded: (u) => setState(() => _user = u)),
+        _AvatarCard(
+          user: user,
+          onChanged: (u) {
+            setState(() => _user = u);
+            // The shell's header avatar renders from the cached user, so nudge
+            // AuthBloc to re-read it — otherwise the old photo lingers up
+            // there after an upload or removal.
+            context.read<AuthBloc>().add(const AuthCheckRequested());
+          },
+        ),
         const SizedBox(height: AppSpacing.lg),
         SectionCard(
           title: 'Account Details',
@@ -116,58 +115,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        SectionCard(
-          title: 'Active Sessions',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sessionRow(
-                context,
-                icon: Icons.laptop_mac,
-                title: 'This device',
-                subtitle: 'Active now',
-                onLogOut: () =>
-                    context.read<AuthBloc>().add(const AuthLogoutRequested()),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Remote session management is not available yet.',
-                    ),
-                  ),
-                ),
-                child: const Text('Log Out of All Other Sessions'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        SectionCard(
-          title: 'Notifications',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Choose which alerts you receive for leads, deals, and tasks.',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showNotificationPreferences(context),
-                  icon: const Icon(Icons.tune, size: 18),
-                  label: const Text('Manage Notification Preferences'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        // "Active Sessions" and "Notification Preferences" cards were removed
+        // ahead of deployment: neither has a backing endpoint (no session list,
+        // no preferences resource), so both were presentational only.
       ],
     );
 
@@ -225,113 +175,14 @@ class _ProfilePageState extends State<ProfilePage> {
       ],
     );
   }
-
-  Widget _sessionRow(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onLogOut,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: AppTextStyles.labelMedium),
-              Text(
-                subtitle,
-                style: AppTextStyles.caption.copyWith(color: AppColors.success),
-              ),
-            ],
-          ),
-        ),
-        OutlinedButton(onPressed: onLogOut, child: const Text('Log out')),
-      ],
-    );
-  }
-
-  Future<void> _showNotificationPreferences(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await showDialog<Map<String, bool>>(
-      context: context,
-      builder: (_) => _NotificationPreferencesDialog(initial: _notifPrefs),
-    );
-    if (result == null || !mounted) return;
-    setState(() {
-      _notifPrefs
-        ..clear()
-        ..addAll(result);
-    });
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Notification preferences saved on this device.'),
-      ),
-    );
-  }
-}
-
-/// Local, in-memory notification preferences editor. There's no backend
-/// endpoint for these yet, so the dialog notes that they aren't synced.
-class _NotificationPreferencesDialog extends StatefulWidget {
-  const _NotificationPreferencesDialog({required this.initial});
-  final Map<String, bool> initial;
-
-  @override
-  State<_NotificationPreferencesDialog> createState() =>
-      _NotificationPreferencesDialogState();
-}
-
-class _NotificationPreferencesDialogState
-    extends State<_NotificationPreferencesDialog> {
-  late final Map<String, bool> _prefs = Map<String, bool>.from(widget.initial);
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Notification Preferences'),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final entry in _prefs.entries)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(entry.key, style: AppTextStyles.bodyMedium),
-                value: entry.value,
-                onChanged: (v) => setState(() => _prefs[entry.key] = v),
-              ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'These settings are stored on this device only — backend sync is coming soon.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(_prefs),
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
 }
 
 class _AvatarCard extends StatefulWidget {
-  const _AvatarCard({required this.user, required this.onUploaded});
+  const _AvatarCard({required this.user, required this.onChanged});
   final User user;
-  final ValueChanged<User> onUploaded;
+
+  /// Fired after a successful upload *or* removal, with the updated user.
+  final ValueChanged<User> onChanged;
 
   @override
   State<_AvatarCard> createState() => _AvatarCardState();
@@ -339,6 +190,11 @@ class _AvatarCard extends StatefulWidget {
 
 class _AvatarCardState extends State<_AvatarCard> {
   bool _uploading = false;
+  bool _removing = false;
+
+  /// True while either avatar call is in flight — both buttons disable so a
+  /// removal can't race an upload.
+  bool get _busy => _uploading || _removing;
 
   Future<void> _pickAndUpload() async {
     final result = await FilePicker.platform.pickFiles(
@@ -362,7 +218,54 @@ class _AvatarCardState extends State<_AvatarCard> {
           backgroundColor: AppColors.error,
         ),
       ),
-      widget.onUploaded,
+      widget.onChanged,
+    );
+  }
+
+  /// Deletes the avatar via `DELETE /users/me/avatar`. Confirms first, since
+  /// the backend also removes the file from disk — this isn't undoable.
+  Future<void> _confirmAndRemove() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove profile photo?'),
+        content: const Text(
+          'Your photo will be deleted and replaced with your initials. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _removing = true);
+    final result = await sl<DeleteAvatarUseCase>()();
+    if (!mounted) return;
+    setState(() => _removing = false);
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove photo: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (user) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Profile photo removed.')),
+        );
+        widget.onChanged(user);
+      },
     );
   }
 
@@ -399,7 +302,7 @@ class _AvatarCardState extends State<_AvatarCard> {
                   bottom: 0,
                   right: 0,
                   child: InkWell(
-                    onTap: _uploading ? null : _pickAndUpload,
+                    onTap: _busy ? null : _pickAndUpload,
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: AppColors.primary,
@@ -412,8 +315,10 @@ class _AvatarCardState extends State<_AvatarCard> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(
-                              Icons.camera_alt,
+                          : Icon(
+                              avatarUrl != null
+                                  ? Icons.edit
+                                  : Icons.camera_alt,
                               size: 16,
                               color: Colors.white,
                             ),
@@ -436,6 +341,26 @@ class _AvatarCardState extends State<_AvatarCard> {
                 style: AppTextStyles.caption.copyWith(color: AppColors.primary),
               ),
             ),
+            // Only offer removal when there's actually a photo to remove —
+            // the endpoint is a no-op otherwise, so showing it would be a
+            // button that appears to do nothing.
+            if (avatarUrl != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TextButton.icon(
+                onPressed: _busy ? null : _confirmAndRemove,
+                icon: _removing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline, size: 16),
+                label: Text(_removing ? 'Removing...' : 'Remove Photo'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                ),
+              ),
+            ],
           ],
         ),
       ),

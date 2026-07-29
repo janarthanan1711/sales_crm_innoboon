@@ -186,7 +186,7 @@ class _DealsListViewState extends State<_DealsListView> {
     });
   }
 
-  /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals/export`.
+  /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals?to_export=true`.
   /// The export API supports `search`/`tier`/`stage_id` (owner is role-scoped
   /// server-side, so it isn't sent). `tier` is only passed when exactly one
   /// tier checkbox is selected, since the endpoint takes a single tier.
@@ -378,9 +378,12 @@ class _DealsListViewState extends State<_DealsListView> {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        TextButton(
+        // Icon + label to match the Leads/Accounts filter bars — as a bare
+        // text button this read as body copy and was easy to miss.
+        TextButton.icon(
           onPressed: _clearFilters,
-          child: const Text('Clear Filters'),
+          icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+          label: const Text('Clear Filters'),
         ),
       ],
     );

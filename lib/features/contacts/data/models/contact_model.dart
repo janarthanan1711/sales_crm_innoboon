@@ -87,15 +87,15 @@ class ContactModel extends Contact {
     bool? isPrimary,
   }) {
     return {
-      if (contactId != null) 'contact_id': contactId,
-      if (firstName != null) 'first_name': firstName,
-      if (lastName != null) 'last_name': lastName,
-      if (email != null) 'email': email,
-      if (phone != null) 'phone': phone,
-      if (alternatePhone != null) 'alternate_phone': alternatePhone,
-      if (jobTitle != null) 'job_title': jobTitle,
-      if (linkedinUrl != null) 'linkedin_url': linkedinUrl,
-      if (isPrimary != null) 'is_primary': isPrimary,
+      'contact_id': ?contactId,
+      'first_name': ?firstName,
+      'last_name': ?lastName,
+      'email': ?email,
+      'phone': ?phone,
+      'alternate_phone': ?alternatePhone,
+      'job_title': ?jobTitle,
+      'linkedin_url': ?linkedinUrl,
+      'is_primary': ?isPrimary,
     };
   }
 }

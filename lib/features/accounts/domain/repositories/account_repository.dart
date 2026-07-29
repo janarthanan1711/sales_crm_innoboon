@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
+import '../../../deals/domain/entities/deal.dart';
 import '../entities/account.dart';
 import '../entities/account_activity.dart';
 import '../entities/account_overview.dart';
@@ -42,6 +44,11 @@ abstract class AccountRepository {
   });
 
   Future<Either<Failure, List<Contact>>> getAccountContacts(String accountId);
+
+  /// `GET /accounts/{id}/deals` — full `DealRead` objects, unlike the
+  /// overview's `active_deals` (id/name/stage_id/value only).
+  Future<Either<Failure, List<Deal>>> getAccountDeals(String accountId);
+
   Future<Either<Failure, AccountOverview>> getAccountOverview(String accountId);
 
   Future<Either<Failure, List<AccountActivity>>> listActivities(
@@ -65,6 +72,20 @@ abstract class AccountRepository {
     String accountId,
     String activityId,
   );
+
+  /// Exports the filtered accounts as an `.xlsx` byte stream
+  /// (`GET /accounts?to_export=true`). Role-scoped server-side.
+  Future<Either<Failure, Uint8List>> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  });
+
+  /// Exports one account as an `.xlsx` byte stream
+  /// (`GET /accounts/{id}?to_export=true`) — sheets "Account", "Contacts",
+  /// "Deals".
+  Future<Either<Failure, Uint8List>> exportAccount(String id);
 }
 
 abstract class AccountRemoteDataSource {
@@ -100,6 +121,7 @@ abstract class AccountRemoteDataSource {
     String? linkedinUrl,
   });
   Future<List<Contact>> getAccountContacts(String accountId);
+  Future<List<Deal>> getAccountDeals(String accountId);
   Future<AccountOverview> getAccountOverview(String accountId);
 
   Future<List<AccountActivity>> listActivities(
@@ -120,4 +142,12 @@ abstract class AccountRemoteDataSource {
     String? note,
   });
   Future<void> deleteActivity(String accountId, String activityId);
+
+  Future<Uint8List> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  });
+  Future<Uint8List> exportAccount(String id);
 }

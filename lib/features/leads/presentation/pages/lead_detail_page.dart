@@ -7,12 +7,14 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/utils/link_launcher.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_enums.dart';
+import '../../domain/usecases/export_leads_usecase.dart';
 import '../bloc/lead_detail_bloc.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
@@ -124,7 +126,10 @@ class _LeadDetailViewState extends State<_LeadDetailView>
             indicatorWeight: 3,
             labelStyle: AppTextStyles.labelLarge,
             tabAlignment: TabAlignment.start,
-            tabs: const [Tab(text: 'Overview'), Tab(text: 'Activity')],
+            tabs: const [
+              Tab(text: 'Overview'),
+              Tab(text: 'Activity'),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -225,7 +230,11 @@ class _Header extends StatelessWidget {
                 spacing: AppSpacing.sm,
                 children: [
                   Text(displayName, style: AppTextStyles.h2),
-                  const Icon(Icons.star_border, size: 18, color: AppColors.textMuted),
+                  const Icon(
+                    Icons.star_border,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
                   StatusBadge.leadStatus(
                     labelForWireValue(leadStatusLabels, lead.status),
                   ),
@@ -233,16 +242,25 @@ class _Header extends StatelessWidget {
                   // account.
                   if (lead.isConverted)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.success.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.business, size: 13, color: AppColors.success),
+                          const Icon(
+                            Icons.business,
+                            size: 13,
+                            color: AppColors.success,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Account',
@@ -259,7 +277,9 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 '${lead.jobTitle ?? ''}${lead.jobTitle != null ? ' at ' : ''}${lead.company}',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -284,7 +304,7 @@ class _Header extends StatelessWidget {
                   spacing: AppSpacing.lg,
                   runSpacing: AppSpacing.sm,
                   crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [_tierMeta(), _ownerMeta()],
+                  children: [_ownerMeta(), _exportAction()],
                 ),
                 if (canManage) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -297,11 +317,11 @@ class _Header extends StatelessWidget {
               children: [
                 Expanded(child: identity),
                 const SizedBox(width: AppSpacing.lg),
-                _tierMeta(),
-                const SizedBox(width: AppSpacing.xl),
                 _ownerMeta(),
+                const SizedBox(width: AppSpacing.lg),
+                _exportAction(),
                 if (canManage) ...[
-                  const SizedBox(width: AppSpacing.xl),
+                  const SizedBox(width: AppSpacing.sm),
                   _actions(context),
                 ],
               ],
@@ -309,18 +329,18 @@ class _Header extends StatelessWidget {
     );
   }
 
-  // Leads have no tier of their own — it's assigned at conversion — so this is
-  // always a placeholder, matching the mockup's "Tier: —".
-  Widget _tierMeta() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Tier: ',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-        ),
-        Text('—', style: AppTextStyles.labelMedium),
-      ],
+  /// Export is read-only, so it sits outside the `canManage` actions —
+  /// view-only users can download the record too.
+  ///
+  /// The "Tier: —" meta that used to sit beside this was removed: a Lead has
+  /// no tier of its own (it's assigned at conversion), so it was always an
+  /// em-dash placeholder.
+  Widget _exportAction() {
+    return RecordExportButton(
+      tooltip: 'Export this lead to Excel',
+      fileName: 'lead_${lead.id}.xlsx',
+      successMessage: 'Lead exported.',
+      fetch: () => sl<ExportLeadDetailUseCase>()(lead.id),
     );
   }
 
@@ -331,7 +351,9 @@ class _Header extends StatelessWidget {
       children: [
         Text(
           'Owner: ',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
         if (lead.ownerName != null) ...[
           InitialsAvatar(name: owner, size: 22),
@@ -361,24 +383,15 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.swap_horiz, size: 16),
             label: const Text('Convert to Account'),
           ),
+        // Only Delete lives in the overflow — the "Edit Lead" item that used
+        // to be here duplicated the Edit button beside it.
         PopupMenuButton<String>(
           tooltip: 'More actions',
           icon: const Icon(Icons.more_vert),
           onSelected: (value) {
-            if (value == 'edit') _editLead(context, lead);
             if (value == 'delete') _confirmDelete(context, lead.id);
           },
           itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, size: 18),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Edit Lead'),
-                ],
-              ),
-            ),
             PopupMenuItem(
               value: 'delete',
               child: Row(
@@ -421,7 +434,10 @@ class _Header extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               context.read<LeadDetailBloc>().add(LeadDetailDeleteRequested(id));
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -455,11 +471,21 @@ class _Header extends StatelessWidget {
                   DropdownButtonFormField<String>(
                     value: selectedTier,
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: leadTierLabels.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => selectedTier = v!),
                   ),
@@ -469,11 +495,21 @@ class _Header extends StatelessWidget {
                   DropdownButtonFormField<int?>(
                     value: selectedOwnerId,
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: users
-                        .map((u) => DropdownMenuItem<int?>(value: u.id, child: Text(u.displayName)))
+                        .map(
+                          (u) => DropdownMenuItem<int?>(
+                            value: u.id,
+                            child: Text(u.displayName),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => selectedOwnerId = v),
                   ),
@@ -498,7 +534,11 @@ class _Header extends StatelessWidget {
     ).then((result) {
       if (result == true) {
         bloc.add(
-          LeadDetailConvertRequested(lead.id, tier: selectedTier, ownerId: selectedOwnerId),
+          LeadDetailConvertRequested(
+            lead.id,
+            tier: selectedTier,
+            ownerId: selectedOwnerId,
+          ),
         );
       }
     });
@@ -527,9 +567,19 @@ class _ContactInfoCard extends StatelessWidget {
           if (lead.domain != null) ...[
             Row(
               children: [
-                const Icon(Icons.language, size: 16, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.language,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppSpacing.xs),
-                Expanded(child: LinkText(text: lead.domain!, url: lead.domain, maxLines: 1)),
+                Expanded(
+                  child: LinkText(
+                    text: lead.domain!,
+                    url: lead.domain,
+                    maxLines: 1,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -537,9 +587,25 @@ class _ContactInfoCard extends StatelessWidget {
           if (lead.linkedinUrl != null)
             Row(
               children: [
-                const Icon(Icons.link, size: 16, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.link,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppSpacing.xs),
-                Expanded(child: LinkText(text: lead.linkedinUrl!, url: lead.linkedinUrl, maxLines: 1)),
+                // Long profile URLs used to ellipsize into uselessness in this
+                // narrow side panel, so show a compact label (scheme/`www.`
+                // stripped, tail elided) and keep the full URL in a tooltip.
+                Expanded(
+                  child: Tooltip(
+                    message: lead.linkedinUrl!,
+                    child: LinkText(
+                      text: _shortLinkLabel(lead.linkedinUrl!),
+                      url: lead.linkedinUrl,
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
               ],
             ),
           const Divider(height: AppSpacing.xl * 1.2),
@@ -572,8 +638,10 @@ class _ContactInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _label(String text) =>
-      Text(text, style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary));
+  Widget _label(String text) => Text(
+    text,
+    style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
+  );
 
   Widget _linkText(String text) => LinkText(text: text, email: text);
 }
@@ -610,7 +678,10 @@ class _RelatedRecordsCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               OutlinedButton(
                 onPressed: () => _HeaderConvertProxy.show(context, lead),
-                child: const Text('Convert to\nAccount', textAlign: TextAlign.center),
+                child: const Text(
+                  'Convert to\nAccount',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ],
@@ -664,6 +735,20 @@ class _DashedBoxPainter extends CustomPainter {
   bool shouldRepaint(covariant _DashedBoxPainter oldDelegate) => false;
 }
 
+/// Compact, readable label for a profile URL: drops the scheme and any
+/// leading `www.`, and elides the middle of very long paths so the
+/// recognisable head and tail both stay visible in a narrow column.
+String _shortLinkLabel(String rawUrl, {int maxLength = 34}) {
+  var label = rawUrl.trim().replaceFirst(RegExp(r'^https?://'), '');
+  label = label.replaceFirst(RegExp(r'^www\.'), '');
+  if (label.endsWith('/')) label = label.substring(0, label.length - 1);
+  if (label.length <= maxLength) return label;
+  // Keep more of the head than the tail — the domain/handle prefix carries
+  // most of the meaning.
+  final headLength = maxLength - 9;
+  return '${label.substring(0, headLength)}…${label.substring(label.length - 6)}';
+}
+
 /// Small indirection so the Related Records panel can reuse the exact same
 /// convert dialog as the header button without duplicating it.
 class _HeaderConvertProxy {
@@ -671,9 +756,6 @@ class _HeaderConvertProxy {
     return _Header(lead: lead)._showConvertDialog(context, lead);
   }
 
-  static Future<void> edit(BuildContext context, Lead lead) {
-    return _Header(lead: lead)._editLead(context, lead);
-  }
 }
 
 class _OverviewCenter extends StatelessWidget {
@@ -712,7 +794,9 @@ class _OverviewCenter extends StatelessWidget {
                     children: [
                       Text(
                         'Ready to convert?',
-                        style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
+                        style: AppTextStyles.labelLarge.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -726,15 +810,8 @@ class _OverviewCenter extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                ElevatedButton(
-                  onPressed: () => _HeaderConvertProxy.show(context, lead),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                  ),
-                  child: const Text('Convert to Account'),
-                ),
+                // The banner's own "Convert to Account" button was removed —
+                // it duplicated the one in the header actions.
               ],
             ),
           ),
@@ -745,30 +822,21 @@ class _OverviewCenter extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: _statTile(
-                lastActivity != null ? DateFormatter.relativeTime(lastActivity) : 'Never',
+                lastActivity != null
+                    ? DateFormatter.relativeTime(lastActivity)
+                    : 'Never',
                 'Last Contact',
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: _statTile(
-                inSystemLabel ?? '—',
-                'In System',
-              ),
-            ),
+            Expanded(child: _statTile(inSystemLabel ?? '—', 'In System')),
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
         SectionCard(
+          // No trailing edit icon here — editing is done from the single Edit
+          // button in the page header.
           title: 'Initial Notes',
-          trailing: context.can(Perms.leadsManage)
-              ? IconButton(
-                  tooltip: 'Edit lead',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  onPressed: () => _HeaderConvertProxy.edit(context, lead),
-                )
-              : null,
           child: lead.followUpNote != null && lead.followUpNote!.isNotEmpty
               ? Container(
                   width: double.infinity,
@@ -777,7 +845,10 @@ class _OverviewCenter extends StatelessWidget {
                     color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
                   ),
-                  child: Text(lead.followUpNote!, style: AppTextStyles.bodyMedium),
+                  child: Text(
+                    lead.followUpNote!,
+                    style: AppTextStyles.bodyMedium,
+                  ),
                 )
               : Text(
                   'No initial notes recorded yet.',
@@ -793,7 +864,9 @@ class _OverviewCenter extends StatelessWidget {
   DateTime? _mostRecentActivity(Lead lead) {
     final activities = lead.activities;
     if (activities == null || activities.isEmpty) return null;
-    return activities.map((a) => a.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+    return activities
+        .map((a) => a.createdAt)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
   /// Human duration that stays consistent with "Created … ago": shows hours
@@ -813,7 +886,10 @@ class _OverviewCenter extends StatelessWidget {
 
   Widget _statTile(String value, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -823,7 +899,12 @@ class _OverviewCenter extends StatelessWidget {
         children: [
           Text(value, style: AppTextStyles.h2),
           const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -879,9 +960,21 @@ class _ActivityCenterState extends State<_ActivityCenter> {
       context: context,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 1),
+      // By default this picker takes over the whole window. Constrain it into
+      // a centered dialog-sized card so it reads as a filter popover.
+      builder: (context, child) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
+          child: child,
+        ),
+      ),
       initialDateRange:
-          widget.state.activityDateFrom != null && widget.state.activityDateTo != null
-          ? DateTimeRange(start: widget.state.activityDateFrom!, end: widget.state.activityDateTo!)
+          widget.state.activityDateFrom != null &&
+              widget.state.activityDateTo != null
+          ? DateTimeRange(
+              start: widget.state.activityDateFrom!,
+              end: widget.state.activityDateTo!,
+            )
           : null,
     );
     if (range == null || !mounted) return;
@@ -924,14 +1017,18 @@ class _ActivityCenterState extends State<_ActivityCenter> {
         if (state.activities.isEmpty)
           _emptyState(context, canManage, state.lead.id)
         else
-          _ActivityTimeline(leadId: state.lead.id, activities: state.activities),
+          _ActivityTimeline(
+            leadId: state.lead.id,
+            activities: state.activities,
+          ),
       ],
     );
   }
 
   /// The type-filter + date-range card that sits above the timeline.
   Widget _filterCard(LeadDetailLoaded state) {
-    final hasRange = state.activityDateFrom != null && state.activityDateTo != null;
+    final hasRange =
+        state.activityDateFrom != null && state.activityDateTo != null;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1013,7 +1110,11 @@ class _ActivityCenterState extends State<_ActivityCenter> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.assignment_outlined, size: 44, color: AppColors.textMuted),
+          const Icon(
+            Icons.assignment_outlined,
+            size: 44,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(height: AppSpacing.md),
           Text('No activities logged yet', style: AppTextStyles.h4),
           const SizedBox(height: AppSpacing.sm),
@@ -1021,7 +1122,9 @@ class _ActivityCenterState extends State<_ActivityCenter> {
             'Track your interactions with this lead — calls, meetings, notes, '
             'and follow-ups all in one place.',
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           if (canManage) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -1057,11 +1160,21 @@ class _ActivityCenterState extends State<_ActivityCenter> {
                   DropdownButtonFormField<String>(
                     value: type,
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     items: leadActivityTypeLabels.entries
-                        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => type = v!),
                   ),
@@ -1072,7 +1185,9 @@ class _ActivityCenterState extends State<_ActivityCenter> {
                     controller: noteController,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       hintText: 'What happened?',
                     ),
                   ),
@@ -1222,7 +1337,11 @@ class _ActivityRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textMuted),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 InkWell(
@@ -1230,7 +1349,11 @@ class _ActivityRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: AppColors.error,
+                    ),
                   ),
                 ),
               ],
@@ -1260,7 +1383,10 @@ class _ActivityRow extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               bloc.add(LeadDetailActivityDeleteRequested(leadId, activity.id));
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -1284,7 +1410,9 @@ class _ActivityRow extends StatelessWidget {
               // edited. Show the type read-only for context.
               Text(
                 labelForWireValue(leadActivityTypeLabels, activity.type),
-                style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               const Text('Note'),
@@ -1294,7 +1422,9 @@ class _ActivityRow extends StatelessWidget {
                 maxLines: 4,
                 autofocus: true,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ],

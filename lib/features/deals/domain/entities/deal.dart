@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'deal_contact.dart';
 import 'stakeholder.dart';
 
 /// Deal entity — mirrors the backend's `DealRead` shape. Stages are dynamic
@@ -13,7 +14,10 @@ class Deal extends Equatable {
   final String name;
   final String accountId;
   final String accountName;
-  final List<int> contactIds;
+
+  /// Linked contacts with their resolved names, straight off the wire's
+  /// `contacts` array. Writes still send ids only — see [contactIds].
+  final List<DealContact> contacts;
   final String? contactName;
   final double value;
   final String currency;
@@ -35,7 +39,7 @@ class Deal extends Equatable {
     required this.name,
     required this.accountId,
     required this.accountName,
-    this.contactIds = const [],
+    this.contacts = const [],
     this.contactName,
     required this.value,
     this.currency = 'INR',
@@ -53,12 +57,19 @@ class Deal extends Equatable {
     required this.createdAt,
   });
 
+  /// Ids of the linked contacts — derived from [contacts], since writes
+  /// (`POST`/`PATCH /deals`) send `contact_ids` while reads return `contacts`.
+  List<int> get contactIds => contacts.map((c) => c.id).toList();
+
+  /// Comma-separated contact names, for compact single-line display.
+  String get contactNames => contacts.map((c) => c.name).join(', ');
+
   Deal copyWith({
     String? id,
     String? name,
     String? accountId,
     String? accountName,
-    List<int>? contactIds,
+    List<DealContact>? contacts,
     String? contactName,
     double? value,
     String? currency,
@@ -80,7 +91,7 @@ class Deal extends Equatable {
       name: name ?? this.name,
       accountId: accountId ?? this.accountId,
       accountName: accountName ?? this.accountName,
-      contactIds: contactIds ?? this.contactIds,
+      contacts: contacts ?? this.contacts,
       contactName: contactName ?? this.contactName,
       value: value ?? this.value,
       currency: currency ?? this.currency,
@@ -105,7 +116,7 @@ class Deal extends Equatable {
         name,
         accountId,
         accountName,
-        contactIds,
+        contacts,
         contactName,
         value,
         currency,

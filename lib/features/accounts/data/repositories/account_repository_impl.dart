@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../contacts/domain/entities/contact.dart';
+import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/account_activity.dart';
 import '../../domain/entities/account_overview.dart';
@@ -117,6 +119,15 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
+  Future<Either<Failure, List<Deal>>> getAccountDeals(String accountId) async {
+    try {
+      return Right(await remoteDataSource.getAccountDeals(accountId));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, AccountOverview>> getAccountOverview(
     String accountId,
   ) async {
@@ -190,6 +201,34 @@ class AccountRepositoryImpl implements AccountRepository {
     try {
       await remoteDataSource.deleteActivity(accountId, activityId);
       return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  }) async {
+    try {
+      return Right(await remoteDataSource.exportAccounts(
+        search: search,
+        industry: industry,
+        tier: tier,
+        ownerId: ownerId,
+      ));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> exportAccount(String id) async {
+    try {
+      return Right(await remoteDataSource.exportAccount(id));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

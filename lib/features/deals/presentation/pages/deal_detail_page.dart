@@ -9,16 +9,21 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_activity.dart';
+import '../../domain/entities/deal_contact.dart';
 import '../../domain/entities/deal_enums.dart';
 import '../../domain/entities/deal_stage_history.dart';
+import '../../domain/usecases/export_deals_usecase.dart';
+import '../../domain/usecases/update_deal_usecase.dart';
 import '../bloc/deal_detail_bloc.dart';
-import '../../../../features/checklist/presentation/widgets/checklist_view.dart';
+import '../../../contacts/domain/entities/contact.dart';
+import '../../../contacts/domain/usecases/contact_usecases.dart';
 import '../../../../core/utils/link_launcher.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../documents/domain/entities/deal_document.dart';
@@ -63,8 +68,11 @@ class _DealDetailView extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, DealDetailLoaded state) {
     final deal = state.deal;
+    // Stakeholders and Checklist tabs were removed ahead of deployment:
+    // stakeholders had no endpoint (in-memory only) and the checklist was
+    // mock-backed.
     return DefaultTabController(
-      length: 6,
+      length: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -80,9 +88,7 @@ class _DealDetailView extends StatelessWidget {
               tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: 'Deal Info'),
-                Tab(text: 'Stakeholders'),
-                Tab(text: 'Contact'),
-                Tab(text: 'Checklist'),
+                Tab(text: 'Contacts'),
                 Tab(text: 'Documents'),
                 Tab(text: 'Activity'),
               ],
@@ -92,12 +98,7 @@ class _DealDetailView extends StatelessWidget {
             child: TabBarView(
               children: [
                 _dealInfoTab(deal),
-                _stakeholdersTab(context, deal),
-                _contactTab(deal),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xxl),
-                  child: ChecklistView(dealId: deal.id),
-                ),
+                _ContactsTab(deal: deal),
                 _DealDocumentsTab(dealId: deal.id),
                 _activityTab(context, state),
               ],
@@ -175,12 +176,19 @@ class _DealDetailView extends StatelessWidget {
                       style: AppTextStyles.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    if (context.can(Perms.dealsManage))
-                      ElevatedButton.icon(
-                        onPressed: () => _openEditDealDialog(context, deal),
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text('Edit Deal'),
-                      ),
+                    Row(
+                      children: [
+                        _exportButton(deal),
+                        if (context.can(Perms.dealsManage)) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          ElevatedButton.icon(
+                            onPressed: () => _openEditDealDialog(context, deal),
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('Edit Deal'),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 )
               : Row(
@@ -250,12 +258,21 @@ class _DealDetailView extends StatelessWidget {
                           style: AppTextStyles.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        if (context.can(Perms.dealsManage))
-                          ElevatedButton.icon(
-                            onPressed: () => _openEditDealDialog(context, deal),
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: const Text('Edit Deal'),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _exportButton(deal),
+                            if (context.can(Perms.dealsManage)) ...[
+                              const SizedBox(width: AppSpacing.sm),
+                              ElevatedButton.icon(
+                                onPressed: () =>
+                                    _openEditDealDialog(context, deal),
+                                icon: const Icon(Icons.edit, size: 16),
+                                label: const Text('Edit Deal'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                   ],
@@ -345,6 +362,16 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
+  /// Single-deal xlsx export. Read-only, so it's not gated behind
+  /// `deals.manage` — anyone who can open the deal can download it.
+  Widget _exportButton(Deal deal) {
+    return RecordExportButton(
+      fileName: 'deal_${deal.id}.xlsx',
+      successMessage: 'Deal exported.',
+      fetch: () => sl<ExportDealDetailUseCase>()(deal.id),
+    );
+  }
+
   // ── Tab views ──────────────────────────────────────────
   Widget _dealInfoTab(Deal deal) {
     final close = deal.expectedCloseDate;
@@ -380,10 +407,13 @@ class _DealDetailView extends StatelessWidget {
             ),
             _infoRow('Owner', deal.owner),
             _infoRow(
-              'Description',
-              deal.description.isEmpty ? '—' : deal.description,
+              'Contacts',
+              deal.contacts.isEmpty ? '—' : deal.contactNames,
             ),
-            _infoRowWidget('Payment Status', _statusBadge(deal.paymentStatus)),
+            if (deal.coldReason != null && deal.coldReason!.isNotEmpty)
+              _infoRow('Cold Reason', deal.coldReason!),
+            // "Description" and "Payment Status" rows were removed — neither
+            // exists on the Deal API, so both always rendered placeholders.
             _infoRowWidget(
               'Expected Close',
               Column(
@@ -409,175 +439,6 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
-  Widget _stakeholdersTab(BuildContext context, Deal deal) {
-    final canManage = context.can(Perms.dealsManage);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: SectionCard(
-        title: 'Stakeholders',
-        trailing: canManage
-            ? TextButton.icon(
-                onPressed: () => _comingSoon(context, 'Stakeholder management'),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Stakeholder'),
-              )
-            : null,
-        child: deal.stakeholders.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                child: Text(
-                  'No stakeholders added yet.',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              )
-            : Column(
-                children: [
-                  // Table header
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Row(
-                      children: [
-                        Expanded(flex: 4, child: Text('NAME', style: AppTextStyles.tableHeader)),
-                        Expanded(flex: 3, child: Text('ROLE', style: AppTextStyles.tableHeader)),
-                        Expanded(flex: 5, child: Text('EMAIL', style: AppTextStyles.tableHeader)),
-                        Expanded(flex: 3, child: Text('DECISION MAKER', style: AppTextStyles.tableHeader)),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ...deal.stakeholders.map(
-                    (s) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 4,
-                            child: Text(
-                              s.name,
-                              style: AppTextStyles.labelMedium,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              s.role.isEmpty ? '—' : s.role,
-                              style: AppTextStyles.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Expanded(
-                            flex: 5,
-                            child: s.email.isEmpty
-                                ? Text('—', style: AppTextStyles.bodySmall)
-                                : LinkText(text: s.email, email: s.email, maxLines: 1),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _decisionCheck(s.isPrimary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _statusBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: AppTextStyles.caption.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _decisionCheck(bool checked) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: checked ? AppColors.primary : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: checked ? AppColors.primary : AppColors.border,
-        ),
-      ),
-      child: checked
-          ? const Icon(Icons.check, size: 14, color: Colors.white)
-          : null,
-    );
-  }
-
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is coming soon.')),
-    );
-  }
-
-  Widget _contactTab(Deal deal) {
-    final primary = deal.stakeholders.where((s) => s.isPrimary).toList();
-    final name = primary.isNotEmpty
-        ? primary.first.name
-        : (deal.contactName ?? '');
-    final role = primary.isNotEmpty ? primary.first.role : '';
-    final email = primary.isNotEmpty ? primary.first.email : '';
-    if (name.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(AppSpacing.xxl),
-        child: EmptyState(
-          icon: Icons.person_outline,
-          title: 'No primary contact',
-          subtitle: 'Set a primary stakeholder to see it here.',
-        ),
-      );
-    }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: SectionCard(
-        title: 'Primary Contact',
-        child: Row(
-          children: [
-            InitialsAvatar(name: name, size: 44),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: AppTextStyles.labelLarge),
-                  if (role.isNotEmpty)
-                    Text(
-                      role,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  if (email.isNotEmpty)
-                    LinkText(text: email, email: email, maxLines: 1),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _activityTab(BuildContext context, DealDetailLoaded state) {
     final canManage = context.can(Perms.dealsManage);
@@ -1242,6 +1103,342 @@ String _mediaUrl(String fileUrl) {
   return '$origin$path';
 }
 
+/// Deal → Contacts tab. Lists the deal's linked contacts (name/email/phone,
+/// straight off the `contacts` array) and lets you link or unlink them.
+///
+/// `PATCH /deals/{id}` treats `contact_ids` as a full replacement, so add and
+/// remove both send the complete resulting id list, never a delta.
+class _ContactsTab extends StatefulWidget {
+  const _ContactsTab({required this.deal});
+  final Deal deal;
+
+  @override
+  State<_ContactsTab> createState() => _ContactsTabState();
+}
+
+class _ContactsTabState extends State<_ContactsTab> {
+  bool _busy = false;
+
+  Future<void> _save(List<int> contactIds, String successMessage) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final bloc = context.read<DealDetailBloc>();
+    setState(() => _busy = true);
+    final result = await sl<UpdateDealUseCase>()(
+      UpdateDealParams(id: widget.deal.id, contactIds: contactIds),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to update contacts: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (_) {
+        messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+        bloc.add(DealDetailLoadRequested(widget.deal.id));
+      },
+    );
+  }
+
+  Future<void> _addContact() async {
+    final accountId = int.tryParse(widget.deal.accountId);
+    if (accountId == null) return;
+    final linkedIds = widget.deal.contactIds.toSet();
+    final picked = await showDialog<Contact>(
+      context: context,
+      builder: (_) => _LinkContactDialog(
+        accountId: accountId,
+        excludedIds: linkedIds,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await _save([...linkedIds, picked.id], 'Contact linked to this deal.');
+  }
+
+  Future<void> _removeContact(DealContact contact) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unlink contact?'),
+        content: Text(
+          '${contact.name} will no longer be linked to this deal. '
+          'The contact record itself is not deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Unlink'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final remaining = widget.deal.contactIds
+        .where((id) => id != contact.id)
+        .toList();
+    await _save(remaining, 'Contact unlinked.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canManage = context.can(Perms.dealsManage);
+    final contacts = widget.deal.contacts;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: SectionCard(
+        title: contacts.isEmpty ? 'Contacts' : 'Contacts (${contacts.length})',
+        trailing: canManage
+            ? TextButton.icon(
+                onPressed: _busy ? null : _addContact,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.person_add_alt_1, size: 18),
+                label: Text(_busy ? 'Saving...' : 'Add Contact'),
+              )
+            : null,
+        child: contacts.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Text(
+                  canManage
+                      ? 'No contacts linked yet. Use “Add Contact” to link '
+                            'someone from this account.'
+                      : 'No contacts are linked to this deal.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              )
+            : Column(
+                children: [
+                  for (var i = 0; i < contacts.length; i++) ...[
+                    if (i > 0) const Divider(height: 1),
+                    _DealContactRow(
+                      contact: contacts[i],
+                      canManage: canManage,
+                      onRemove: _busy
+                          ? null
+                          : () => _removeContact(contacts[i]),
+                    ),
+                  ],
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// Picks a contact from the deal's account to link. Contacts already on the
+/// deal are excluded so the same person can't be added twice.
+class _LinkContactDialog extends StatefulWidget {
+  const _LinkContactDialog({
+    required this.accountId,
+    required this.excludedIds,
+  });
+  final int accountId;
+  final Set<int> excludedIds;
+
+  @override
+  State<_LinkContactDialog> createState() => _LinkContactDialogState();
+}
+
+class _LinkContactDialogState extends State<_LinkContactDialog> {
+  List<Contact> _options = const [];
+  bool _loading = true;
+  int? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final result = await sl<GetContactsUseCase>()(
+      GetContactsParams(accountId: widget.accountId, limit: 100),
+    );
+    if (!mounted) return;
+    result.fold(
+      (_) => setState(() => _loading = false),
+      (page) => setState(() {
+        _options = page.items
+            .where((c) => !widget.excludedIds.contains(c.id))
+            .toList();
+        _loading = false;
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Link a Contact'),
+      content: SizedBox(
+        width: 380,
+        child: _loading
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : _options.isEmpty
+            ? Text(
+                'Every contact on this account is already linked to the deal. '
+                'Add a new contact from the Account page first.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              )
+            : DropdownButtonFormField<int>(
+                initialValue: _selectedId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Contact'),
+                items: _options
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Text(
+                          c.email == null || c.email!.isEmpty
+                              ? c.fullName
+                              : '${c.fullName} · ${c.email}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedId = v),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _selectedId == null
+              ? null
+              : () => Navigator.pop(
+                  context,
+                  _options.firstWhere((c) => c.id == _selectedId),
+                ),
+          child: const Text('Link'),
+        ),
+      ],
+    );
+  }
+}
+
+/// One row in the Contacts tab — name, then tappable email / phone from the
+/// `/deals` payload. Either detail may be absent, in which case its line is
+/// omitted rather than showing an empty link.
+class _DealContactRow extends StatelessWidget {
+  const _DealContactRow({
+    required this.contact,
+    required this.canManage,
+    required this.onRemove,
+  });
+  final DealContact contact;
+  final bool canManage;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final display = contact.name.isEmpty ? 'Unnamed contact' : contact.name;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InitialsAvatar(name: display, size: 40),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  display,
+                  style: AppTextStyles.labelMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (contact.hasEmail) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.mail_outline,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: LinkText(
+                          text: contact.email!,
+                          email: contact.email,
+                          style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (contact.hasPhone) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: LinkText(
+                          text: contact.phone!,
+                          phone: contact.phone,
+                          style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Neither field recorded — say so instead of rendering a bare
+                // name with unexplained blank space.
+                if (!contact.hasEmail && !contact.hasPhone) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'No email or phone on file',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (canManage)
+            IconButton(
+              tooltip: 'Unlink from deal',
+              icon: const Icon(Icons.link_off, size: 18),
+              color: AppColors.error,
+              onPressed: onRemove,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Deal → Documents tab. Wired to `/deals/{id}/documents` — list, upload
 /// (multipart), view (opens the file's `/media/...` URL) and delete. The
 /// backend has no document-edit endpoint, so rows are view/delete only.
@@ -1259,6 +1456,17 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
   bool _loading = true;
   bool _uploading = false;
   String? _error;
+
+  /// Client-side name filter — the per-deal documents endpoint takes no
+  /// `search` param and the list is small, so filter the loaded set (same
+  /// approach as the Account Documents tab).
+  String _filter = '';
+
+  List<DealDocument> get _filtered {
+    final q = _filter.trim().toLowerCase();
+    if (q.isEmpty) return _all;
+    return _all.where((d) => d.name.toLowerCase().contains(q)).toList();
+  }
 
   @override
   void initState() {
@@ -1400,7 +1608,27 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
                 label: Text(_uploading ? 'Uploading...' : 'Upload'),
               )
             : null,
-        child: _buildBody(canManage),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Only worth showing once there's something to filter.
+            if (!_loading && _error == null && _all.isNotEmpty) ...[
+              SizedBox(
+                width: 260,
+                child: TextField(
+                  onChanged: (v) => setState(() => _filter = v),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    hintText: 'Search document name...',
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            _buildBody(canManage),
+          ],
+        ),
       ),
     );
   }
@@ -1456,16 +1684,29 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
         ),
       );
     }
+    // Documents exist but the name filter excluded them all.
+    final rows = _filtered;
+    if (rows.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Text(
+          'No documents match “${_filter.trim()}”.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+    }
     return Column(
       children: [
-        for (int i = 0; i < _all.length; i++) ...[
+        for (int i = 0; i < rows.length; i++) ...[
           if (i > 0) const Divider(height: 1),
           _DealDocumentRow(
-            document: _all[i],
-            uploaderName: _uploaderName(_all[i].uploadedBy),
+            document: rows[i],
+            uploaderName: _uploaderName(rows[i].uploadedBy),
             canManage: canManage,
-            onView: () => launchWebUrl(_mediaUrl(_all[i].fileUrl)),
-            onDelete: () => _delete(_all[i]),
+            onView: () => launchWebUrl(_mediaUrl(rows[i].fileUrl)),
+            onDelete: () => _delete(rows[i]),
           ),
         ],
       ],

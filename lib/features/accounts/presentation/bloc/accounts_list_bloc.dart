@@ -20,6 +20,7 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
     on<AccountsListLoadRequested>(_onLoadRequested);
     on<AccountsListSearchChanged>(_onSearchChanged);
     on<AccountsListFilterChanged>(_onFilterChanged);
+    on<AccountsListCleared>(_onCleared);
     on<AccountsListPageChanged>(_onPageChanged);
     on<AccountsListRowsPerPageChanged>(_onRowsPerPageChanged);
   }
@@ -52,6 +53,18 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
     } else if (event.ownerId is int) {
       _ownerFilter = event.ownerId as int;
     }
+    _offset = 0;
+    await _loadAccounts(emit);
+  }
+
+  Future<void> _onCleared(
+    AccountsListCleared event,
+    Emitter<AccountsListState> emit,
+  ) async {
+    _search = null;
+    _industryFilter = null;
+    _tierFilter = null;
+    _ownerFilter = null;
     _offset = 0;
     await _loadAccounts(emit);
   }

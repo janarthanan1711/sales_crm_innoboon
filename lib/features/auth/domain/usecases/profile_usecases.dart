@@ -61,3 +61,11 @@ class UploadAvatarUseCase {
     return repository.uploadAvatar(bytes: params.bytes, filename: params.filename);
   }
 }
+
+/// `DELETE /users/me/avatar` — clears the user's avatar, returning the updated
+/// user. Takes no params; the backend always acts on the caller.
+class DeleteAvatarUseCase {
+  final AuthRepository repository;
+  DeleteAvatarUseCase(this.repository);
+  Future<Either<Failure, User>> call() => repository.deleteAvatar();
+}

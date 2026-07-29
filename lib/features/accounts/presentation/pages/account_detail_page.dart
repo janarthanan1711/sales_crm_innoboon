@@ -8,7 +8,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
@@ -19,6 +22,7 @@ import '../../domain/entities/account_activity.dart';
 import '../../domain/usecases/create_account_usecase.dart';
 import '../../domain/usecases/update_account_usecase.dart';
 import '../../domain/usecases/account_activity_usecases.dart';
+import '../../domain/usecases/export_accounts_usecase.dart';
 import '../bloc/account_detail_bloc.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
@@ -177,6 +181,12 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                   // tabs (index 0 / 1).
                   final showAddContact = _tabController.index <= 1;
                   final actions = [
+                    RecordExportButton(
+                      fileName: 'account_${account.id}.xlsx',
+                      successMessage: 'Account exported.',
+                      fetch: () =>
+                          sl<ExportAccountDetailUseCase>()(account.id),
+                    ),
                     OutlinedButton.icon(
                       onPressed: () => _showEditAccountDialog(context, account),
                       icon: const Icon(Icons.edit, size: 16),
@@ -1726,48 +1736,158 @@ class _DealsTab extends StatelessWidget {
         ),
       );
     }
+    final totalValue = deals.fold<double>(0, (sum, d) => sum + d.value);
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ListView.separated(
-        itemCount: deals.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) {
-          final deal = deals[index];
-          return InkWell(
-            onTap: () => context.go('/deals/${deal.id}'),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                border: Border.all(color: AppColors.border),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary strip so the tab answers "how much is on this account?"
+          // without the reader adding the rows up.
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${deals.length} deal${deals.length == 1 ? '' : 's'}',
+                  style: AppTextStyles.labelLarge,
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(deal.name, style: AppTextStyles.tableCellLink),
-                        Text(
-                          deal.stageName,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+              Text(
+                'Total: ${CurrencyFormatter.formatINR(totalValue)}',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: ListView.separated(
+              itemCount: deals.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) =>
+                  _AccountDealCard(deal: deals[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A deal row on the Account → Deals tab. Shows value, stage, tier, owner,
+/// expected close (with an overdue cue) and linked-contact count — the slim
+/// name/stage/value row it replaced didn't carry enough to judge a deal.
+class _AccountDealCard extends StatelessWidget {
+  const _AccountDealCard({required this.deal});
+  final Deal deal;
+
+  @override
+  Widget build(BuildContext context) {
+    final close = deal.expectedCloseDate;
+    final overdue = close != null && close.isBefore(DateTime.now());
+
+    return InkWell(
+      onTap: () => context.go('/deals/${deal.id}'),
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    deal.name,
+                    style: AppTextStyles.tableCellLink,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    '${deal.currency} ${deal.value.toStringAsFixed(0)}',
-                    style: AppTextStyles.labelLarge,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  CurrencyFormatter.formatINR(deal.value),
+                  style: AppTextStyles.labelLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Wrap so the badge/meta strip reflows instead of overflowing in
+            // the narrow tab column.
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (deal.stageName.isNotEmpty)
+                  StatusBadge.dealStage(deal.stageName),
+                if (deal.tier.isNotEmpty) TierBadge(tier: deal.tier),
+                _meta(Icons.person_outline, deal.owner),
+                if (close != null)
+                  _meta(
+                    Icons.event_outlined,
+                    DateFormatter.displayDate(close),
+                    color: overdue ? AppColors.error : null,
+                  ),
+                if (deal.contacts.isNotEmpty)
+                  _meta(
+                    Icons.people_outline,
+                    '${deal.contacts.length} contact'
+                    '${deal.contacts.length == 1 ? '' : 's'}',
+                  ),
+              ],
+            ),
+            // Cold deals carry a reason — surface it, it's the whole point of
+            // the field.
+            if (deal.coldReason != null && deal.coldReason!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.ac_unit,
+                    size: 13,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      deal.coldReason!,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
-            ),
-          );
-        },
+            ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _meta(IconData icon, String text, {Color? color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color ?? AppColors.textMuted),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: AppTextStyles.caption.copyWith(
+            color: color ?? AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

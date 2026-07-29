@@ -18,6 +18,7 @@ import '../../domain/entities/lead_enums.dart';
 import '../../domain/entities/lead_import_result.dart';
 import '../../domain/usecases/import_leads_usecase.dart';
 import '../../domain/usecases/download_import_template_usecase.dart';
+import '../../domain/usecases/export_leads_usecase.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
@@ -47,11 +48,62 @@ class _LeadsListViewState extends State<_LeadsListView> {
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
+  bool _exporting = false;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Exports the currently-filtered leads as an `.xlsx` via
+  /// `GET /leads?to_export=true`. Owner is role-scoped server-side, but the
+  /// owner filter is still forwarded so the file matches the on-screen list.
+  Future<void> _onExport(BuildContext context) async {
+    if (_exporting) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _exporting = true);
+
+    final search = _searchController.text.trim();
+    final result = await sl<ExportLeadsUseCase>()(
+      ExportLeadsParams(
+        ownerId: _ownerIdFilter,
+        source: _sourceFilter,
+        status: _statusFilter,
+        search: search.isEmpty ? null : search,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _exporting = false);
+
+    await result.fold(
+      (f) async => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (bytes) async {
+        await downloadBytes(bytes, 'leads.xlsx');
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Leads exported.')),
+        );
+      },
+    );
+  }
+
+  Widget _exportButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _exporting ? null : () => _onExport(context),
+      icon: _exporting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.file_download_outlined, size: 18),
+      label: Text(_exporting ? 'Exporting...' : 'Export'),
+    );
   }
 
   void _applyFilters(BuildContext context) {
@@ -184,8 +236,10 @@ class _LeadsListViewState extends State<_LeadsListView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           title,
+          const SizedBox(height: AppSpacing.md),
+          Row(children: [Expanded(child: _exportButton(context))]),
           if (canManage) ...[
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 Expanded(child: importButton),
@@ -201,7 +255,9 @@ class _LeadsListViewState extends State<_LeadsListView> {
     return Row(
       children: [
         Expanded(child: title),
+        _exportButton(context),
         if (canManage) ...[
+          const SizedBox(width: AppSpacing.sm),
           importButton,
           const SizedBox(width: AppSpacing.sm),
           newLeadButton,

@@ -240,12 +240,27 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   }) async {
     try {
       final response = await dioClient.get<List<int>>(
-        ApiEndpoints.dealsExport,
+        ApiEndpoints.deals,
         queryParameters: {
+          'to_export': true,
           if (stageId != null) 'stage_id': stageId,
           if (tier != null && tier.isNotEmpty) 'tier': tier,
           if (search != null && search.isNotEmpty) 'search': search,
         },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> exportDeal(String id) async {
+    try {
+      final response = await dioClient.get<List<int>>(
+        ApiEndpoints.dealById(id),
+        queryParameters: {'to_export': true},
         options: Options(responseType: ResponseType.bytes),
       );
       return Uint8List.fromList(response.data ?? const []);

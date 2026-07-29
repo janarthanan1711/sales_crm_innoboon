@@ -52,8 +52,9 @@ class ApiEndpoints {
   // ─── Deals ─────────────────────────────────────────────
   // Stage changes go through the same PATCH /deals/{id} used for any other
   // deal update — the backend has no separate /stage sub-route.
+  // Export is not a separate route — pass `to_export=true` on GET /deals
+  // (see SalesHub API doc §6.3). Same pattern for leads/accounts/contacts.
   static const String deals = '/deals';
-  static const String dealsExport = '/deals/export';
   static String dealById(String id) => '/deals/$id';
   static String dealStageHistory(String id) => '/deals/$id/stage-history';
   static String dealActivities(String id) => '/deals/$id/activities';

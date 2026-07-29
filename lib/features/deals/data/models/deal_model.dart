@@ -1,16 +1,18 @@
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_contact.dart';
 
 /// Maps the backend's `DealRead` shape (see `POST/GET/PATCH /deals`). The API
-/// carries `stage_id` (int, dynamic — see `/deal-stages`) and `contact_ids`
-/// (a list). It has no `account_name`/`owner`/`tier`-name/`stage_name` —
-/// those are resolved client-side by the caller, not from this JSON.
+/// carries `stage_id` (int, dynamic — see `/deal-stages`) and `contacts`
+/// (objects with an id + resolved name). It has no
+/// `account_name`/`owner`/`tier`-name/`stage_name` — those are resolved
+/// client-side by the caller, not from this JSON.
 class DealModel extends Deal {
   const DealModel({
     required super.id,
     required super.name,
     required super.accountId,
     super.accountName = '',
-    super.contactIds,
+    super.contacts,
     super.contactName,
     required super.value,
     required super.currency,
@@ -32,9 +34,7 @@ class DealModel extends Deal {
       id: '${json['id']}',
       name: json['deal_name'] as String? ?? '',
       accountId: '${json['account_id']}',
-      contactIds: (json['contact_ids'] as List<dynamic>? ?? const [])
-          .map((e) => e as int)
-          .toList(),
+      contacts: _parseContacts(json),
       value: (json['value'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? 'INR',
       stageId: json['stage_id'] as int? ?? 0,
@@ -50,6 +50,27 @@ class DealModel extends Deal {
       // Not in the API — placeholder so sort-by-date UI doesn't crash.
       createdAt: DateTime.now(),
     );
+  }
+
+  /// Reads the `contacts` array (`[{id, name}]`). Falls back to a bare
+  /// `contact_ids` list — older responses, and `PATCH` echoes that may still
+  /// carry ids only — yielding name-less entries the UI renders as "Contact N".
+  static List<DealContact> _parseContacts(Map<String, dynamic> json) {
+    final raw = json['contacts'];
+    if (raw is List) {
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .map(DealContact.fromJson)
+          .toList();
+    }
+    final ids = json['contact_ids'];
+    if (ids is List) {
+      return ids
+          .whereType<int>()
+          .map((id) => DealContact(id: id, name: 'Contact $id'))
+          .toList();
+    }
+    return const [];
   }
 
   /// Request body for `POST /deals`.

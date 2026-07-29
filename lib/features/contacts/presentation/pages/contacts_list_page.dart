@@ -43,6 +43,7 @@ class _ContactsListView extends StatefulWidget {
 class _ContactsListViewState extends State<_ContactsListView> {
   final _searchController = TextEditingController();
   final Set<int> _selected = {};
+  bool _exporting = false;
 
   List<OwnerUser> _owners = [];
   List<Account> _accounts = [];
@@ -73,6 +74,58 @@ class _ContactsListViewState extends State<_ContactsListView> {
     _searchController.clear();
     setState(_selected.clear);
     context.read<ContactsListBloc>().add(const ContactsListCleared());
+  }
+
+  /// Exports the currently-filtered contacts as an `.xlsx` via
+  /// `GET /contacts?to_export=true`. Reads the active filters off the bloc so
+  /// the file matches the on-screen list.
+  Future<void> _onExport(BuildContext context) async {
+    if (_exporting) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final state = context.read<ContactsListBloc>().state;
+    setState(() => _exporting = true);
+
+    final loaded = state is ContactsListLoaded ? state : null;
+    final result = await sl<ExportContactsUseCase>()(
+      ExportContactsParams(
+        ownerId: loaded?.ownerFilter,
+        accountId: loaded?.accountFilter,
+        tier: loaded?.tierFilter,
+        isPrimary: (loaded?.primaryOnly ?? false) ? true : null,
+        search: loaded?.search,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _exporting = false);
+
+    await result.fold(
+      (f) async => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (bytes) async {
+        await downloadBytes(bytes, 'contacts.xlsx');
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Contacts exported.')),
+        );
+      },
+    );
+  }
+
+  Widget _exportButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _exporting ? null : () => _onExport(context),
+      icon: _exporting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.file_download_outlined, size: 18),
+      label: Text(_exporting ? 'Exporting...' : 'Export'),
+    );
   }
 
   @override
@@ -173,6 +226,8 @@ class _ContactsListViewState extends State<_ContactsListView> {
         children: [
           title,
           const SizedBox(height: AppSpacing.md),
+          Row(children: [Expanded(child: _exportButton(context))]),
+          const SizedBox(height: AppSpacing.sm),
           Row(children: [Expanded(child: importBtn), const SizedBox(width: AppSpacing.sm), Expanded(child: newBtn)]),
         ],
       );
@@ -180,6 +235,8 @@ class _ContactsListViewState extends State<_ContactsListView> {
     return Row(
       children: [
         Expanded(child: title),
+        _exportButton(context),
+        const SizedBox(width: AppSpacing.sm),
         importBtn,
         const SizedBox(width: AppSpacing.sm),
         newBtn,
@@ -276,13 +333,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
           children: [
             Text('${_selected.length} contacts selected', style: AppTextStyles.labelMedium),
             const SizedBox(width: AppSpacing.lg),
-            TextButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reassigning owners is coming soon.')),
-              ),
-              icon: const Icon(Icons.person_pin_outlined, size: 16),
-              label: const Text('Reassign Owner'),
-            ),
+            // "Reassign Owner" was removed — a Contact has no owner of its own
+            // (it's derived from the representative Account link), so there is
+            // no endpoint to reassign one.
             TextButton.icon(
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Export is coming soon.')),

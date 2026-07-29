@@ -14,6 +14,7 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> updateMe({String? firstName, String? lastName, String? phoneNumber});
   Future<void> changePassword({required String currentPassword, required String newPassword});
   Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename});
+  Future<UserModel> deleteAvatar();
 }
 
 /// Real API implementation of AuthRemoteDataSource.
@@ -129,6 +130,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'file': MultipartFile.fromBytes(bytes, filename: filename),
         }),
       );
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<UserModel> deleteAvatar() async {
+    try {
+      // `DELETE /users/me/avatar` returns the updated UserRead (with
+      // `avatar_url: null`), and is a no-op 200 when no avatar is set.
+      final response = await dioClient.delete(ApiEndpoints.usersMeAvatar);
       return UserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _normalize(e);

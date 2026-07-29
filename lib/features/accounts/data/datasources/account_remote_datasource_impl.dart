@@ -1,9 +1,12 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../contacts/data/models/contact_model.dart';
 import '../../../contacts/domain/entities/contact.dart';
+import '../../../deals/data/models/deal_model.dart';
+import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/account_activity.dart';
 import '../../domain/entities/account_overview.dart';
@@ -145,6 +148,23 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
   }
 
   @override
+  Future<List<Deal>> getAccountDeals(String accountId) async {
+    try {
+      // `GET /accounts/{id}/deals` returns full DealRead objects — unlike the
+      // overview's `active_deals`, which only carry id/name/stage_id/value.
+      final response = await _dioClient.get(
+        ApiEndpoints.accountDeals(accountId),
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map((e) => DealModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
   Future<AccountOverview> getAccountOverview(String accountId) async {
     try {
       final response = await _dioClient.get(
@@ -222,6 +242,46 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
       await _dioClient.delete(
         ApiEndpoints.accountActivityById(accountId, activityId),
       );
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> exportAccounts({
+    String? search,
+    String? industry,
+    String? tier,
+    int? ownerId,
+  }) async {
+    try {
+      final response = await _dioClient.get<List<int>>(
+        ApiEndpoints.accounts,
+        queryParameters: {
+          'to_export': true,
+          if (search != null && search.isNotEmpty) 'search': search,
+          if (tier != null && tier.isNotEmpty && tier != 'All') 'tier': tier,
+          if (industry != null && industry.isNotEmpty && industry != 'All')
+            'industry': industry,
+          'owner_id': ?ownerId,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<Uint8List> exportAccount(String id) async {
+    try {
+      final response = await _dioClient.get<List<int>>(
+        ApiEndpoints.accountById(id),
+        queryParameters: {'to_export': true},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _normalize(e);
     }
