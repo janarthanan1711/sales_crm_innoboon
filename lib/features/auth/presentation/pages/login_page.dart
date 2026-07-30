@@ -493,26 +493,26 @@ class _LoginFormState extends State<_LoginForm> {
           ),
           const SizedBox(height: 32),
 
-          // Need access?
-          Center(
-            child: Text.rich(
-              TextSpan(
-                text: 'Need access? ',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                children: [
-                  TextSpan(
-                    text: 'Contact Admin',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // // Need access?
+          // Center(
+          //   child: Text.rich(
+          //     TextSpan(
+          //       text: 'Need access? ',
+          //       style: AppTextStyles.bodyMedium.copyWith(
+          //         color: AppColors.textSecondary,
+          //       ),
+          //       children: [
+          //         TextSpan(
+          //           text: 'Contact Admin',
+          //           style: AppTextStyles.bodyMedium.copyWith(
+          //             color: AppColors.primary,
+          //             fontWeight: FontWeight.w500,
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
