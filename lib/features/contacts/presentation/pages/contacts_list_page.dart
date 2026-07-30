@@ -27,7 +27,8 @@ class ContactsListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ContactsListBloc>()..add(const ContactsListLoadRequested()),
+      create: (_) =>
+          sl<ContactsListBloc>()..add(const ContactsListLoadRequested()),
       child: const _ContactsListView(),
     );
   }
@@ -56,7 +57,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
 
   Future<void> _loadOptions() async {
     final usersResult = await sl<GetUsersUseCase>()();
-    final accountsResult = await sl<GetAccountsUseCase>()(const GetAccountsParams(limit: 1000));
+    final accountsResult = await sl<GetAccountsUseCase>()(
+      const GetAccountsParams(limit: 1000),
+    );
     if (!mounted) return;
     setState(() {
       usersResult.fold((_) {}, (u) => _owners = u);
@@ -144,9 +147,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
             Expanded(
               child: BlocConsumer<ContactsListBloc, ContactsListState>(
                 listener: (context, state) {
-                  if (state is ContactsListLoaded && state.actionError != null) {
+                  if (state is ContactsListLoaded &&
+                      state.actionError != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.actionError!), backgroundColor: AppColors.error),
+                      SnackBar(
+                        content: Text(state.actionError!),
+                        backgroundColor: AppColors.error,
+                      ),
                     );
                   }
                   if (state is ContactsListLoaded) {
@@ -155,13 +162,18 @@ class _ContactsListViewState extends State<_ContactsListView> {
                   }
                 },
                 builder: (context, state) {
-                  if (state is ContactsListLoading || state is ContactsListInitial) {
-                    return const AppLoadingIndicator(message: 'Loading contacts...');
+                  if (state is ContactsListLoading ||
+                      state is ContactsListInitial) {
+                    return const AppLoadingIndicator(
+                      message: 'Loading contacts...',
+                    );
                   }
                   if (state is ContactsListError) {
                     return ErrorState(
                       message: state.message,
-                      onRetry: () => context.read<ContactsListBloc>().add(const ContactsListLoadRequested()),
+                      onRetry: () => context.read<ContactsListBloc>().add(
+                        const ContactsListLoadRequested(),
+                      ),
                     );
                   }
                   if (state is ContactsListLoaded) {
@@ -199,7 +211,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
         const SizedBox(height: 4),
         Text(
           'People across your accounts',
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       ],
     );
@@ -228,7 +242,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
           const SizedBox(height: AppSpacing.md),
           Row(children: [Expanded(child: _exportButton(context))]),
           const SizedBox(height: AppSpacing.sm),
-          Row(children: [Expanded(child: importBtn), const SizedBox(width: AppSpacing.sm), Expanded(child: newBtn)]),
+          Row(
+            children: [
+              Expanded(child: importBtn),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: newBtn),
+            ],
+          ),
         ],
       );
     }
@@ -249,8 +269,12 @@ class _ContactsListViewState extends State<_ContactsListView> {
     final bloc = context.read<ContactsListBloc>();
     final loaded = context.watch<ContactsListBloc>().state;
     final primaryOnly = loaded is ContactsListLoaded && loaded.primaryOnly;
-    final ownerFilter = loaded is ContactsListLoaded ? loaded.ownerFilter : null;
-    final accountFilter = loaded is ContactsListLoaded ? loaded.accountFilter : null;
+    final ownerFilter = loaded is ContactsListLoaded
+        ? loaded.ownerFilter
+        : null;
+    final accountFilter = loaded is ContactsListLoaded
+        ? loaded.accountFilter
+        : null;
     final tierFilter = loaded is ContactsListLoaded ? loaded.tierFilter : null;
 
     return SingleChildScrollView(
@@ -271,11 +295,15 @@ class _ContactsListViewState extends State<_ContactsListView> {
             selected: ownerFilter,
             options: [
               const MapEntry<int?, String>(null, 'All Owners'),
-              ..._owners.map((o) => MapEntry<int?, String>(o.id, o.displayName)),
+              ..._owners.map(
+                (o) => MapEntry<int?, String>(o.id, o.displayName),
+              ),
             ],
-            onSelected: (v) => bloc.add(ContactsListFilterChanged(
-              ownerId: v ?? ContactsListFilterChanged.clearOwner,
-            )),
+            onSelected: (v) => bloc.add(
+              ContactsListFilterChanged(
+                ownerId: v ?? ContactsListFilterChanged.clearOwner,
+              ),
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           _MenuFilter<int?>(
@@ -283,11 +311,16 @@ class _ContactsListViewState extends State<_ContactsListView> {
             selected: accountFilter,
             options: [
               const MapEntry<int?, String>(null, 'All Accounts'),
-              ..._accounts.map((a) => MapEntry<int?, String>(int.tryParse(a.id), a.companyName)),
+              ..._accounts.map(
+                (a) =>
+                    MapEntry<int?, String>(int.tryParse(a.id), a.companyName),
+              ),
             ],
-            onSelected: (v) => bloc.add(ContactsListFilterChanged(
-              accountId: v ?? ContactsListFilterChanged.clearAccount,
-            )),
+            onSelected: (v) => bloc.add(
+              ContactsListFilterChanged(
+                accountId: v ?? ContactsListFilterChanged.clearAccount,
+              ),
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           _MenuFilter<String?>(
@@ -295,9 +328,12 @@ class _ContactsListViewState extends State<_ContactsListView> {
             selected: tierFilter,
             options: [
               const MapEntry<String?, String>(null, 'All Tiers'),
-              ..._kTiers.map((t) => MapEntry<String?, String>(t, _titleCase(t))),
+              ..._kTiers.map(
+                (t) => MapEntry<String?, String>(t, _titleCase(t)),
+              ),
             ],
-            onSelected: (v) => bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
+            onSelected: (v) =>
+                bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
           ),
           const SizedBox(width: AppSpacing.md),
           Row(
@@ -305,13 +341,17 @@ class _ContactsListViewState extends State<_ContactsListView> {
             children: [
               Switch(
                 value: primaryOnly,
-                onChanged: (v) => bloc.add(ContactsListFilterChanged(isPrimary: v)),
+                onChanged: (v) =>
+                    bloc.add(ContactsListFilterChanged(isPrimary: v)),
               ),
               Text('Primary Only', style: AppTextStyles.labelMedium),
             ],
           ),
           const SizedBox(width: AppSpacing.sm),
-          TextButton(onPressed: _clearFilters, child: const Text('Clear Filters')),
+          TextButton(
+            onPressed: _clearFilters,
+            child: const Text('Clear Filters'),
+          ),
         ],
       ),
     );
@@ -321,7 +361,10 @@ class _ContactsListViewState extends State<_ContactsListView> {
   Widget _buildBulkBar(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -331,11 +374,16 @@ class _ContactsListViewState extends State<_ContactsListView> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            Text('${_selected.length} contacts selected', style: AppTextStyles.labelMedium),
+            Text(
+              '${_selected.length} contacts selected',
+              style: AppTextStyles.labelMedium,
+            ),
             const SizedBox(width: AppSpacing.lg),
-            // "Reassign Owner" was removed — a Contact has no owner of its own
-            // (it's derived from the representative Account link), so there is
-            // no endpoint to reassign one.
+            // No "Reassign Owner" action here. The API does support it
+            // (`POST /contacts/reassign-owner`, API doc §5.8 — it reassigns the
+            // owner of each contact's representative account, since a contact
+            // has no owner of its own), but the UI for it is deliberately not
+            // wired up.
             TextButton.icon(
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Export is coming soon.')),
@@ -345,8 +393,15 @@ class _ContactsListViewState extends State<_ContactsListView> {
             ),
             TextButton.icon(
               onPressed: () => _confirmBulkDelete(context),
-              icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-              label: const Text('Delete', style: TextStyle(color: AppColors.error)),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: AppColors.error,
+              ),
+              label: const Text(
+                'Delete',
+                style: TextStyle(color: AppColors.error),
+              ),
             ),
             IconButton(
               onPressed: () => setState(_selected.clear),
@@ -360,7 +415,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
 
   // ── Table ──────────────────────────────────────────────
   Widget _buildTable(BuildContext context, ContactsListLoaded state) {
-    final allSelected = state.contacts.isNotEmpty && state.contacts.every((c) => _selected.contains(c.id));
+    final allSelected =
+        state.contacts.isNotEmpty &&
+        state.contacts.every((c) => _selected.contains(c.id));
     final table = Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -370,8 +427,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            ),
             child: Row(
               children: [
                 SizedBox(
@@ -392,7 +454,10 @@ class _ContactsListViewState extends State<_ContactsListView> {
                 _h('ASSOCIATED ACCOUNT', flex: 3),
                 _h('EMAIL', flex: 4),
                 _h('PHONE', flex: 3),
-                SizedBox(width: 96, child: Text('ACTIONS', style: AppTextStyles.tableHeader)),
+                SizedBox(
+                  width: 96,
+                  child: Text('ACTIONS', style: AppTextStyles.tableHeader),
+                ),
               ],
             ),
           ),
@@ -406,7 +471,9 @@ class _ContactsListViewState extends State<_ContactsListView> {
                   contact: c,
                   selected: _selected.contains(c.id),
                   onToggle: () => setState(() {
-                    _selected.contains(c.id) ? _selected.remove(c.id) : _selected.add(c.id);
+                    _selected.contains(c.id)
+                        ? _selected.remove(c.id)
+                        : _selected.add(c.id);
                   }),
                   onView: () => context.go('/contacts/${c.id}'),
                   onEdit: () => _openContactDialog(context, existing: c),
@@ -427,15 +494,21 @@ class _ContactsListViewState extends State<_ContactsListView> {
     return table;
   }
 
-  Widget _h(String label, {int flex = 1}) =>
-      Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+  Widget _h(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
 
   // ── Actions ────────────────────────────────────────────
-  Future<void> _openContactDialog(BuildContext context, {Contact? existing}) async {
+  Future<void> _openContactDialog(
+    BuildContext context, {
+    Contact? existing,
+  }) async {
     final bloc = context.read<ContactsListBloc>();
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => ContactFormDialog(accounts: _accounts, existing: existing),
+      builder: (_) =>
+          ContactFormDialog(accounts: _accounts, existing: existing),
     );
     if (saved == true) bloc.add(const ContactsListLoadRequested());
   }
@@ -447,16 +520,24 @@ class _ContactsListViewState extends State<_ContactsListView> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete ${ids.length} contact(s)?'),
-        content: const Text('This removes the contacts entirely. This cannot be undone.'),
+        content: const Text(
+          'This removes the contacts entirely. This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               bloc.add(ContactsListDeleteRequested(ids));
               setState(_selected.clear);
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -464,7 +545,8 @@ class _ContactsListViewState extends State<_ContactsListView> {
   }
 }
 
-String _titleCase(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+String _titleCase(String s) =>
+    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 // ─── Row ────────────────────────────────────────────────
 class _ContactRow extends StatefulWidget {
@@ -497,22 +579,35 @@ class _ContactRowState extends State<_ContactRow> {
       child: InkWell(
         onTap: widget.onView,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           color: _hovered ? AppColors.navHover : Colors.transparent,
           child: Row(
             children: [
               SizedBox(
                 width: 40,
-                child: Checkbox(value: widget.selected, onChanged: (_) => widget.onToggle()),
+                child: Checkbox(
+                  value: widget.selected,
+                  onChanged: (_) => widget.onToggle(),
+                ),
               ),
               Expanded(
                 flex: 4,
                 child: Row(
                   children: [
-                    InitialsAvatar(name: c.fullName.isEmpty ? c.firstName : c.fullName, size: 32),
+                    InitialsAvatar(
+                      name: c.fullName.isEmpty ? c.firstName : c.fullName,
+                      size: 32,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Flexible(
-                      child: Text(c.fullName, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        c.fullName,
+                        style: AppTextStyles.tableCellLink,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     if (c.isPrimary) ...[
                       const SizedBox(width: 6),
@@ -521,17 +616,40 @@ class _ContactRowState extends State<_ContactRow> {
                   ],
                 ),
               ),
-              Expanded(flex: 3, child: Text(c.jobTitle ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  c.jobTitle ?? '—',
+                  style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Expanded(
                 flex: 3,
                 child: Text(
                   c.accountName ?? '—',
-                  style: AppTextStyles.tableCell.copyWith(color: c.accountName != null ? AppColors.primary : null),
+                  style: AppTextStyles.tableCell.copyWith(
+                    color: c.accountName != null ? AppColors.primary : null,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Expanded(flex: 4, child: Text(c.email ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
-              Expanded(flex: 3, child: Text(c.phone ?? '—', style: AppTextStyles.tableCell, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  c.email ?? '—',
+                  style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  c.phone ?? '—',
+                  style: AppTextStyles.tableCell,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               SizedBox(
                 width: 96,
                 child: Row(
@@ -573,7 +691,10 @@ class _PrimaryBadge extends StatelessWidget {
         children: [
           const Icon(Icons.star, size: 10, color: AppColors.success),
           const SizedBox(width: 2),
-          Text('PRIMARY', style: AppTextStyles.overline.copyWith(color: AppColors.success)),
+          Text(
+            'PRIMARY',
+            style: AppTextStyles.overline.copyWith(color: AppColors.success),
+          ),
         ],
       ),
     );
@@ -614,7 +735,9 @@ class _MenuFilter<T> extends StatelessWidget {
     return PopupMenuButton<int>(
       onSelected: (i) => onSelected(options[i].key),
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
       itemBuilder: (context) => [
         for (var i = 0; i < options.length; i++)
           PopupMenuItem<int>(
@@ -629,10 +752,15 @@ class _MenuFilter<T> extends StatelessWidget {
           ),
       ],
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: active ? AppColors.primaryLight : null,
-          border: Border.all(color: active ? AppColors.primary : AppColors.border),
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
@@ -676,7 +804,10 @@ class _PaginationBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            Text('Showing $start–$end of ${state.total}', style: AppTextStyles.bodySmall),
+            Text(
+              'Showing $start–$end of ${state.total}',
+              style: AppTextStyles.bodySmall,
+            ),
             const SizedBox(width: AppSpacing.lg),
             Text('Rows per page:', style: AppTextStyles.bodySmall),
             const SizedBox(width: AppSpacing.sm),
@@ -693,11 +824,19 @@ class _PaginationBar extends StatelessWidget {
             const SizedBox(width: AppSpacing.lg),
             IconButton(
               icon: const Icon(Icons.chevron_left),
-              onPressed: canPrev ? () => bloc.add(ContactsListPageChanged(state.offset - state.limit)) : null,
+              onPressed: canPrev
+                  ? () => bloc.add(
+                      ContactsListPageChanged(state.offset - state.limit),
+                    )
+                  : null,
             ),
             IconButton(
               icon: const Icon(Icons.chevron_right),
-              onPressed: canNext ? () => bloc.add(ContactsListPageChanged(state.offset + state.limit)) : null,
+              onPressed: canNext
+                  ? () => bloc.add(
+                      ContactsListPageChanged(state.offset + state.limit),
+                    )
+                  : null,
             ),
           ],
         ),

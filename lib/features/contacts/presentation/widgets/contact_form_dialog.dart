@@ -76,7 +76,10 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_accountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select an associated account.'), backgroundColor: AppColors.error),
+        const SnackBar(
+          content: Text('Select an associated account.'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -84,18 +87,24 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final result = await sl<UpsertAccountContactUseCase>()(UpsertAccountContactParams(
-      accountId: _accountId!,
-      contactId: widget.existing?.id,
-      firstName: _firstName.text.trim(),
-      lastName: _lastName.text.trim().isEmpty ? null : _lastName.text.trim(),
-      email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-      phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-      alternatePhone: _altPhone.text.trim().isEmpty ? null : _altPhone.text.trim(),
-      jobTitle: _jobTitle.text.trim().isEmpty ? null : _jobTitle.text.trim(),
-      linkedinUrl: _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
-      isPrimary: _isPrimary,
-    ));
+    final result = await sl<UpsertAccountContactUseCase>()(
+      UpsertAccountContactParams(
+        accountId: _accountId!,
+        contactId: widget.existing?.id,
+        firstName: _firstName.text.trim(),
+        lastName: _lastName.text.trim().isEmpty ? null : _lastName.text.trim(),
+        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        alternatePhone: _altPhone.text.trim().isEmpty
+            ? null
+            : _altPhone.text.trim(),
+        jobTitle: _jobTitle.text.trim().isEmpty ? null : _jobTitle.text.trim(),
+        linkedinUrl: _linkedin.text.trim().isEmpty
+            ? null
+            : _linkedin.text.trim(),
+        isPrimary: _isPrimary,
+      ),
+    );
     if (!mounted) return;
     setState(() => _saving = false);
 
@@ -113,7 +122,10 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
       title: Row(
         children: [
           Expanded(child: Text(isEdit ? 'Edit Contact' : 'Add Contact')),
-          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.pop(context),
+          ),
         ],
       ),
       content: SizedBox(
@@ -138,38 +150,65 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: TextFormField(controller: _lastName, decoration: _dec('Last Name')),
+                      child: TextFormField(
+                        controller: _lastName,
+                        decoration: _dec('Last Name'),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextFormField(controller: _jobTitle, decoration: _dec('Job Title')),
+                TextFormField(
+                  controller: _jobTitle,
+                  decoration: _dec('Job Title'),
+                ),
                 const SizedBox(height: AppSpacing.md),
-                TextFormField(controller: _linkedin, decoration: _dec('LinkedIn URL')),
+                TextFormField(
+                  controller: _linkedin,
+                  decoration: _dec('LinkedIn URL'),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Text('CONTACT DETAILS', style: AppTextStyles.overline),
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
                   controller: _email,
-                  validator: (v) => v == null || v.isEmpty ? null : Validators.email(v),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? null : Validators.email(v),
                   decoration: _dec('Primary Email'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
-                    Expanded(child: TextFormField(controller: _phone, decoration: _dec('Phone Number'))),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phone,
+                        decoration: _dec('Phone Number'),
+                      ),
+                    ),
                     const SizedBox(width: AppSpacing.md),
-                    Expanded(child: TextFormField(controller: _altPhone, decoration: _dec('Alternate Phone'))),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _altPhone,
+                        decoration: _dec('Alternate Phone'),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text('ACCOUNT ASSOCIATION', style: AppTextStyles.overline),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<int>(
-                  initialValue: _accountOptions.any((e) => e.key == _accountId) ? _accountId : null,
+                  initialValue: _accountOptions.any((e) => e.key == _accountId)
+                      ? _accountId
+                      : null,
                   decoration: _dec('Associated Account *'),
                   items: _accountOptions
-                      .map((e) => DropdownMenuItem<int>(value: e.key, child: Text(e.value)))
+                      .map(
+                        (e) => DropdownMenuItem<int>(
+                          value: e.key,
+                          child: Text(e.value),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _accountId = v),
                 ),
@@ -179,10 +218,15 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _isPrimary,
                   onChanged: (v) => setState(() => _isPrimary = v ?? false),
-                  title: Text('Set as Primary Contact', style: AppTextStyles.bodyMedium),
+                  title: Text(
+                    'Set as Primary Contact',
+                    style: AppTextStyles.bodyMedium,
+                  ),
                   subtitle: Text(
                     'Only one primary contact allowed per account.',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
               ],
@@ -191,11 +235,21 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text(isEdit ? 'Save Contact' : 'Add Contact'),
         ),
       ],
@@ -203,8 +257,8 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
   }
 
   InputDecoration _dec(String label) => InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      );
+    labelText: label,
+    border: const OutlineInputBorder(),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  );
 }

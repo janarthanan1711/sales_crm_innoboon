@@ -55,7 +55,10 @@ class ContactDetailBloc extends Bloc<ContactDetailEvent, ContactDetailState> {
     on<ContactDetailLoadRequested>(_onLoad);
   }
 
-  Future<void> _onLoad(ContactDetailLoadRequested event, Emitter<ContactDetailState> emit) async {
+  Future<void> _onLoad(
+    ContactDetailLoadRequested event,
+    Emitter<ContactDetailState> emit,
+  ) async {
     emit(const ContactDetailLoading());
     final overviewResult = await getContactOverviewUseCase(event.id);
     await overviewResult.fold(

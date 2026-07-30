@@ -81,7 +81,8 @@ class ApiEndpoints {
   static const String notificationsUnreadCount = '/notifications/unread-count';
   static const String notificationsReadAll = '/notifications/read-all';
   static String markNotificationRead(String id) => '/notifications/$id/read';
-  static String markNotificationUnread(String id) => '/notifications/$id/unread';
+  static String markNotificationUnread(String id) =>
+      '/notifications/$id/unread';
 
   // ─── Search ────────────────────────────────────────────
   static const String search = '/search';

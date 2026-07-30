@@ -126,8 +126,15 @@ class ContactOverview extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
-      [contact, dealCount, taskCount, logCount, tags, about, lastActivity];
+  List<Object?> get props => [
+    contact,
+    dealCount,
+    taskCount,
+    logCount,
+    tags,
+    about,
+    lastActivity,
+  ];
 }
 
 /// One row of the Contact Detail "Deals" tab (`GET /contacts/{id}/deals`).
@@ -157,6 +164,15 @@ class ContactDeal extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
-      [id, dealName, accountId, value, currency, stageId, tier, ownerId, expectedCloseDate];
+  List<Object?> get props => [
+    id,
+    dealName,
+    accountId,
+    value,
+    currency,
+    stageId,
+    tier,
+    ownerId,
+    expectedCloseDate,
+  ];
 }

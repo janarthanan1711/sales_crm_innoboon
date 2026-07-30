@@ -44,17 +44,17 @@ class ContactsListLoaded extends ContactsListState {
 
   @override
   List<Object?> get props => [
-        contacts,
-        total,
-        limit,
-        offset,
-        search,
-        ownerFilter,
-        accountFilter,
-        tierFilter,
-        primaryOnly,
-        actionError,
-      ];
+    contacts,
+    total,
+    limit,
+    offset,
+    search,
+    ownerFilter,
+    accountFilter,
+    tierFilter,
+    primaryOnly,
+    actionError,
+  ];
 }
 
 class ContactsListError extends ContactsListState {
