@@ -27,8 +27,15 @@ class GetContactsParams extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
-      [ownerId, accountId, tier, isPrimary, search, limit, offset];
+  List<Object?> get props => [
+    ownerId,
+    accountId,
+    tier,
+    isPrimary,
+    search,
+    limit,
+    offset,
+  ];
 }
 
 class GetContactsUseCase {

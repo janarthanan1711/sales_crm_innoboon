@@ -30,18 +30,27 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     on<ContactsListDeleteRequested>(_onDelete);
   }
 
-  Future<void> _onLoad(ContactsListLoadRequested event, Emitter<ContactsListState> emit) async {
+  Future<void> _onLoad(
+    ContactsListLoadRequested event,
+    Emitter<ContactsListState> emit,
+  ) async {
     emit(const ContactsListLoading());
     await _load(emit);
   }
 
-  Future<void> _onSearch(ContactsListSearchChanged event, Emitter<ContactsListState> emit) async {
+  Future<void> _onSearch(
+    ContactsListSearchChanged event,
+    Emitter<ContactsListState> emit,
+  ) async {
     _search = event.query;
     _offset = 0;
     await _load(emit);
   }
 
-  Future<void> _onFilter(ContactsListFilterChanged event, Emitter<ContactsListState> emit) async {
+  Future<void> _onFilter(
+    ContactsListFilterChanged event,
+    Emitter<ContactsListState> emit,
+  ) async {
     if (event.ownerId == ContactsListFilterChanged.clearOwner) {
       _ownerFilter = null;
     } else if (event.ownerId is int) {
@@ -60,7 +69,10 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     await _load(emit);
   }
 
-  Future<void> _onCleared(ContactsListCleared event, Emitter<ContactsListState> emit) async {
+  Future<void> _onCleared(
+    ContactsListCleared event,
+    Emitter<ContactsListState> emit,
+  ) async {
     _search = null;
     _ownerFilter = null;
     _accountFilter = null;
@@ -70,18 +82,27 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     await _load(emit);
   }
 
-  Future<void> _onPage(ContactsListPageChanged event, Emitter<ContactsListState> emit) async {
+  Future<void> _onPage(
+    ContactsListPageChanged event,
+    Emitter<ContactsListState> emit,
+  ) async {
     _offset = event.offset < 0 ? 0 : event.offset;
     await _load(emit);
   }
 
-  Future<void> _onRows(ContactsListRowsPerPageChanged event, Emitter<ContactsListState> emit) async {
+  Future<void> _onRows(
+    ContactsListRowsPerPageChanged event,
+    Emitter<ContactsListState> emit,
+  ) async {
     _limit = event.limit;
     _offset = 0;
     await _load(emit);
   }
 
-  Future<void> _onDelete(ContactsListDeleteRequested event, Emitter<ContactsListState> emit) async {
+  Future<void> _onDelete(
+    ContactsListDeleteRequested event,
+    Emitter<ContactsListState> emit,
+  ) async {
     String? error;
     for (final id in event.ids) {
       final result = await deleteContactUseCase(id);
@@ -99,31 +120,38 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     await _load(emit, actionError: error);
   }
 
-  Future<void> _load(Emitter<ContactsListState> emit, {String? actionError}) async {
-    final result = await getContactsUseCase(GetContactsParams(
-      ownerId: _ownerFilter,
-      accountId: _accountFilter,
-      tier: _tierFilter,
-      isPrimary: _primaryOnly ? true : null,
-      search: _search,
-      limit: _limit,
-      offset: _offset,
-    ));
+  Future<void> _load(
+    Emitter<ContactsListState> emit, {
+    String? actionError,
+  }) async {
+    final result = await getContactsUseCase(
+      GetContactsParams(
+        ownerId: _ownerFilter,
+        accountId: _accountFilter,
+        tier: _tierFilter,
+        isPrimary: _primaryOnly ? true : null,
+        search: _search,
+        limit: _limit,
+        offset: _offset,
+      ),
+    );
 
     result.fold(
       (f) => emit(ContactsListError(f.message)),
-      (page) => emit(ContactsListLoaded(
-        contacts: page.items,
-        total: page.total,
-        limit: _limit,
-        offset: _offset,
-        search: _search,
-        ownerFilter: _ownerFilter,
-        accountFilter: _accountFilter,
-        tierFilter: _tierFilter,
-        primaryOnly: _primaryOnly,
-        actionError: actionError,
-      )),
+      (page) => emit(
+        ContactsListLoaded(
+          contacts: page.items,
+          total: page.total,
+          limit: _limit,
+          offset: _offset,
+          search: _search,
+          ownerFilter: _ownerFilter,
+          accountFilter: _accountFilter,
+          tierFilter: _tierFilter,
+          primaryOnly: _primaryOnly,
+          actionError: actionError,
+        ),
+      ),
     );
   }
 }

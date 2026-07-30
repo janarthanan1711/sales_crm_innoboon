@@ -21,15 +21,17 @@ class ContactRepositoryImpl implements ContactRepository {
     int offset = 0,
   }) async {
     try {
-      return Right(await remoteDataSource.getContacts(
-        ownerId: ownerId,
-        accountId: accountId,
-        tier: tier,
-        isPrimary: isPrimary,
-        search: search,
-        limit: limit,
-        offset: offset,
-      ));
+      return Right(
+        await remoteDataSource.getContacts(
+          ownerId: ownerId,
+          accountId: accountId,
+          tier: tier,
+          isPrimary: isPrimary,
+          search: search,
+          limit: limit,
+          offset: offset,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

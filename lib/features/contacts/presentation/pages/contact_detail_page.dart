@@ -55,10 +55,16 @@ class _ContactDetailView extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, ContactDetailLoaded state) {
     final c = state.overview.contact;
+    final infoCard = _ContactInfoCard(
+      contact: c,
+      createdAt: state.overview.createdAt,
+      createdByName: state.overview.createdByName,
+    );
     return DefaultTabController(
-      // Overview / Deals / Activity — the "Notes" tab was removed (no notes
-      // resource exists on the API).
-      length: 3,
+      // Overview / Deals. "Notes" and "Activity" were both removed — neither
+      // has a backing resource on the API (no contact notes, no contact
+      // activity timeline), so both were placeholders.
+      length: 2,
       child: SingleChildScrollView(
         padding: EdgeInsets.all(context.pagePadding),
         child: Column(
@@ -72,7 +78,7 @@ class _ContactDetailView extends StatelessWidget {
               mobile: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _ContactInfoCard(contact: c),
+                  infoCard,
                   const SizedBox(height: AppSpacing.lg),
                   _MainPanel(state: state),
                 ],
@@ -80,7 +86,7 @@ class _ContactDetailView extends StatelessWidget {
               web: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(width: 320, child: _ContactInfoCard(contact: c)),
+                  SizedBox(width: 320, child: infoCard),
                   const SizedBox(width: AppSpacing.lg),
                   Expanded(child: _MainPanel(state: state)),
                 ],
@@ -198,8 +204,19 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _ContactInfoCard extends StatelessWidget {
-  const _ContactInfoCard({required this.contact});
+  const _ContactInfoCard({
+    required this.contact,
+    this.createdAt,
+    this.createdByName,
+  });
   final Contact contact;
+
+  /// Creation audit, from `GET /contacts/{id}/overview` rather than the contact
+  /// itself. Both are null-tolerant: the row is omitted without [createdAt],
+  /// and the "by …" line only appears when the API knows who created it (it
+  /// returns null for records created outside the audit-logged path).
+  final DateTime? createdAt;
+  final String? createdByName;
 
   @override
   Widget build(BuildContext context) {
@@ -218,6 +235,14 @@ class _ContactInfoCard extends StatelessWidget {
           _row('Social', contact.linkedinUrl, url: contact.linkedinUrl),
           _row('Account', contact.accountName),
           _row('Owner', contact.ownerName),
+          if (createdAt != null)
+            _row(
+              'Created On',
+              DateFormatter.shortDate(createdAt!),
+              subtitle: createdByName != null && createdByName!.isNotEmpty
+                  ? 'by $createdByName'
+                  : null,
+            ),
         ],
       ),
     );
@@ -229,6 +254,7 @@ class _ContactInfoCard extends StatelessWidget {
     String? email,
     String? url,
     String? phone,
+    String? subtitle,
   }) {
     final hasValue = value != null && value.isNotEmpty;
     final isLink = hasValue && (email != null || url != null || phone != null);
@@ -252,6 +278,13 @@ class _ContactInfoCard extends StatelessWidget {
             )
           else
             Text(hasValue ? value : '—', style: AppTextStyles.bodyMedium),
+          if (subtitle != null)
+            Text(
+              subtitle,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
         ],
       ),
     );
@@ -276,7 +309,6 @@ class _MainPanel extends StatelessWidget {
           tabs: [
             Tab(text: 'Overview'),
             Tab(text: 'Deals'),
-            Tab(text: 'Activity'),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -288,10 +320,6 @@ class _MainPanel extends StatelessWidget {
             children: [
               _OverviewTab(state: state),
               _DealsTab(deals: state.deals),
-              const _EmptyTab(
-                icon: Icons.timeline_outlined,
-                message: 'Contact activity timeline isn’t available yet.',
-              ),
             ],
           ),
         ),

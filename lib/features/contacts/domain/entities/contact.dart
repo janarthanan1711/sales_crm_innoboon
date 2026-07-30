@@ -115,6 +115,14 @@ class ContactOverview extends Equatable {
   final String? about;
   final DateTime? lastActivity;
 
+  /// When the contact was created — always present on the overview response.
+  final DateTime? createdAt;
+
+  /// Who created it, from the audit log's CREATED entry. Null when no such
+  /// entry exists (e.g. imported or seeded outside the audit-logged create
+  /// path), so it can't be relied on even when [createdAt] is set.
+  final String? createdByName;
+
   const ContactOverview({
     required this.contact,
     this.dealCount = 0,
@@ -123,11 +131,22 @@ class ContactOverview extends Equatable {
     this.tags,
     this.about,
     this.lastActivity,
+    this.createdAt,
+    this.createdByName,
   });
 
   @override
-  List<Object?> get props =>
-      [contact, dealCount, taskCount, logCount, tags, about, lastActivity];
+  List<Object?> get props => [
+    contact,
+    dealCount,
+    taskCount,
+    logCount,
+    tags,
+    about,
+    lastActivity,
+    createdAt,
+    createdByName,
+  ];
 }
 
 /// One row of the Contact Detail "Deals" tab (`GET /contacts/{id}/deals`).
@@ -157,6 +176,15 @@ class ContactDeal extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
-      [id, dealName, accountId, value, currency, stageId, tier, ownerId, expectedCloseDate];
+  List<Object?> get props => [
+    id,
+    dealName,
+    accountId,
+    value,
+    currency,
+    stageId,
+    tier,
+    ownerId,
+    expectedCloseDate,
+  ];
 }
