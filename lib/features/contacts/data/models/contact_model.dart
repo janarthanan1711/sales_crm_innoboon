@@ -52,6 +52,10 @@ class ContactModel extends Contact {
       lastActivity: json['last_activity'] != null
           ? DateTime.tryParse(json['last_activity'] as String)
           : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      createdByName: json['created_by_name'] as String?,
     );
   }
 
