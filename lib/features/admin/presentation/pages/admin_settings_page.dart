@@ -231,12 +231,70 @@ class _UsersTabState extends State<_UsersTab> {
     final firstNameController = TextEditingController();
     final lastNameController = TextEditingController();
     int? roleId = _roles.isNotEmpty ? _roles.first.id : null;
+    // Declared out here so they survive the StatefulBuilder's rebuilds.
+    var submitting = false;
+    String? error;
+    // Resolved from the page, which outlives the dialog — the dialog's own
+    // context is defunct by the time a post-pop snackbar would use it.
+    final messenger = ScaffoldMessenger.of(context);
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setState) {
+            Future<void> submit() async {
+              final email = emailController.text.trim();
+              // These used to `return` silently, so a tap with an empty email
+              // looked like a dead button.
+              if (email.isEmpty) {
+                setState(() => error = 'Email is required.');
+                return;
+              }
+              if (roleId == null) {
+                setState(
+                  () => error = _roles.isEmpty
+                      ? 'No roles available to assign.'
+                      : 'Pick a role for this user.',
+                );
+                return;
+              }
+
+              setState(() {
+                submitting = true;
+                error = null;
+              });
+              final result = await sl<CreateUserUseCase>()(
+                CreateUserParams(
+                  email: email,
+                  firstName: firstNameController.text.trim(),
+                  lastName: lastNameController.text.trim(),
+                  roleId: roleId!,
+                ),
+              );
+              if (!dialogContext.mounted) return;
+              result.fold(
+                // Stay open and report inline. Popping on failure both threw
+                // away everything typed and — when a second in-flight request
+                // popped again during the exit animation — took the page below
+                // with it, tripping go_router's "no pages left" assertion.
+                (f) => setState(() {
+                  submitting = false;
+                  error = f.message;
+                }),
+                (_) {
+                  Navigator.pop(dialogContext);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Invitation sent.'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                  _load();
+                },
+              );
+            }
+
             return AlertDialog(
               title: const Text('Invite User'),
               content: SizedBox(
@@ -247,11 +305,13 @@ class _UsersTabState extends State<_UsersTab> {
                   children: [
                     TextField(
                       controller: emailController,
+                      enabled: !submitting,
                       decoration: const InputDecoration(labelText: 'Email'),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: firstNameController,
+                      enabled: !submitting,
                       decoration: const InputDecoration(
                         labelText: 'First Name',
                       ),
@@ -259,6 +319,7 @@ class _UsersTabState extends State<_UsersTab> {
                     const SizedBox(height: AppSpacing.md),
                     TextField(
                       controller: lastNameController,
+                      enabled: !submitting,
                       decoration: const InputDecoration(labelText: 'Last Name'),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -273,50 +334,65 @@ class _UsersTabState extends State<_UsersTab> {
                             ),
                           )
                           .toList(),
-                      onChanged: (v) => setState(() => roleId = v),
+                      onChanged: submitting
+                          ? null
+                          : (v) => setState(() => roleId = v),
                     ),
+                    if (error != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.cardRadius,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 16,
+                              color: AppColors.error,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                error!,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.pop(dialogContext),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (emailController.text.trim().isEmpty || roleId == null) {
-                      return;
-                    }
-                    final result = await sl<CreateUserUseCase>()(
-                      CreateUserParams(
-                        email: emailController.text.trim(),
-                        firstName: firstNameController.text.trim(),
-                        lastName: lastNameController.text.trim(),
-                        roleId: roleId!,
-                      ),
-                    );
-                    if (!dialogContext.mounted) return;
-                    Navigator.pop(dialogContext);
-                    result.fold(
-                      (f) => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to invite user: ${f.message}'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      ),
-                      (_) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Invitation sent.'),
-                            backgroundColor: AppColors.success,
+                  // Disabled while in flight: a second tap fired a second POST
+                  // and a second pop, which is what crashed the router.
+                  onPressed: submitting ? null : submit,
+                  child: submitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                        );
-                        _load();
-                      },
-                    );
-                  },
-                  child: const Text('Send Invite'),
+                        )
+                      : const Text('Send Invite'),
                 ),
               ],
             );
@@ -693,6 +769,9 @@ class _RolesTabState extends State<_RolesTab> {
       text: role?.description ?? '',
     );
     final selected = <int>{...?role?.permissions.map((p) => p.id)};
+    // Guards against a second tap while the save is in flight — two responses
+    // would pop twice, and the second pop takes out the page underneath.
+    var saving = false;
     final permissionsByModule = <String, List<Permission>>{};
     for (final p in _permissions) {
       permissionsByModule.putIfAbsent(p.module, () => []).add(p);
@@ -761,41 +840,57 @@ class _RolesTabState extends State<_RolesTab> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (nameController.text.trim().isEmpty) return;
-                    final result = role == null
-                        ? await sl<CreateRoleUseCase>()(
-                            CreateRoleParams(
-                              name: nameController.text.trim(),
-                              description: descriptionController.text.trim(),
-                              permissionIds: selected.toList(),
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          if (nameController.text.trim().isEmpty) return;
+                          setState(() => saving = true);
+                          final result = role == null
+                              ? await sl<CreateRoleUseCase>()(
+                                  CreateRoleParams(
+                                    name: nameController.text.trim(),
+                                    description: descriptionController.text
+                                        .trim(),
+                                    permissionIds: selected.toList(),
+                                  ),
+                                )
+                              : await sl<UpdateRoleUseCase>()(
+                                  UpdateRoleParams(
+                                    id: role.id,
+                                    name: nameController.text.trim(),
+                                    description: descriptionController.text
+                                        .trim(),
+                                    permissionIds: selected.toList(),
+                                  ),
+                                );
+                          if (!dialogContext.mounted) return;
+                          Navigator.pop(dialogContext);
+                          result.fold(
+                            (f) => ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Failed to save role: ${f.message}',
+                                ),
+                                backgroundColor: AppColors.error,
+                              ),
                             ),
-                          )
-                        : await sl<UpdateRoleUseCase>()(
-                            UpdateRoleParams(
-                              id: role.id,
-                              name: nameController.text.trim(),
-                              description: descriptionController.text.trim(),
-                              permissionIds: selected.toList(),
-                            ),
+                            (_) => _load(),
                           );
-                    if (!dialogContext.mounted) return;
-                    Navigator.pop(dialogContext);
-                    result.fold(
-                      (f) => ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to save role: ${f.message}'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      ),
-                      (_) => _load(),
-                    );
-                  },
-                  child: const Text('Save'),
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save'),
                 ),
               ],
             );
