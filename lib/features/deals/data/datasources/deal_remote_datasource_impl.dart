@@ -269,6 +269,15 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     }
   }
 
+  @override
+  Future<void> deleteDeal(String id) async {
+    try {
+      await dioClient.delete(ApiEndpoints.dealById(id));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   String _formatDate(DateTime date) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${date.year}-${two(date.month)}-${two(date.day)}';

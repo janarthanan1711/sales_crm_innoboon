@@ -230,4 +230,14 @@ class DealRepositoryImpl implements DealRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> deleteDeal(String id) async {
+    try {
+      await remoteDataSource.deleteDeal(id);
+      return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

@@ -51,7 +51,18 @@ class _DealDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BlocBuilder<DealDetailBloc, DealDetailState>(
+      body: BlocConsumer<DealDetailBloc, DealDetailState>(
+        listener: (context, state) {
+          if (state is DealDetailDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Deal deleted.'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go('/deals');
+          }
+        },
         builder: (context, state) {
           if (state is DealDetailLoading) {
             return const AppLoadingIndicator(message: 'Loading deal...');
@@ -186,6 +197,8 @@ class _DealDetailView extends StatelessWidget {
                             icon: const Icon(Icons.edit, size: 16),
                             label: const Text('Edit Deal'),
                           ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _deleteMenuButton(context, deal),
                         ],
                       ],
                     ),
@@ -270,6 +283,8 @@ class _DealDetailView extends StatelessWidget {
                                 icon: const Icon(Icons.edit, size: 16),
                                 label: const Text('Edit Deal'),
                               ),
+                              const SizedBox(width: AppSpacing.sm),
+                              _deleteMenuButton(context, deal),
                             ],
                           ],
                         ),
@@ -369,6 +384,54 @@ class _DealDetailView extends StatelessWidget {
       fileName: 'deal_${deal.id}.xlsx',
       successMessage: 'Deal exported.',
       fetch: () => sl<ExportDealDetailUseCase>()(deal.id),
+    );
+  }
+
+  Widget _deleteMenuButton(BuildContext context, Deal deal) {
+    return PopupMenuButton<String>(
+      tooltip: 'More actions',
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) {
+        if (value == 'delete') _confirmDeleteDeal(context, deal);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+              SizedBox(width: AppSpacing.sm),
+              Text('Delete Deal', style: TextStyle(color: AppColors.error)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteDeal(BuildContext context, Deal deal) {
+    final bloc = context.read<DealDetailBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete deal?'),
+        content: Text(
+          'This will permanently delete "${deal.name}" and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              bloc.add(DealDetailDeleteRequested(deal.id));
+            },
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
     );
   }
 

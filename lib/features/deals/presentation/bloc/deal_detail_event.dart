@@ -67,3 +67,10 @@ class DealDetailActivityDeleteRequested extends DealDetailEvent {
   @override
   List<Object?> get props => [dealId, activityId];
 }
+
+class DealDetailDeleteRequested extends DealDetailEvent {
+  final String id;
+  const DealDetailDeleteRequested(this.id);
+  @override
+  List<Object?> get props => [id];
+}

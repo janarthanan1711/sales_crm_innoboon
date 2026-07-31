@@ -233,4 +233,14 @@ class AccountRepositoryImpl implements AccountRepository {
       return Left(ServerFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> deleteAccount(String id) async {
+    try {
+      await remoteDataSource.deleteAccount(id);
+      return const Right(unit);
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
 }

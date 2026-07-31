@@ -61,6 +61,7 @@ import '../../features/accounts/domain/repositories/account_repository.dart';
 import '../../features/accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
+import '../../features/accounts/domain/usecases/delete_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
@@ -95,6 +96,7 @@ import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
 import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
+import '../../features/deals/domain/usecases/delete_deal_usecase.dart';
 import '../../features/deals/domain/usecases/export_deals_usecase.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
@@ -289,6 +291,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
   sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAccountUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -297,6 +300,7 @@ Future<void> initDependencies() async {
       getAccountDealsUseCase: sl(),
       getDealStagesUseCase: sl(),
       getUsersUseCase: sl(),
+      deleteAccountUseCase: sl(),
     ),
   );
 
@@ -358,6 +362,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteDealActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteDealUseCase(sl()));
   sl.registerFactory(
     () => DealsListBloc(
       getDealsUseCase: sl(),
@@ -379,6 +384,7 @@ Future<void> initDependencies() async {
       logDealActivityUseCase: sl(),
       updateDealActivityUseCase: sl(),
       deleteDealActivityUseCase: sl(),
+      deleteDealUseCase: sl(),
     ),
   );
   // ─── Checklist Feature ──────────────────────────────

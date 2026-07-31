@@ -67,3 +67,7 @@ class DealDetailError extends DealDetailState {
   @override
   List<Object?> get props => [message];
 }
+
+class DealDetailDeleted extends DealDetailState {
+  const DealDetailDeleted();
+}

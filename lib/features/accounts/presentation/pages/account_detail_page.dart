@@ -80,7 +80,18 @@ class _AccountDetailViewState extends State<_AccountDetailView>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BlocBuilder<AccountDetailBloc, AccountDetailState>(
+      body: BlocConsumer<AccountDetailBloc, AccountDetailState>(
+        listener: (context, state) {
+          if (state is AccountDetailDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account deleted.'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go('/accounts');
+          }
+        },
         builder: (context, state) {
           if (state is AccountDetailLoading)
             return const AppLoadingIndicator(message: 'Loading account...');
@@ -203,6 +214,25 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                       icon: const Icon(Icons.add, size: 16),
                       label: const Text('New Deal'),
                     ),
+                    PopupMenuButton<String>(
+                      tooltip: 'More actions',
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        if (value == 'delete') _confirmDeleteAccount(context, account);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                              SizedBox(width: AppSpacing.sm),
+                              Text('Delete Account', style: TextStyle(color: AppColors.error)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ];
 
                   // On phones the three action buttons won't fit beside the
@@ -299,6 +329,32 @@ class _AccountDetailViewState extends State<_AccountDetailView>
     // The dialog pops non-null on a successful save — refresh so the new deal
     // shows in the Deals tab and count.
     if (created != null) bloc.add(AccountDetailLoadRequested(account.id));
+  }
+
+  void _confirmDeleteAccount(BuildContext context, Account account) {
+    final bloc = context.read<AccountDetailBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: Text(
+          'This will permanently delete "${account.companyName}" and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              bloc.add(AccountDetailDeleteRequested(account.id));
+            },
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showEditAccountDialog(

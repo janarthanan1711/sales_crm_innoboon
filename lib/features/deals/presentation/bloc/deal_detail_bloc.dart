@@ -10,6 +10,7 @@ import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../domain/usecases/update_deal_stage_usecase.dart';
 import '../../domain/usecases/deal_activity_usecases.dart';
+import '../../domain/usecases/delete_deal_usecase.dart';
 import 'deal_detail_event.dart';
 import 'deal_detail_state.dart';
 export 'deal_detail_event.dart';
@@ -26,6 +27,7 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
   final LogDealActivityUseCase logDealActivityUseCase;
   final UpdateDealActivityUseCase updateDealActivityUseCase;
   final DeleteDealActivityUseCase deleteDealActivityUseCase;
+  final DeleteDealUseCase deleteDealUseCase;
 
   List<DealStageDef> _stages = const [];
 
@@ -40,12 +42,26 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
     required this.logDealActivityUseCase,
     required this.updateDealActivityUseCase,
     required this.deleteDealActivityUseCase,
+    required this.deleteDealUseCase,
   }) : super(const DealDetailInitial()) {
     on<DealDetailLoadRequested>(_onLoadRequested);
     on<DealDetailStageUpdateRequested>(_onStageUpdateRequested);
     on<DealDetailActivityLogRequested>(_onActivityLogRequested);
     on<DealDetailActivityUpdateRequested>(_onActivityUpdateRequested);
     on<DealDetailActivityDeleteRequested>(_onActivityDeleteRequested);
+    on<DealDetailDeleteRequested>(_onDeleteRequested);
+  }
+
+  Future<void> _onDeleteRequested(
+    DealDetailDeleteRequested event,
+    Emitter<DealDetailState> emit,
+  ) async {
+    emit(const DealDetailLoading());
+    final result = await deleteDealUseCase(event.id);
+    result.fold(
+      (failure) => emit(DealDetailError(failure.message)),
+      (_) => emit(const DealDetailDeleted()),
+    );
   }
 
   Future<void> _onLoadRequested(
