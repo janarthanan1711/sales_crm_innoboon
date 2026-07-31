@@ -12,6 +12,7 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
+import '../../../users/domain/usecases/activate_user_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
 
@@ -558,13 +559,30 @@ class _UserRow extends StatelessWidget {
                     ),
                     (_) => onChanged(),
                   );
+                } else if (value == 'activate') {
+                  final result = await sl<ActivateUserUseCase>()(user.id);
+                  result.fold(
+                    (f) => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to activate: ${f.message}'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    ),
+                    (_) => onChanged(),
+                  );
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'deactivate',
-                  child: Text('Deactivate'),
-                ),
+                if (user.status == 'deactivated')
+                  const PopupMenuItem(
+                    value: 'activate',
+                    child: Text('Activate'),
+                  )
+                else
+                  const PopupMenuItem(
+                    value: 'deactivate',
+                    child: Text('Deactivate'),
+                  ),
               ],
             ),
           ),

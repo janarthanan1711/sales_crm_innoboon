@@ -17,4 +17,5 @@ abstract class UserRepository {
     required int roleId,
   });
   Future<Either<Failure, void>> deleteUser(int id);
+  Future<Either<Failure, void>> activateUser(int id);
 }
