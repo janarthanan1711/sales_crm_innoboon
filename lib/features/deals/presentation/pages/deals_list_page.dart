@@ -187,19 +187,24 @@ class _DealsListViewState extends State<_DealsListView> {
   }
 
   /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals?to_export=true`.
-  /// The export API supports `search`/`tier`/`stage_id` (owner is role-scoped
-  /// server-side, so it isn't sent). `tier` is only passed when exactly one
-  /// tier checkbox is selected, since the endpoint takes a single tier.
+  /// The export API supports `owner_id`/`search`/`tier`/`stage_id`. Owner and
+  /// stage come from the bloc's active filter (set via the Owner/Stage
+  /// dropdowns); `tier` is only passed when exactly one tier checkbox is
+  /// selected, since the endpoint takes a single tier.
   Future<void> _onExport(BuildContext context) async {
     if (_exporting) return;
     final messenger = ScaffoldMessenger.of(context);
+    final bloc = context.read<DealsListBloc>();
     setState(() => _exporting = true);
 
     final tier = _selectedTiers.length == 1 ? _selectedTiers.first : null;
     final search = _search.trim().isEmpty ? null : _search.trim();
+    final blocState = bloc.state;
+    final ownerId = blocState is DealsListLoaded ? blocState.ownerIdFilter : null;
+    final stageId = blocState is DealsListLoaded ? blocState.stageIdFilter : null;
 
     final result = await sl<ExportDealsUseCase>()(
-      ExportDealsParams(tier: tier, search: search),
+      ExportDealsParams(ownerId: ownerId, stageId: stageId, tier: tier, search: search),
     );
     if (!mounted) return;
     setState(() => _exporting = false);

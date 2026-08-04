@@ -4,10 +4,11 @@ import '../../../../core/error/failures.dart';
 import '../repositories/deal_repository.dart';
 
 class ExportDealsParams {
+  final int? ownerId;
   final int? stageId;
   final String? tier;
   final String? search;
-  const ExportDealsParams({this.stageId, this.tier, this.search});
+  const ExportDealsParams({this.ownerId, this.stageId, this.tier, this.search});
 }
 
 class ExportDealsUseCase {
@@ -16,6 +17,7 @@ class ExportDealsUseCase {
 
   Future<Either<Failure, Uint8List>> call(ExportDealsParams params) {
     return repository.exportDeals(
+      ownerId: params.ownerId,
       stageId: params.stageId,
       tier: params.tier,
       search: params.search,

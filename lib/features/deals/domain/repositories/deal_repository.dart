@@ -69,8 +69,9 @@ abstract class DealRepository {
   );
 
   /// Downloads the filtered deals as an `.xlsx` byte stream
-  /// (`GET /deals?to_export=true`). Role-scoped server-side; no owner filter.
+  /// (`GET /deals?to_export=true`).
   Future<Either<Failure, Uint8List>> exportDeals({
+    int? ownerId,
     int? stageId,
     String? tier,
     String? search,
@@ -140,7 +141,7 @@ abstract class DealRemoteDataSource {
   });
   Future<void> deleteActivity(String dealId, String activityId);
 
-  Future<Uint8List> exportDeals({int? stageId, String? tier, String? search});
+  Future<Uint8List> exportDeals({int? ownerId, int? stageId, String? tier, String? search});
   Future<Uint8List> exportDeal(String id);
 
   Future<void> deleteDeal(String id);

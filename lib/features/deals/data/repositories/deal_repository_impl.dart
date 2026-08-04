@@ -207,12 +207,14 @@ class DealRepositoryImpl implements DealRepository {
 
   @override
   Future<Either<Failure, Uint8List>> exportDeals({
+    int? ownerId,
     int? stageId,
     String? tier,
     String? search,
   }) async {
     try {
       return Right(await remoteDataSource.exportDeals(
+        ownerId: ownerId,
         stageId: stageId,
         tier: tier,
         search: search,

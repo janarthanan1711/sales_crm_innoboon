@@ -234,6 +234,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
 
   @override
   Future<Uint8List> exportDeals({
+    int? ownerId,
     int? stageId,
     String? tier,
     String? search,
@@ -243,6 +244,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         ApiEndpoints.deals,
         queryParameters: {
           'to_export': true,
+          if (ownerId != null) 'owner_id': ownerId,
           if (stageId != null) 'stage_id': stageId,
           if (tier != null && tier.isNotEmpty) 'tier': tier,
           if (search != null && search.isNotEmpty) 'search': search,
