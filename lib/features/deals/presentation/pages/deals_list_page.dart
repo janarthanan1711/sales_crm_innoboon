@@ -91,18 +91,24 @@ class _DealsListViewState extends State<_DealsListView> {
     final q = _search.trim().toLowerCase();
     if (q.isNotEmpty) {
       out = out
-          .where((d) =>
-              d.name.toLowerCase().contains(q) ||
-              d.accountName.toLowerCase().contains(q))
+          .where(
+            (d) =>
+                d.name.toLowerCase().contains(q) ||
+                d.accountName.toLowerCase().contains(q),
+          )
           .toList();
     }
     // Only filter when a strict subset of tiers is selected — all (or none)
     // selected means "no tier filter", so nothing is hidden unexpectedly.
-    if (_selectedTiers.isNotEmpty && _selectedTiers.length < _kTierOrder.length) {
-      out = out.where((d) => _selectedTiers.contains(d.tier.toLowerCase())).toList();
+    if (_selectedTiers.isNotEmpty &&
+        _selectedTiers.length < _kTierOrder.length) {
+      out = out
+          .where((d) => _selectedTiers.contains(d.tier.toLowerCase()))
+          .toList();
     }
     if (_closeSort != _CloseSort.none) {
-      out = [...out]..sort((a, b) {
+      out = [...out]
+        ..sort((a, b) {
           final ad = a.expectedCloseDate;
           final bd = b.expectedCloseDate;
           if (ad == null && bd == null) return 0;
@@ -138,18 +144,25 @@ class _DealsListViewState extends State<_DealsListView> {
                 listener: (context, state) {
                   if (state is DealsListLoaded && state.actionError != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.actionError!), backgroundColor: AppColors.error),
+                      SnackBar(
+                        content: Text(state.actionError!),
+                        backgroundColor: AppColors.error,
+                      ),
                     );
                   }
                 },
                 builder: (context, state) {
                   if (state is DealsListLoading) {
-                    return const AppLoadingIndicator(message: 'Loading deals...');
+                    return const AppLoadingIndicator(
+                      message: 'Loading deals...',
+                    );
                   }
                   if (state is DealsListError) {
                     return ErrorState(
                       message: state.message,
-                      onRetry: () => context.read<DealsListBloc>().add(const DealsListLoadRequested()),
+                      onRetry: () => context.read<DealsListBloc>().add(
+                        const DealsListLoadRequested(),
+                      ),
                     );
                   }
                   if (state is DealsListLoaded) {
@@ -164,7 +177,9 @@ class _DealsListViewState extends State<_DealsListView> {
                     return _isKanbanView
                         ? KanbanBoard(
                             deals: deals,
-                            stages: state.stages.isNotEmpty ? state.stages : _stages,
+                            stages: state.stages.isNotEmpty
+                                ? state.stages
+                                : _stages,
                             canManage: context.can(Perms.dealsManage),
                           )
                         : _DealsTable(deals: deals);
@@ -181,9 +196,11 @@ class _DealsListViewState extends State<_DealsListView> {
 
   void _openCreateDealDialog(BuildContext context) {
     final bloc = context.read<DealsListBloc>();
-    showDialog(context: context, builder: (_) => const CreateDealDialog()).then((result) {
-      if (result != null) bloc.add(const DealsListLoadRequested());
-    });
+    showDialog(context: context, builder: (_) => const CreateDealDialog()).then(
+      (result) {
+        if (result != null) bloc.add(const DealsListLoadRequested());
+      },
+    );
   }
 
   /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals?to_export=true`.
@@ -200,22 +217,36 @@ class _DealsListViewState extends State<_DealsListView> {
     final tier = _selectedTiers.length == 1 ? _selectedTiers.first : null;
     final search = _search.trim().isEmpty ? null : _search.trim();
     final blocState = bloc.state;
-    final ownerId = blocState is DealsListLoaded ? blocState.ownerIdFilter : null;
-    final stageId = blocState is DealsListLoaded ? blocState.stageIdFilter : null;
+    final ownerId = blocState is DealsListLoaded
+        ? blocState.ownerIdFilter
+        : null;
+    final stageId = blocState is DealsListLoaded
+        ? blocState.stageIdFilter
+        : null;
 
     final result = await sl<ExportDealsUseCase>()(
-      ExportDealsParams(ownerId: ownerId, stageId: stageId, tier: tier, search: search),
+      ExportDealsParams(
+        ownerId: ownerId,
+        stageId: stageId,
+        tier: tier,
+        search: search,
+      ),
     );
     if (!mounted) return;
     setState(() => _exporting = false);
 
     await result.fold(
       (f) async => messenger.showSnackBar(
-        SnackBar(content: Text('Export failed: ${f.message}'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Export failed: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
       ),
       (bytes) async {
         await downloadBytes(bytes, 'deals.xlsx');
-        messenger.showSnackBar(const SnackBar(content: Text('Deals exported.')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Deals exported.')),
+        );
       },
     );
   }
@@ -224,7 +255,11 @@ class _DealsListViewState extends State<_DealsListView> {
     return OutlinedButton.icon(
       onPressed: _exporting ? null : () => _onExport(context),
       icon: _exporting
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : const Icon(Icons.file_download_outlined, size: 16),
       label: Text(_exporting ? 'Exporting...' : 'Export'),
     );
@@ -240,16 +275,24 @@ class _DealsListViewState extends State<_DealsListView> {
   Widget _pipelineValue(BuildContext context) {
     return BlocBuilder<DealsListBloc, DealsListState>(
       builder: (context, state) {
-        final deals = state is DealsListLoaded ? _applyClientFilters(state.deals) : const <Deal>[];
+        final deals = state is DealsListLoaded
+            ? _applyClientFilters(state.deals)
+            : const <Deal>[];
         final total = deals.fold<double>(0, (s, d) => s + d.value);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('Total Pipeline Value',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+            Text(
+              'Total Pipeline Value',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(_compactINR(total),
-                style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+            Text(
+              _compactINR(total),
+              style: AppTextStyles.h3.copyWith(color: AppColors.primary),
+            ),
           ],
         );
       },
@@ -303,7 +346,10 @@ class _DealsListViewState extends State<_DealsListView> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Align(alignment: Alignment.centerLeft, child: _pipelineValue(context)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _pipelineValue(context),
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -324,13 +370,7 @@ class _DealsListViewState extends State<_DealsListView> {
       );
     }
 
-    return Row(
-      children: [
-        title,
-        const Spacer(),
-        ...actions,
-      ],
-    );
+    return Row(children: [title, const Spacer(), ...actions]);
   }
 
   Widget _buildFilters(BuildContext context) {
@@ -427,7 +467,10 @@ class _DealsListViewState extends State<_DealsListView> {
               ),
             ),
             const SizedBox(width: 4),
-            Text('${tier[0].toUpperCase()}${tier.substring(1)}', style: AppTextStyles.bodySmall),
+            Text(
+              '${tier[0].toUpperCase()}${tier.substring(1)}',
+              style: AppTextStyles.bodySmall,
+            ),
           ],
         ),
       ),
@@ -476,8 +519,8 @@ class _DealsListViewState extends State<_DealsListView> {
       _ownerName = null;
     });
     context.read<DealsListBloc>().add(
-          const DealsListFilterChanged(clearOwner: true, clearStage: true),
-        );
+      const DealsListFilterChanged(clearOwner: true, clearStage: true),
+    );
   }
 }
 
@@ -499,14 +542,29 @@ class _ViewToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _segment('Board', Icons.view_kanban_outlined, isBoard, () => onChanged(true)),
-          _segment('List', Icons.view_list_outlined, !isBoard, () => onChanged(false)),
+          _segment(
+            'Board',
+            Icons.view_kanban_outlined,
+            isBoard,
+            () => onChanged(true),
+          ),
+          _segment(
+            'List',
+            Icons.view_list_outlined,
+            !isBoard,
+            () => onChanged(false),
+          ),
         ],
       ),
     );
   }
 
-  Widget _segment(String label, IconData icon, bool active, VoidCallback onTap) {
+  Widget _segment(
+    String label,
+    IconData icon,
+    bool active,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
@@ -516,13 +574,23 @@ class _ViewToggle extends StatelessWidget {
           color: active ? AppColors.cardBackground : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           boxShadow: active
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 3, offset: const Offset(0, 1))]
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
               : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: active ? AppColors.primary : AppColors.textMuted),
+            Icon(
+              icon,
+              size: 16,
+              color: active ? AppColors.primary : AppColors.textMuted,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -553,7 +621,10 @@ class _DealsTable extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
@@ -592,7 +663,10 @@ class _DealsTable extends StatelessWidget {
   }
 
   Widget _header(String label, {int flex = 1}) {
-    return Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+    return Expanded(
+      flex: flex,
+      child: Text(label, style: AppTextStyles.tableHeader),
+    );
   }
 }
 
@@ -615,27 +689,54 @@ class _DealRowState extends State<_DealRow> {
       child: InkWell(
         onTap: () => context.go('/deals/${widget.deal.id}'),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           color: _isHovered ? AppColors.navHover : Colors.transparent,
           child: Row(
             children: [
-              Expanded(flex: 3, child: Text(widget.deal.name, style: AppTextStyles.tableCellLink)),
-              Expanded(flex: 2, child: Text(widget.deal.accountName, style: AppTextStyles.tableCell)),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  widget.deal.name,
+                  style: AppTextStyles.tableCellLink,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  widget.deal.accountName,
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
               Expanded(
                 flex: 2,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.border,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(widget.deal.stageName, style: AppTextStyles.caption),
+                    child: Text(
+                      widget.deal.stageLabel,
+                      style: AppTextStyles.caption,
+                    ),
                   ),
                 ),
               ),
-              Expanded(flex: 1, child: Text(CurrencyFormatter.formatINR(widget.deal.value), style: AppTextStyles.tableCell)),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  CurrencyFormatter.formatINR(widget.deal.value),
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
               Expanded(flex: 2, child: OwnerChip(name: widget.deal.owner)),
             ],
           ),
@@ -665,31 +766,44 @@ class _FilterDropdown extends StatelessWidget {
     return PopupMenuButton<String>(
       onSelected: onSelected,
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
       itemBuilder: (context) => options
-          .map((option) => PopupMenuItem(
-                value: option,
-                child: Row(
-                  children: [
-                    Expanded(child: Text(option)),
-                    if (option == selected)
-                      const Icon(Icons.check, size: 16, color: AppColors.primary),
-                  ],
-                ),
-              ))
+          .map(
+            (option) => PopupMenuItem(
+              value: option,
+              child: Row(
+                children: [
+                  Expanded(child: Text(option)),
+                  if (option == selected)
+                    const Icon(Icons.check, size: 16, color: AppColors.primary),
+                ],
+              ),
+            ),
+          )
           .toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: active ? AppColors.primaryLight : null,
-          border: Border.all(color: active ? AppColors.primary : AppColors.border),
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 15, color: active ? AppColors.primary : AppColors.textMuted),
+              Icon(
+                icon,
+                size: 15,
+                color: active ? AppColors.primary : AppColors.textMuted,
+              ),
               const SizedBox(width: 6),
             ],
             Text(

@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/dashboard_data.dart';
+import '../../domain/entities/dashboard_range.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 
 class DashboardRepositoryImpl implements DashboardRepository {
@@ -10,15 +11,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   @override
   Future<Either<Failure, DashboardData>> getDashboard({
-    String period = 'this_month',
-    String granularity = 'monthly',
+    DashboardRange range = const DashboardRange(),
     int limit = 20,
     int offset = 0,
   }) async {
     try {
       final data = await remoteDataSource.getDashboard(
-        period: period,
-        granularity: granularity,
+        range: range,
         limit: limit,
         offset: offset,
       );

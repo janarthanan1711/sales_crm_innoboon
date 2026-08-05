@@ -110,20 +110,41 @@ class KanbanBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final knownStageIds = stages.map((s) => s.id).toSet();
+    // Deals whose `stage_id` matches no stage in the catalog — e.g. a stage
+    // that was deleted, or one belonging to another company. Without a home
+    // column they used to vanish from the board silently, so they get a
+    // trailing column that only exists when there are any.
+    final orphans = deals
+        .where((d) => !knownStageIds.contains(d.stageId))
+        .toList(growable: false);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(stages.length, (i) {
-          final stage = stages[i];
-          final stageDeals = deals.where((d) => d.stageId == stage.id).toList();
-          return _KanbanColumn(
-            stage: stage,
-            deals: stageDeals,
-            canManage: canManage,
-            accent: _kStageDotColors[i % _kStageDotColors.length],
-          );
-        }),
+        children: [
+          for (var i = 0; i < stages.length; i++)
+            _KanbanColumn(
+              stage: stages[i],
+              deals: deals.where((d) => d.stageId == stages[i].id).toList(),
+              canManage: canManage,
+              accent: _kStageDotColors[i % _kStageDotColors.length],
+            ),
+          if (orphans.isNotEmpty)
+            _KanbanColumn(
+              stage: const DealStageDef(
+                id: -1,
+                companyId: 0,
+                name: 'Unknown stage',
+                sortOrder: 9999,
+              ),
+              deals: orphans,
+              // Nothing can be dropped into a stage that doesn't exist.
+              canManage: false,
+              accent: AppColors.textMuted,
+            ),
+        ],
       ),
     );
   }
@@ -363,16 +384,30 @@ class _DealCardState extends State<_DealCard> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+          // Every line below falls back to a visible placeholder. A deal whose
+          // name/account/owner came back blank — or whose account couldn't be
+          // resolved because the account or user list was unavailable — used to
+          // render as an all-but-empty card with nothing to identify or click.
           Text(
-            deal.name,
-            style: AppTextStyles.labelLarge,
+            deal.name.trim().isEmpty ? 'Untitled deal #${deal.id}' : deal.name,
+            style: AppTextStyles.labelLarge.copyWith(
+              color: deal.name.trim().isEmpty
+                  ? AppColors.textMuted
+                  : AppColors.textPrimary,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
-            deal.accountName,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+            deal.accountName.trim().isEmpty
+                ? 'No account linked'
+                : deal.accountName,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: deal.accountName.trim().isEmpty
+                  ? AppColors.textMuted
+                  : AppColors.primary,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -404,7 +439,13 @@ class _DealCardState extends State<_DealCard> {
                   ),
                 ),
               const Spacer(),
-              InitialsAvatar(name: deal.owner, size: 26),
+              Tooltip(
+                message: deal.owner.trim().isEmpty ? 'Unassigned' : deal.owner,
+                child: InitialsAvatar(
+                  name: deal.owner.trim().isEmpty ? 'Unassigned' : deal.owner,
+                  size: 26,
+                ),
+              ),
             ],
           ),
         ],

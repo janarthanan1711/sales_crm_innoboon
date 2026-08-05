@@ -64,6 +64,14 @@ class Deal extends Equatable {
   /// Comma-separated contact names, for compact single-line display.
   String get contactNames => contacts.map((c) => c.name).join(', ');
 
+  /// The stage as it should be shown to a user — never blank, and never a bare
+  /// number. [stageName] is resolved from the `/deal-stages` catalog, which can
+  /// come up empty (the request failed, or the stage was deleted); falling back
+  /// to `Stage <id>` keeps the row identifiable instead of showing an empty
+  /// chip.
+  String get stageLabel =>
+      stageName.trim().isEmpty ? 'Stage $stageId' : stageName;
+
   Deal copyWith({
     String? id,
     String? name,
@@ -112,25 +120,25 @@ class Deal extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        accountId,
-        accountName,
-        contacts,
-        contactName,
-        value,
-        currency,
-        stageId,
-        stageName,
-        stageIsCold,
-        expectedCloseDate,
-        ownerId,
-        owner,
-        coldReason,
-        tier,
-        description,
-        stakeholders,
-        paymentStatus,
-        createdAt,
-      ];
+    id,
+    name,
+    accountId,
+    accountName,
+    contacts,
+    contactName,
+    value,
+    currency,
+    stageId,
+    stageName,
+    stageIsCold,
+    expectedCloseDate,
+    ownerId,
+    owner,
+    coldReason,
+    tier,
+    description,
+    stakeholders,
+    paymentStatus,
+    createdAt,
+  ];
 }

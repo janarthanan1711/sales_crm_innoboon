@@ -9,7 +9,9 @@ import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../core/utils/media_url.dart';
 import '../../domain/entities/dashboard_data.dart';
+import '../../domain/entities/dashboard_range.dart';
 import '../bloc/dashboard_bloc.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -24,11 +26,12 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-/// (label, wire value) for the period toggle.
+/// (label, wire value) for the named options in the period toggle. `today` was
+/// dropped — a single day is now a custom range with equal bounds, which the
+/// third (custom) segment handles.
 const List<(String, String)> _kPeriods = [
-  ('Today', 'today'),
-  ('This Week', 'this_week'),
-  ('This Month', 'this_month'),
+  ('This Week', DashboardRange.thisWeek),
+  ('This Month', DashboardRange.thisMonth),
 ];
 
 class _DashboardView extends StatelessWidget {
@@ -77,13 +80,9 @@ class _DashboardView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final period = context.select<DashboardBloc, String>((b) {
-      final s = b.state;
-      if (s is DashboardLoaded) return s.period;
-      if (s is DashboardLoading) return s.period;
-      if (s is DashboardError) return s.period;
-      return 'this_month';
-    });
+    final range = context.select<DashboardBloc, DashboardRange>(
+      (b) => b.state.range,
+    );
 
     final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,9 +99,9 @@ class _DashboardView extends StatelessWidget {
     );
 
     final toggle = _PeriodToggle(
-      selected: period,
-      onSelected: (p) =>
-          context.read<DashboardBloc>().add(DashboardLoadRequested(period: p)),
+      range: range,
+      onSelected: (r) =>
+          context.read<DashboardBloc>().add(DashboardLoadRequested(range: r)),
     );
 
     if (context.isMobile) {
@@ -111,7 +110,12 @@ class _DashboardView extends StatelessWidget {
         children: [
           titleBlock,
           const SizedBox(height: AppSpacing.md),
-          toggle,
+          // A picked custom range makes the third segment wide enough to
+          // overflow a narrow phone, so let the toggle scroll sideways.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: toggle,
+          ),
         ],
       );
     }
@@ -203,10 +207,12 @@ class _DashboardView extends StatelessWidget {
 }
 
 // ─── Period toggle ──────────────────────────────────────
+/// This Week / This Month / Custom range. The custom segment opens a date-range
+/// picker and, once set, labels itself with the chosen dates.
 class _PeriodToggle extends StatelessWidget {
-  const _PeriodToggle({required this.selected, required this.onSelected});
-  final String selected;
-  final ValueChanged<String> onSelected;
+  const _PeriodToggle({required this.range, required this.onSelected});
+  final DashboardRange range;
+  final ValueChanged<DashboardRange> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -219,32 +225,95 @@ class _PeriodToggle extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: _kPeriods.map((p) {
-          final active = p.$2 == selected;
-          return GestureDetector(
-            onTap: () => onSelected(p.$2),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
+        children: [
+          for (final p in _kPeriods)
+            _segment(
+              label: p.$1,
+              active: !range.isCustom && p.$2 == range.period,
+              onTap: () => onSelected(DashboardRange(period: p.$2)),
+            ),
+          _segment(
+            label: _customLabel,
+            icon: Icons.date_range_outlined,
+            active: range.isCustom,
+            onTap: () => _pickRange(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "Custom" until a range is chosen, then the range itself. The year is
+  /// carried by the end date alone unless the range straddles two years:
+  /// "1 Jul – 31 Jul 2026", "28 Dec 2025 – 3 Jan 2026", "4 Aug 2026".
+  String get _customLabel {
+    final start = range.start;
+    final end = range.end;
+    if (!range.isCustom || start == null || end == null) return 'Custom';
+    final withYear = DateFormat('d MMM y');
+    if (start == end) return withYear.format(start);
+    final left = start.year == end.year
+        ? DateFormat('d MMM').format(start)
+        : withYear.format(start);
+    return '$left – ${withYear.format(end)}';
+  }
+
+  Future<void> _pickRange(BuildContext context) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(today.year - 5),
+      // No future dates — the dashboard only aggregates what already happened.
+      lastDate: today,
+      initialDateRange: range.start != null && range.end != null
+          ? DateTimeRange(start: range.start!, end: range.end!)
+          : null,
+      helpText: 'Select dashboard date range',
+      saveText: 'Apply',
+    );
+    if (picked == null) return;
+    onSelected(DashboardRange.between(picked.start, picked.end));
+  }
+
+  Widget _segment({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    IconData? icon,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primaryLight : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius - 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 15,
+                color: active ? AppColors.primary : AppColors.textSecondary,
               ),
-              decoration: BoxDecoration(
-                color: active ? AppColors.primaryLight : Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  AppSpacing.buttonRadius - 2,
-                ),
-              ),
-              child: Text(
-                p.$1,
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: active ? AppColors.primary : AppColors.textSecondary,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
-          );
-        }).toList(),
+          ],
+        ),
       ),
     );
   }
@@ -282,13 +351,25 @@ class _SummaryTiles extends StatelessWidget {
         icon: Icons.emoji_events_outlined,
         color: AppColors.success,
       ),
+      // Accounts created in the period. Absent (not zero) on API builds that
+      // don't return the section, in which case the tile is left out.
+      if (summary.numAccounts != null)
+        _StatTile(
+          title: 'No. of Accounts',
+          stat: summary.numAccounts!,
+          icon: Icons.business_outlined,
+          color: const Color(0xFF0891B2),
+        ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 4-up on wide, 2-up on tablet, 1-up on phone.
-        final cols = constraints.maxWidth >= 1000
-            ? 4
+        // Balanced rows at every width: 5 tiles go 5-up only when there's real
+        // room, else 3+2 — a 4-up grid would leave the fifth tile stranded.
+        final cols = constraints.maxWidth >= 1280
+            ? (tiles.length > 4 ? 5 : 4)
+            : constraints.maxWidth >= 1000
+            ? (tiles.length > 4 ? 3 : 4)
             : constraints.maxWidth >= 560
             ? 2
             : 1;
@@ -760,7 +841,14 @@ class _LeaderboardCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  InitialsAvatar(name: entries[i].ownerName, size: 36),
+                  UserAvatar(
+                    name: entries[i].ownerName,
+                    avatarUrl: resolveMediaUrl(
+                      entries[i].avatarUrl,
+                      bustCache: true,
+                    ),
+                    size: 36,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(

@@ -3,9 +3,10 @@ import '../../domain/entities/deal_contact.dart';
 
 /// Maps the backend's `DealRead` shape (see `POST/GET/PATCH /deals`). The API
 /// carries `stage_id` (int, dynamic — see `/deal-stages`) and `contacts`
-/// (objects with an id + resolved name). It has no
-/// `account_name`/`owner`/`tier`-name/`stage_name` — those are resolved
-/// client-side by the caller, not from this JSON.
+/// (objects with an id + resolved name). It has no `account_name`/`owner` —
+/// those are resolved client-side by the caller, not from this JSON.
+/// `stage_name`/`stage_is_cold` are read when present and otherwise left for
+/// the caller to resolve from the stage catalog.
 class DealModel extends Deal {
   const DealModel({
     required super.id,
@@ -38,6 +39,12 @@ class DealModel extends Deal {
       value: (json['value'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? 'INR',
       stageId: json['stage_id'] as int? ?? 0,
+      // `DealRead` carries only `stage_id` today and the caller resolves the
+      // name from the `/deal-stages` catalog — but take `stage_name` straight
+      // off the wire when a build provides it, so the name survives even for a
+      // stage missing from the catalog.
+      stageName: json['stage_name'] as String? ?? '',
+      stageIsCold: json['stage_is_cold'] as bool? ?? false,
       expectedCloseDate: json['expected_close_date'] != null
           ? DateTime.tryParse(json['expected_close_date'] as String)
           : null,
