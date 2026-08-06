@@ -12,6 +12,7 @@ import '../../core/constants/app_constants.dart';
 import '../di/injector.dart';
 import '../router/route_paths.dart';
 import '../../features/auth/domain/usecases/profile_usecases.dart';
+import '../../features/notifications/presentation/bloc/notification_bloc.dart';
 import '../../features/notifications/presentation/widgets/notification_bell.dart';
 import '../../features/search/presentation/widgets/global_search_field.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -148,16 +149,27 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = context.screenSize;
-
-    switch (screenSize) {
-      case ScreenSize.mobile:
-        return _MobileShell(child: child);
-      case ScreenSize.tablet:
-        return _TabletShell(child: child);
-      case ScreenSize.web:
-        return _WebShell(child: child);
-    }
+    // One NotificationBloc for the whole shell, so the bell in the top bar and
+    // the notifications page read and write the same state. They each used to
+    // build their own instance from `sl` (a factory), which meant marking a
+    // notification read updated the page's bloc while the bell kept rendering
+    // the count it fetched at startup — it only looked right after a restart.
+    return BlocProvider<NotificationBloc>(
+      create: (_) =>
+          sl<NotificationBloc>()..add(const NotificationLoadRequested()),
+      child: Builder(
+        builder: (context) {
+          switch (context.screenSize) {
+            case ScreenSize.mobile:
+              return _MobileShell(child: child);
+            case ScreenSize.tablet:
+              return _TabletShell(child: child);
+            case ScreenSize.web:
+              return _WebShell(child: child);
+          }
+        },
+      ),
+    );
   }
 }
 
