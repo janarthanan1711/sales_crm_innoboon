@@ -21,5 +21,13 @@ class DealDocument extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, dealId, fileName, fileUrl, contentType, uploadedBy, createdAt];
+  List<Object?> get props => [
+    id,
+    dealId,
+    fileName,
+    fileUrl,
+    contentType,
+    uploadedBy,
+    createdAt,
+  ];
 }

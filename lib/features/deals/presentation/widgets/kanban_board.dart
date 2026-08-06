@@ -252,12 +252,21 @@ class _KanbanColumn extends StatelessWidget {
                     void open() => context.go('/deals/${deal.id}');
                     if (!canManage) {
                       return _DealCard(
+                        key: ValueKey('deal-${deal.id}'),
                         deal: deal,
                         onTap: open,
                         canManage: false,
                       );
                     }
+                    // Keyed by deal id, not list position. Dragging a card to
+                    // another column reorders both lists, and without a key
+                    // Flutter matches the rebuilt items by index — so the
+                    // Draggable's own "am I being dragged" state, and the
+                    // card's, could stay attached to whatever deal now sits at
+                    // that index, leaving a card stuck rendering its
+                    // half-transparent childWhenDragging placeholder.
                     return Draggable<Deal>(
+                      key: ValueKey('deal-drag-${deal.id}'),
                       data: deal,
                       feedback: Material(
                         elevation: 8,
@@ -305,7 +314,12 @@ class _KanbanColumn extends StatelessWidget {
 }
 
 class _DealCard extends StatefulWidget {
-  const _DealCard({required this.deal, this.onTap, this.canManage = false});
+  const _DealCard({
+    super.key,
+    required this.deal,
+    this.onTap,
+    this.canManage = false,
+  });
   final Deal deal;
   final VoidCallback? onTap;
   final bool canManage;
@@ -410,6 +424,33 @@ class _DealCardState extends State<_DealCard> {
             ),
             overflow: TextOverflow.ellipsis,
           ),
+          // Linked contacts come straight off the wire (`DealRead.contacts`),
+          // needing none of the id→name lookups the account and owner lines
+          // depend on — so they keep the card identifiable even when those
+          // lookups return nothing.
+          if (deal.contacts.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.person_outline,
+                  size: 13,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    deal.contactNames,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Text(
             CurrencyFormatter.formatINR(deal.value),
@@ -440,11 +481,8 @@ class _DealCardState extends State<_DealCard> {
                 ),
               const Spacer(),
               Tooltip(
-                message: deal.owner.trim().isEmpty ? 'Unassigned' : deal.owner,
-                child: InitialsAvatar(
-                  name: deal.owner.trim().isEmpty ? 'Unassigned' : deal.owner,
-                  size: 26,
-                ),
+                message: deal.ownerLabel,
+                child: InitialsAvatar(name: deal.ownerLabel, size: 26),
               ),
             ],
           ),

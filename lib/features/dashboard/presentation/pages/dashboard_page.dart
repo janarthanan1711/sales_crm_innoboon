@@ -708,6 +708,42 @@ class _ConversionTrendCard extends StatelessWidget {
         ),
       ),
       borderData: FlBorderData(show: false),
+      // fl_chart defaults a tooltip's text colour to the *line's* colour, so
+      // the hovered value came out dark blue on the dark tooltip and was
+      // essentially unreadable. Spell out white text on a dark panel, and put
+      // the bucket's date above the count so the hover says what it's counting.
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (_) => AppColors.textPrimary,
+          tooltipRoundedRadius: 6,
+          getTooltipItems: (touched) => touched.map((spot) {
+            final i = spot.x.toInt();
+            final label = (i >= 0 && i < points.length)
+                ? DateFormat('MMM d').format(points[i].period.toLocal())
+                : '';
+            return LineTooltipItem(
+              '${spot.y.toInt()}',
+              const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+              children: [
+                if (label.isNotEmpty)
+                  TextSpan(
+                    text: '\n$label',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
+              textAlign: TextAlign.center,
+            );
+          }).toList(),
+        ),
+      ),
       minX: 0,
       maxX: maxX,
       minY: 0,

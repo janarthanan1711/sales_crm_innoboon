@@ -33,6 +33,22 @@ class DealStageHistoryEntry extends Equatable {
     required this.createdAt,
   });
 
+  /// Only [changedByName] is replaceable — it's the one field the client fills
+  /// in itself when the payload omits it (resolved from `GET /users`).
+  DealStageHistoryEntry withChangedByName(String? name) =>
+      DealStageHistoryEntry(
+        id: id,
+        dealId: dealId,
+        fromStageId: fromStageId,
+        toStageId: toStageId,
+        fromStageName: fromStageName,
+        toStageName: toStageName,
+        changedBy: changedBy,
+        changedByName: name ?? changedByName,
+        note: note,
+        createdAt: createdAt,
+      );
+
   factory DealStageHistoryEntry.fromJson(Map<String, dynamic> json) {
     return DealStageHistoryEntry(
       id: json['id'] as int,

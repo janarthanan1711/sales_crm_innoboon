@@ -72,6 +72,14 @@ class Deal extends Equatable {
   String get stageLabel =>
       stageName.trim().isEmpty ? 'Stage $stageId' : stageName;
 
+  /// The owner as it should be shown to a user. Distinguishes a deal with no
+  /// owner from one whose owner simply couldn't be named (`owner_name` absent
+  /// and the user lookup unavailable) — reporting the latter as "Unassigned"
+  /// would be a lie.
+  String get ownerLabel => owner.trim().isNotEmpty
+      ? owner
+      : (ownerId == null ? 'Unassigned' : 'Owner #$ownerId');
+
   Deal copyWith({
     String? id,
     String? name,

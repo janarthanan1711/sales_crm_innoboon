@@ -160,9 +160,8 @@ Future<void> initDependencies() async {
   final dioClient = DioClient(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue:
-          // "https://sales-prospecting-crm-api.onrender.com/api/v1",
-          "http://192.168.0.187:8000/api/v1",
+      defaultValue: "https://sales-prospecting-crm-api.onrender.com/api/v1",
+      // "http://192.168.0.187:8000/api/v1",
       // 'https://20e1-103-5-113-67.ngrok-free.app/api/v1',
     ),
     authInterceptor: authInterceptor,

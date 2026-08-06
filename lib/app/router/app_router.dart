@@ -44,6 +44,7 @@ final GlobalKey<NavigatorState> _shellNavigatorKey =
 /// URL either. Create/edit paths need `<module>.access` ("view and manage
 /// own"); list/detail paths also accept `.view_all` (read-only visibility).
 const Map<String, List<String>> _routePermissions = {
+  RoutePaths.dashboard: [Perms.dashboardView],
   RoutePaths.leads: [Perms.leadsManage, Perms.leadsViewAll],
   RoutePaths.leadDetail: [Perms.leadsManage, Perms.leadsViewAll],
   RoutePaths.createLead: [Perms.leadsManage],
@@ -57,6 +58,28 @@ const Map<String, List<String>> _routePermissions = {
   RoutePaths.contactDetail: [Perms.contactsManage],
   RoutePaths.settings: [Perms.usersManage, Perms.rolesManage],
 };
+
+/// Where a redirect sends someone who can't open what they asked for, tried in
+/// order. The dashboard is the natural home, but it now needs `dashboard.view`
+/// — bouncing an unpermitted user there would send them straight back into the
+/// gate, so this walks on to the first module they can actually open, and ends
+/// at their own profile, which requires nothing.
+const List<String> _landingCandidates = [
+  RoutePaths.dashboard,
+  RoutePaths.leads,
+  RoutePaths.deals,
+  RoutePaths.accounts,
+  RoutePaths.contacts,
+  RoutePaths.settings,
+];
+
+String _landingRoute(AuthNotifier auth) {
+  for (final path in _landingCandidates) {
+    final required = _routePermissions[path];
+    if (required == null || auth.hasAnyPermission(required)) return path;
+  }
+  return RoutePaths.profile;
+}
 
 /// App router configuration using go_router
 class AppRouter {
@@ -82,17 +105,16 @@ class AppRouter {
         return RoutePaths.login;
       }
       if (isAuthenticated && loggingIn) {
-        return RoutePaths.dashboard;
+        return _landingRoute(authNotifier);
       }
 
       // Permission gate. Keeps a route the user can't act on out of reach even
       // when its button is hidden — typed URLs, bookmarks and stale links all
-      // land here. The dashboard requires no permission, so it's always a safe
-      // place to bounce to.
+      // land here.
       if (isAuthenticated) {
         final required = _routePermissions[state.fullPath ?? ''];
         if (required != null && !authNotifier.hasAnyPermission(required)) {
-          return RoutePaths.dashboard;
+          return _landingRoute(authNotifier);
         }
       }
       return null;

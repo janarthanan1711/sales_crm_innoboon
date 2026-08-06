@@ -117,6 +117,20 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  /// A user's account state (`active` / `invited` / `deactivated`), in the same
+  /// pill every other Status column uses — the Admin Settings users table used
+  /// to render this as a bare coloured dot plus text, which was the odd one out.
+  factory StatusBadge.userStatus(String status) {
+    final colors = _getUserStatusColors(status);
+    return StatusBadge(
+      label: status.isEmpty
+          ? '—'
+          : status[0].toUpperCase() + status.substring(1),
+      backgroundColor: colors.bg,
+      textColor: colors.text,
+    );
+  }
+
   /// Tier badge in the plain [StatusBadge] pill style (no leading dot).
   /// Reuses [TierBadge]'s tier→colour mapping so tiers stay consistent
   /// wherever they're shown.
@@ -187,6 +201,20 @@ class StatusBadge extends StatelessWidget {
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
       case 'junk lead':
       case 'lost lead':
+        return (bg: AppColors.errorLight, text: AppColors.error);
+      default:
+        return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
+    }
+  }
+
+  static ({Color bg, Color text}) _getUserStatusColors(String status) {
+    // Matches saleshub's user `status` values (see doc §2.7).
+    switch (status.toLowerCase()) {
+      case 'active':
+        return (bg: AppColors.successLight, text: AppColors.success);
+      case 'invited':
+        return (bg: AppColors.warningLight, text: AppColors.warning);
+      case 'deactivated':
         return (bg: AppColors.errorLight, text: AppColors.error);
       default:
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);

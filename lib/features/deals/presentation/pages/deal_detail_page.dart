@@ -183,7 +183,7 @@ class _DealDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Owner: ${deal.owner}',
+                      'Owner: ${deal.ownerLabel}',
                       style: AppTextStyles.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -267,7 +267,7 @@ class _DealDetailView extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
-                          'Owner: ${deal.owner}',
+                          'Owner: ${deal.ownerLabel}',
                           style: AppTextStyles.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -471,7 +471,7 @@ class _DealDetailView extends StatelessWidget {
                   ? TierBadge(tier: deal.tier)
                   : Text('—', style: AppTextStyles.bodyMedium),
             ),
-            _infoRow('Owner', deal.owner),
+            _infoRow('Owner', deal.ownerLabel),
             _infoRow(
               'Contacts',
               deal.contacts.isEmpty ? '—' : deal.contactNames,
@@ -1116,7 +1116,7 @@ class _StageNode extends StatelessWidget {
 }
 
 /// Inline (non-card) timeline entry for a stage change, e.g.
-/// "Stage moved from Evaluation to Proposals".
+/// "Priya Shah moved this deal from Evaluation to Proposals".
 class _StageMoveContent extends StatelessWidget {
   const _StageMoveContent({required this.entry, required this.state});
   final DealStageHistoryEntry entry;
@@ -1127,6 +1127,12 @@ class _StageMoveContent extends StatelessWidget {
     // Prefer a name the API supplied; fall back to the stage catalog.
     final toName = entry.toStageName ?? state.stageName(entry.toStageId);
     final fromName = entry.fromStageName ?? state.stageName(entry.fromStageId);
+    // Who made the move — `changed_by_name` from the stage-history response,
+    // or resolved from the user list by the bloc. Unknown only when neither is
+    // available, in which case the sentence drops the actor entirely rather
+    // than naming a bare user id.
+    final actor = entry.changedByName?.trim();
+    final hasActor = actor != null && actor.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Column(
@@ -1137,35 +1143,53 @@ class _StageMoveContent extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
-              children: entry.fromStageId != null
-                  ? [
-                      const TextSpan(text: 'Stage moved from '),
-                      TextSpan(
-                        text: fromName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+              children: [
+                if (hasActor)
+                  TextSpan(
+                    text: actor,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ...entry.fromStageId != null
+                    ? [
+                        TextSpan(
+                          text: hasActor
+                              ? ' moved this deal from '
+                              : 'Stage moved from ',
                         ),
-                      ),
-                      const TextSpan(text: ' to '),
-                      TextSpan(
-                        text: toName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        TextSpan(
+                          text: fromName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                    ]
-                  : [
-                      const TextSpan(text: 'Stage set to '),
-                      TextSpan(
-                        text: toName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        const TextSpan(text: ' to '),
+                        TextSpan(
+                          text: toName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ]
+                    : [
+                        TextSpan(
+                          text: hasActor
+                              ? ' created this deal in '
+                              : 'Stage set to ',
+                        ),
+                        TextSpan(
+                          text: toName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+              ],
             ),
           ),
           const SizedBox(height: 2),

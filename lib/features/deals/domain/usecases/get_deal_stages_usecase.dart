@@ -7,5 +7,6 @@ class GetDealStagesUseCase {
   final DealRepository repository;
   GetDealStagesUseCase(this.repository);
 
-  Future<Either<Failure, List<DealStageDef>>> call() => repository.getDealStages();
+  Future<Either<Failure, List<DealStageDef>>> call() =>
+      repository.getDealStages();
 }

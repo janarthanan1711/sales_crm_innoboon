@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -51,6 +50,7 @@ const List<NavItem> _mainNavItems = [
     icon: Icons.dashboard_outlined,
     activeIcon: Icons.dashboard,
     path: RoutePaths.dashboard,
+    requiredPermissions: [Perms.dashboardView],
   ),
   NavItem(
     label: 'Leads',
@@ -92,6 +92,7 @@ const List<NavItem> _sidebarMainItems = [
     icon: Icons.dashboard_outlined,
     activeIcon: Icons.dashboard,
     path: RoutePaths.dashboard,
+    requiredPermissions: [Perms.dashboardView],
   ),
   NavItem(
     label: 'Leads',
@@ -178,8 +179,8 @@ class _MobileShell extends StatelessWidget {
         ],
       ),
       // BottomNavigationBar asserts items.length >= 2. During the brief
-      // window on restart before auth resolves, only permission-free items
-      // are visible (just Dashboard), so omit the bar until there are ≥2.
+      // window on restart before auth resolves no permission is held, so every
+      // item filters out — omit the bar until there are ≥2.
       bottomNavigationBar: navItems.length < 2
           ? null
           : Container(
@@ -218,7 +219,7 @@ class _TabletShell extends StatelessWidget {
       body: Row(
         children: [
           // NavigationRail asserts destinations.length >= 2 — skip the rail
-          // during the pre-auth window when only Dashboard is visible.
+          // during the pre-auth window when no item has cleared its gate yet.
           if (navItems.length >= 2) ...[
             NavigationRail(
               selectedIndex: currentIndex.clamp(0, navItems.length - 1),
@@ -425,8 +426,14 @@ class _WebSidebar extends StatelessWidget {
   }
 }
 
-/// Individual sidebar nav item
-class _SidebarNavItem extends StatefulWidget {
+/// Individual sidebar nav item.
+///
+/// Hover is left entirely to the [InkWell]. The previous version also tracked
+/// it by hand in a [MouseRegion] and tinted the container, so two highlights
+/// painted at once — the ink one unclipped and offset from the rounded
+/// container, which is what read as the hover "glitch". [Material] below owns
+/// the shape so the ink can't escape it.
+class _SidebarNavItem extends StatelessWidget {
   const _SidebarNavItem({
     required this.item,
     required this.isActive,
@@ -438,52 +445,35 @@ class _SidebarNavItem extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_SidebarNavItem> createState() => _SidebarNavItemState();
-}
-
-class _SidebarNavItemState extends State<_SidebarNavItem> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: 2,
       ),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
+      child: Material(
+        color: isActive ? AppColors.navActiveBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          onTap: onTap,
+          hoverColor: AppColors.navHover,
+          child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm + 2,
             ),
-            decoration: BoxDecoration(
-              color: widget.isActive
-                  ? AppColors.navActiveBg
-                  : _isHovered
-                  ? AppColors.navHover
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-            ),
             child: Row(
               children: [
                 Icon(
-                  widget.isActive ? widget.item.activeIcon : widget.item.icon,
+                  isActive ? item.activeIcon : item.icon,
                   size: 20,
-                  color: widget.isActive
-                      ? AppColors.navActive
-                      : AppColors.navInactive,
+                  color: isActive ? AppColors.navActive : AppColors.navInactive,
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Text(
-                  widget.item.label,
-                  style: widget.isActive
+                  item.label,
+                  style: isActive
                       ? AppTextStyles.navItemActive
                       : AppTextStyles.navItem,
                 ),
@@ -708,8 +698,6 @@ class _UserProfileDropdown extends StatelessWidget {
           context.read<AuthBloc>().add(const AuthLogoutRequested());
         } else if (value == 'profile') {
           context.go(RoutePaths.profile);
-        } else if (value == 'photo') {
-          _changePhoto(context);
         } else if (value == 'remove_photo') {
           _removePhoto(context);
         }
@@ -763,24 +751,9 @@ class _UserProfileDropdown extends StatelessWidget {
             ],
           ),
         ),
-        // Avatar upload/removal is reachable from any page here, not just
-        // the Profile screen.
-        PopupMenuItem(
-          value: 'photo',
-          child: Row(
-            children: [
-              Icon(
-                avatarUrl != null
-                    ? Icons.edit_outlined
-                    : Icons.camera_alt_outlined,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(avatarUrl != null ? 'Change Photo' : 'Upload Photo'),
-            ],
-          ),
-        ),
+        // Uploading/changing the photo lives on the Profile screen only — it
+        // needs the surrounding context (preview, validation, save state) that
+        // a header menu can't give it.
         if (avatarUrl != null)
           const PopupMenuItem(
             value: 'remove_photo',
@@ -826,39 +799,6 @@ class _UserProfileDropdown extends StatelessWidget {
                 ),
               ),
       ),
-    );
-  }
-
-  /// Picks an image and uploads it as the avatar, then refreshes AuthBloc so
-  /// every avatar in the shell repaints from the newly-cached user.
-  Future<void> _changePhoto(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final authBloc = context.read<AuthBloc>();
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      withData: true,
-    );
-    final file = (picked != null && picked.files.isNotEmpty)
-        ? picked.files.first
-        : null;
-    if (file?.bytes == null) return;
-
-    final result = await sl<UploadAvatarUseCase>()(
-      UploadAvatarParams(bytes: file!.bytes!, filename: file.name),
-    );
-    result.fold(
-      (f) => messenger.showSnackBar(
-        SnackBar(
-          content: Text('Failed to upload photo: ${f.message}'),
-          backgroundColor: AppColors.error,
-        ),
-      ),
-      (_) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Profile photo updated.')),
-        );
-        authBloc.add(const AuthCheckRequested());
-      },
     );
   }
 

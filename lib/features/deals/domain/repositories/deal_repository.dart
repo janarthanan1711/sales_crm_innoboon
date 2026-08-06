@@ -73,7 +73,7 @@ abstract class DealRepository {
   Future<Either<Failure, Uint8List>> exportDeals({
     int? ownerId,
     int? stageId,
-    String? tier,
+    List<String>? tiers,
     String? search,
   });
 
@@ -141,7 +141,12 @@ abstract class DealRemoteDataSource {
   });
   Future<void> deleteActivity(String dealId, String activityId);
 
-  Future<Uint8List> exportDeals({int? ownerId, int? stageId, String? tier, String? search});
+  Future<Uint8List> exportDeals({
+    int? ownerId,
+    int? stageId,
+    List<String>? tiers,
+    String? search,
+  });
   Future<Uint8List> exportDeal(String id);
 
   Future<void> deleteDeal(String id);

@@ -31,6 +31,10 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
 
   List<DealStageDef> _stages = const [];
 
+  /// userId → display name, fetched at most once per bloc instance. Resolves
+  /// the deal's owner and the actor on each stage-history row.
+  Map<int, String>? _userNames;
+
   DealDetailBloc({
     required this.getDealByIdUseCase,
     required this.getDealStagesUseCase,
@@ -97,30 +101,32 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
       stagesResult.fold((_) {}, (s) => _stages = s);
     }
     final result = await getDealByIdUseCase(id);
-    await result.fold(
-      (f) async => emit(DealDetailError(f.message)),
-      (deal) async {
-        final enriched = await _enrichDeal(deal);
-        final historyResult = await getDealStageHistoryUseCase(id);
-        final history = historyResult.fold(
-          (_) => <DealStageHistoryEntry>[],
-          (h) => h,
-        );
-        final activitiesResult = await listDealActivitiesUseCase(
-          ListDealActivitiesParams(dealId: id),
-        );
-        final activities = activitiesResult.fold(
-          (_) => <DealActivity>[],
-          (a) => a,
-        );
-        emit(DealDetailLoaded(
+    await result.fold((f) async => emit(DealDetailError(f.message)), (
+      deal,
+    ) async {
+      final userNames = await _resolveUserNames();
+      final enriched = await _enrichDeal(deal, userNames);
+      final historyResult = await getDealStageHistoryUseCase(id);
+      final history = historyResult.fold(
+        (_) => <DealStageHistoryEntry>[],
+        (h) => _withActorNames(h, userNames),
+      );
+      final activitiesResult = await listDealActivitiesUseCase(
+        ListDealActivitiesParams(dealId: id),
+      );
+      final activities = activitiesResult.fold(
+        (_) => <DealActivity>[],
+        (a) => a,
+      );
+      emit(
+        DealDetailLoaded(
           enriched,
           stages: _stages,
           stageHistory: history,
           activities: activities,
-        ));
-      },
-    );
+        ),
+      );
+    });
   }
 
   /// Re-fetch just the activity list and merge it into the current loaded
@@ -137,9 +143,8 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
     );
     result.fold(
       (_) => emit(current.copyWith(activityBusy: false)),
-      (activities) => emit(
-        current.copyWith(activities: activities, activityBusy: false),
-      ),
+      (activities) =>
+          emit(current.copyWith(activities: activities, activityBusy: false)),
     );
   }
 
@@ -159,14 +164,11 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
         note: event.note,
       ),
     );
-    await result.fold(
-      (f) async {
-        if (current is DealDetailLoaded) {
-          emit(current.copyWith(activityBusy: false));
-        }
-      },
-      (_) async => _refreshActivities(event.dealId, emit),
-    );
+    await result.fold((f) async {
+      if (current is DealDetailLoaded) {
+        emit(current.copyWith(activityBusy: false));
+      }
+    }, (_) async => _refreshActivities(event.dealId, emit));
   }
 
   Future<void> _onActivityUpdateRequested(
@@ -186,14 +188,11 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
         note: event.note,
       ),
     );
-    await result.fold(
-      (f) async {
-        if (current is DealDetailLoaded) {
-          emit(current.copyWith(activityBusy: false));
-        }
-      },
-      (_) async => _refreshActivities(event.dealId, emit),
-    );
+    await result.fold((f) async {
+      if (current is DealDetailLoaded) {
+        emit(current.copyWith(activityBusy: false));
+      }
+    }, (_) async => _refreshActivities(event.dealId, emit));
   }
 
   Future<void> _onActivityDeleteRequested(
@@ -210,33 +209,69 @@ class DealDetailBloc extends Bloc<DealDetailEvent, DealDetailState> {
         activityId: event.activityId,
       ),
     );
-    await result.fold(
-      (f) async {
-        if (current is DealDetailLoaded) {
-          emit(current.copyWith(activityBusy: false));
-        }
-      },
-      (_) async => _refreshActivities(event.dealId, emit),
-    );
+    await result.fold((f) async {
+      if (current is DealDetailLoaded) {
+        emit(current.copyWith(activityBusy: false));
+      }
+    }, (_) async => _refreshActivities(event.dealId, emit));
   }
 
-  Future<Deal> _enrichDeal(Deal deal) async {
-    final accountResult = await getAccountByIdUseCase(deal.accountId);
+  /// userId → display name from `GET /users`, cached for the bloc's lifetime.
+  /// Empty when the caller lacks `users.view` or the call failed — every use
+  /// falls back rather than blocking on it.
+  Future<Map<int, String>> _resolveUserNames() async {
+    if (_userNames != null) return _userNames!;
     final usersResult = await getUsersUseCase();
-    final accountName = accountResult.fold((_) => deal.accountName, (a) => a.companyName);
-    var ownerName = deal.owner;
-    usersResult.fold((_) {}, (users) {
-      if (deal.ownerId == null) return;
-      final match = users.where((u) => u.id == deal.ownerId);
-      if (match.isNotEmpty) ownerName = match.first.displayName;
-    });
+    final names = usersResult.fold<Map<int, String>>(
+      (_) => const {},
+      (users) => {for (final u in users) u.id: u.displayName},
+    );
+    _userNames = names;
+    return names;
+  }
+
+  /// Names the person behind each stage move. `GET /deals/{id}/stage-history`
+  /// is documented to return `changed_by_name`; where a build omits it, the
+  /// `changed_by` id is resolved against the user list instead.
+  List<DealStageHistoryEntry> _withActorNames(
+    List<DealStageHistoryEntry> history,
+    Map<int, String> userNames,
+  ) {
+    if (userNames.isEmpty) return history;
+    return history
+        .map(
+          (h) => (h.changedByName?.isNotEmpty ?? false)
+              ? h
+              : h.withChangedByName(userNames[h.changedBy]),
+        )
+        .toList(growable: false);
+  }
+
+  /// Fills in whatever `GET /deals/{id}` didn't resolve. `DealRead` now carries
+  /// `account_name`/`owner_name`/`stage_name` server-side (doc §6.1), so the
+  /// extra account fetch only happens against an older build.
+  Future<Deal> _enrichDeal(Deal deal, Map<int, String> userNames) async {
+    var accountName = deal.accountName;
+    if (accountName.trim().isEmpty) {
+      final accountResult = await getAccountByIdUseCase(deal.accountId);
+      accountName = accountResult.fold(
+        (_) => deal.accountName,
+        (a) => a.companyName,
+      );
+    }
+    final ownerName = deal.owner.trim().isNotEmpty
+        ? deal.owner
+        : (userNames[deal.ownerId] ?? deal.owner);
     final stageMatches = _stages.where((s) => s.id == deal.stageId);
     final stage = stageMatches.isEmpty ? null : stageMatches.first;
+    final wireStage = deal.stageName.trim().isNotEmpty;
     return deal.copyWith(
       accountName: accountName,
       owner: ownerName,
-      stageName: stage?.name ?? deal.stageName,
-      stageIsCold: stage?.isCold ?? deal.stageIsCold,
+      stageName: wireStage ? deal.stageName : (stage?.name ?? deal.stageName),
+      stageIsCold: wireStage
+          ? deal.stageIsCold
+          : (stage?.isCold ?? deal.stageIsCold),
     );
   }
 }

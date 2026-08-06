@@ -10,7 +10,12 @@ class GetDealsParams {
   final int? stageId;
   final String? search;
 
-  const GetDealsParams({this.ownerId, this.accountId, this.stageId, this.search});
+  const GetDealsParams({
+    this.ownerId,
+    this.accountId,
+    this.stageId,
+    this.search,
+  });
 }
 
 class GetDealsUseCase implements UseCase<List<Deal>, GetDealsParams> {

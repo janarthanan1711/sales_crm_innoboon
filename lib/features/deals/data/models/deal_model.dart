@@ -1,12 +1,13 @@
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_contact.dart';
 
-/// Maps the backend's `DealRead` shape (see `POST/GET/PATCH /deals`). The API
-/// carries `stage_id` (int, dynamic — see `/deal-stages`) and `contacts`
-/// (objects with an id + resolved name). It has no `account_name`/`owner` —
-/// those are resolved client-side by the caller, not from this JSON.
-/// `stage_name`/`stage_is_cold` are read when present and otherwise left for
-/// the caller to resolve from the stage catalog.
+/// Maps the backend's `DealRead` shape (see `POST/GET/PATCH /deals`).
+///
+/// The API resolves `account_name`, `owner_name`, `stage_name` and
+/// `stage_is_cold` server-side (doc §6.1), so a card or row renders from this
+/// JSON alone. They're all read defensively: an older build omits them, in
+/// which case the field lands empty and the caller fills it from the
+/// account/user/stage catalogs instead.
 class DealModel extends Deal {
   const DealModel({
     required super.id,
@@ -35,23 +36,20 @@ class DealModel extends Deal {
       id: '${json['id']}',
       name: json['deal_name'] as String? ?? '',
       accountId: '${json['account_id']}',
+      accountName: json['account_name'] as String? ?? '',
       contacts: _parseContacts(json),
       value: (json['value'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? 'INR',
       stageId: json['stage_id'] as int? ?? 0,
-      // `DealRead` carries only `stage_id` today and the caller resolves the
-      // name from the `/deal-stages` catalog — but take `stage_name` straight
-      // off the wire when a build provides it, so the name survives even for a
-      // stage missing from the catalog.
       stageName: json['stage_name'] as String? ?? '',
       stageIsCold: json['stage_is_cold'] as bool? ?? false,
       expectedCloseDate: json['expected_close_date'] != null
           ? DateTime.tryParse(json['expected_close_date'] as String)
           : null,
       ownerId: json['owner_id'] as int?,
-      owner: json['owner_id'] != null
-          ? 'Owner ${json['owner_id']}'
-          : 'Unassigned',
+      // Empty means "not resolved", which `Deal.ownerLabel` renders from
+      // `owner_id` — distinct from a genuinely unassigned deal.
+      owner: json['owner_name'] as String? ?? '',
       coldReason: json['cold_reason'] as String?,
       tier: json['tier'] as String? ?? '',
       // Not in the API — placeholder so sort-by-date UI doesn't crash.

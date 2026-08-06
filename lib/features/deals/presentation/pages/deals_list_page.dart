@@ -205,16 +205,22 @@ class _DealsListViewState extends State<_DealsListView> {
 
   /// Exports the currently-filtered deals as an `.xlsx` via `GET /deals?to_export=true`.
   /// The export API supports `owner_id`/`search`/`tier`/`stage_id`. Owner and
-  /// stage come from the bloc's active filter (set via the Owner/Stage
-  /// dropdowns); `tier` is only passed when exactly one tier checkbox is
-  /// selected, since the endpoint takes a single tier.
+  /// stage come from the bloc's active filter; `tier` is repeatable, so the
+  /// whole checkbox selection goes across — the spreadsheet matches the screen
+  /// even for a two- or three-tier selection, which previously exported
+  /// unfiltered.
   Future<void> _onExport(BuildContext context) async {
     if (_exporting) return;
     final messenger = ScaffoldMessenger.of(context);
     final bloc = context.read<DealsListBloc>();
     setState(() => _exporting = true);
 
-    final tier = _selectedTiers.length == 1 ? _selectedTiers.first : null;
+    // All (or none) ticked means "no tier filter" — same rule the on-screen
+    // list uses in _applyClientFilters, so the two can't disagree.
+    final tiers =
+        _selectedTiers.isEmpty || _selectedTiers.length == _kTierOrder.length
+        ? null
+        : _kTierOrder.where(_selectedTiers.contains).toList();
     final search = _search.trim().isEmpty ? null : _search.trim();
     final blocState = bloc.state;
     final ownerId = blocState is DealsListLoaded
@@ -228,7 +234,7 @@ class _DealsListViewState extends State<_DealsListView> {
       ExportDealsParams(
         ownerId: ownerId,
         stageId: stageId,
-        tier: tier,
+        tiers: tiers,
         search: search,
       ),
     );
@@ -737,7 +743,7 @@ class _DealRowState extends State<_DealRow> {
                   style: AppTextStyles.tableCell,
                 ),
               ),
-              Expanded(flex: 2, child: OwnerChip(name: widget.deal.owner)),
+              Expanded(flex: 2, child: OwnerChip(name: widget.deal.ownerLabel)),
             ],
           ),
         ),

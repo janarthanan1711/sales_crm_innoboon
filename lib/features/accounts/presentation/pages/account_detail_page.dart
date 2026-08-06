@@ -970,7 +970,7 @@ class _ContactsTab extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: TextField(
                               controller: lastNameController,
@@ -981,31 +981,31 @@ class _ContactsTab extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: jobTitleController,
                         decoration: const InputDecoration(
                           labelText: 'Job Title',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: emailController,
                         decoration: const InputDecoration(labelText: 'Email'),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: phoneController,
                         decoration: const InputDecoration(labelText: 'Phone'),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: altPhoneController,
                         decoration: const InputDecoration(
                           labelText: 'Alternate Phone',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: linkedinController,
                         decoration: const InputDecoration(
@@ -1839,7 +1839,7 @@ class _AccountDealCard extends StatelessWidget {
               children: [
                 StatusBadge.dealStage(deal.stageLabel),
                 if (deal.tier.isNotEmpty) TierBadge(tier: deal.tier),
-                _meta(Icons.person_outline, deal.owner),
+                _meta(Icons.person_outline, deal.ownerLabel),
                 if (close != null)
                   _meta(
                     Icons.event_outlined,

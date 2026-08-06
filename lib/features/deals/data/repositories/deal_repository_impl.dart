@@ -209,16 +209,18 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, Uint8List>> exportDeals({
     int? ownerId,
     int? stageId,
-    String? tier,
+    List<String>? tiers,
     String? search,
   }) async {
     try {
-      return Right(await remoteDataSource.exportDeals(
-        ownerId: ownerId,
-        stageId: stageId,
-        tier: tier,
-        search: search,
-      ));
+      return Right(
+        await remoteDataSource.exportDeals(
+          ownerId: ownerId,
+          stageId: stageId,
+          tiers: tiers,
+          search: search,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
