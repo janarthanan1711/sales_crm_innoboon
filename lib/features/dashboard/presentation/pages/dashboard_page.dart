@@ -50,33 +50,52 @@ class _DashboardView extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             BlocBuilder<DashboardBloc, DashboardState>(
               builder: (context, state) {
-                if (state is DashboardLoading || state is DashboardInitial) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: AppSpacing.xxxl),
-                    child: AppLoadingIndicator(message: 'Loading dashboard...'),
-                  );
-                }
-                if (state is DashboardError) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xxxl),
-                    child: ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<DashboardBloc>().add(
-                        const DashboardLoadRequested(),
-                      ),
-                    ),
-                  );
-                }
-                if (state is DashboardLoaded) {
-                  return _buildContent(context, state.data);
-                }
-                return const SizedBox.shrink();
+                // Cross-fade the spinner out instead of cutting to it. The
+                // incoming content runs its own staggered entrance underneath,
+                // so this only has to soften the swap itself.
+                return AnimatedSwitcher(
+                  duration: _Motion.off(context) ? Duration.zero : _Motion.swap,
+                  // Keep the outgoing child pinned to the top: the default
+                  // centre alignment makes the spinner drift as the taller
+                  // dashboard lays in behind it.
+                  layoutBuilder: (current, previous) => Stack(
+                    alignment: Alignment.topCenter,
+                    children: [...previous, ?current],
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey(state.runtimeType),
+                    child: _buildBody(context, state),
+                  ),
+                );
               },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildBody(BuildContext context, DashboardState state) {
+    if (state is DashboardLoading || state is DashboardInitial) {
+      return const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.xxxl),
+        child: AppLoadingIndicator(message: 'Loading dashboard...'),
+      );
+    }
+    if (state is DashboardError) {
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.xxxl),
+        child: ErrorState(
+          message: state.message,
+          onRetry: () =>
+              context.read<DashboardBloc>().add(const DashboardLoadRequested()),
+        ),
+      );
+    }
+    if (state is DashboardLoaded) {
+      return _buildContent(context, state.data);
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -144,21 +163,33 @@ class _DashboardView extends StatelessWidget {
         _LeaderboardCard(entries: data.leaderboard),
     ];
 
+    // Entrance order runs down the page. The tiles own indices 0-4; the cards
+    // below start at 3 so their stagger overlaps the tail of the tiles' rather
+    // than queueing behind it — the whole page is settled inside ~750ms.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SummaryTiles(summary: data.summary),
         if (halfCards.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xl),
-          _halfGrid(context, halfCards),
+          _halfGrid(context, [
+            for (var i = 0; i < halfCards.length; i++)
+              _FadeSlideIn(index: 3 + i, child: halfCards[i]),
+          ]),
         ],
         if (data.activityFeed.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xl),
-          _ActivityFeedCard(entries: data.activityFeed),
+          _FadeSlideIn(
+            index: 3 + halfCards.length,
+            child: _ActivityFeedCard(entries: data.activityFeed),
+          ),
         ],
         if (data.dropOffReasons.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xl),
-          _DropOffCard(entries: data.dropOffReasons),
+          _FadeSlideIn(
+            index: 4 + halfCards.length,
+            child: _DropOffCard(entries: data.dropOffReasons),
+          ),
         ],
       ],
     );
@@ -285,7 +316,7 @@ class _PeriodToggle extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: _Motion.segment,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
@@ -298,19 +329,25 @@ class _PeriodToggle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(
-                icon,
-                size: 15,
-                color: active ? AppColors.primary : AppColors.textSecondary,
+              // The pill behind the label already animates; without these the
+              // label and icon snapped to their new colour a beat ahead of it.
+              TweenAnimationBuilder<Color?>(
+                duration: _Motion.segment,
+                tween: ColorTween(
+                  end: active ? AppColors.primary : AppColors.textSecondary,
+                ),
+                builder: (context, color, _) =>
+                    Icon(icon, size: 15, color: color),
               ),
               const SizedBox(width: 5),
             ],
-            Text(
-              label,
+            AnimatedDefaultTextStyle(
+              duration: _Motion.segment,
               style: AppTextStyles.labelMedium.copyWith(
                 color: active ? AppColors.primary : AppColors.textSecondary,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
               ),
+              child: Text(label),
             ),
           ],
         ),
@@ -378,16 +415,20 @@ class _SummaryTiles extends StatelessWidget {
         return Wrap(
           spacing: gap,
           runSpacing: gap,
-          children: tiles
-              .map((t) => SizedBox(width: tileWidth, child: t))
-              .toList(),
+          children: [
+            for (var i = 0; i < tiles.length; i++)
+              SizedBox(
+                width: tileWidth,
+                child: _FadeSlideIn(index: i, child: tiles[i]),
+              ),
+          ],
         );
       },
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
+class _StatTile extends StatefulWidget {
   const _StatTile({
     required this.title,
     required this.stat,
@@ -400,43 +441,72 @@ class _StatTile extends StatelessWidget {
   final Color color;
 
   @override
+  State<_StatTile> createState() => _StatTileState();
+}
+
+class _StatTileState extends State<_StatTile> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-            ],
+    // Deliberately restrained: a 2px lift, a tinted border and a soft shadow in
+    // the tile's own accent. No colour flash and no cursor change — these tiles
+    // aren't clickable, so the hover state should read as focus, not affordance.
+    final raised = _hovered && !_Motion.off(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: _Motion.hover,
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, raised ? -2 : 0, 0),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          border: Border.all(
+            color: raised
+                ? widget.color.withValues(alpha: 0.45)
+                : AppColors.border,
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text('${stat.value}', style: AppTextStyles.h1),
-          const SizedBox(height: 6),
-          _ChangeBadge(changePct: stat.changePct),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: raised ? 0.12 : 0),
+              blurRadius: raised ? 18 : 0,
+              offset: Offset(0, raised ? 6 : 0),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: widget.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(widget.icon, size: 18, color: widget.color),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _CountUp(value: widget.stat.value, style: AppTextStyles.h1),
+            const SizedBox(height: 6),
+            _ChangeBadge(changePct: widget.stat.changePct),
+          ],
+        ),
       ),
     );
   }
@@ -519,6 +589,7 @@ class _FunnelCard extends StatelessWidget {
               stage: ordered[i],
               palette: _funnelPalettes[i % _funnelPalettes.length],
               widthFactor: _taper(i, ordered.length),
+              index: i,
             ),
           ],
         ],
@@ -573,46 +644,66 @@ class _FunnelBar extends StatelessWidget {
     required this.stage,
     required this.palette,
     required this.widthFactor,
+    required this.index,
   });
   final FunnelStage stage;
   final _FunnelPalette palette;
   final double widthFactor;
 
+  /// Position in the stack, used to cascade the unfurl.
+  final int index;
+
   @override
   Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: palette.background,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            // Narrow bars leave little room, so let long stage names wrap to a
-            // second line rather than stealing space from the count.
-            Expanded(
-              child: Text(
-                stage.stageName,
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: palette.foreground,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              '${stage.count}',
+    final bar = _bar();
+    if (_Motion.off(context)) {
+      return FractionallySizedBox(widthFactor: widthFactor, child: bar);
+    }
+    // Each bar widens out from the centre, later ones taking longer, so the
+    // funnel unfurls top-down. Starting at 55% of the final width rather than
+    // zero keeps the row inside laid out the whole way: a bar animating up from
+    // nothing would have less width than its own padding on the first frames.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: widthFactor * 0.55, end: widthFactor),
+      duration: Duration(milliseconds: 420 + 70 * index.clamp(0, 6)),
+      curve: Curves.easeOutCubic,
+      child: bar,
+      builder: (context, w, child) =>
+          FractionallySizedBox(widthFactor: w, child: child),
+    );
+  }
+
+  Widget _bar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: palette.background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // Narrow bars leave little room, so let long stage names wrap to a
+          // second line rather than stealing space from the count.
+          Expanded(
+            child: Text(
+              stage.stageName,
               style: AppTextStyles.labelMedium.copyWith(
                 color: palette.foreground,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            '${stage.count}',
+            style: AppTextStyles.labelMedium.copyWith(
+              color: palette.foreground,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -647,13 +738,27 @@ class _ConversionTrendCard extends StatelessWidget {
             left: 4,
             right: 24,
           ),
-          child: LineChart(_chartData()),
+          child: _Motion.off(context)
+              ? LineChart(_chartData(1))
+              : TweenAnimationBuilder<double>(
+                  // The series rises out of the baseline. fl_chart's own
+                  // implicit tween is zeroed out underneath so it doesn't lag
+                  // a frame behind this one and smear the curve.
+                  tween: Tween(begin: 0, end: 1),
+                  duration: _Motion.draw,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, t, _) =>
+                      LineChart(_chartData(t), duration: Duration.zero),
+                ),
         ),
       ),
     );
   }
 
-  LineChartData _chartData() {
+  /// [t] scales the plotted values from the axis floor up to their real
+  /// heights, driving the entrance. Axis bounds and labels stay fixed at their
+  /// final values so nothing reflows while the line grows.
+  LineChartData _chartData(double t) {
     final maxY = points.map((e) => e.count).fold(0, (a, b) => a > b ? a : b);
     final niceMax = (maxY <= 5 ? 5 : ((maxY / 5).ceil() * 5)).toDouble();
     // A single period would give minX == maxX (divide-by-zero on intervals);
@@ -718,11 +823,14 @@ class _ConversionTrendCard extends StatelessWidget {
           tooltipRoundedRadius: 6,
           getTooltipItems: (touched) => touched.map((spot) {
             final i = spot.x.toInt();
-            final label = (i >= 0 && i < points.length)
+            final inRange = i >= 0 && i < points.length;
+            final label = inRange
                 ? DateFormat('MMM d').format(points[i].period.toLocal())
                 : '';
             return LineTooltipItem(
-              '${spot.y.toInt()}',
+              // Read the count off the data, not off `spot.y` — mid-entrance
+              // the plotted y is a fraction of the real value.
+              '${inRange ? points[i].count : spot.y.toInt()}',
               const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -753,7 +861,7 @@ class _ConversionTrendCard extends StatelessWidget {
           spots: points
               .asMap()
               .entries
-              .map((e) => FlSpot(e.key.toDouble(), e.value.count.toDouble()))
+              .map((e) => FlSpot(e.key.toDouble(), e.value.count * t))
               .toList(),
           isCurved: points.length > 1,
           color: AppColors.primary,
@@ -783,6 +891,21 @@ class _DealDistributionCard extends StatelessWidget {
   final List<DealDistributionEntry> entries;
   final int total;
 
+  /// [t] grows the ring's thickness from nothing to its full 22px.
+  PieChartData _donutData(double t) => PieChartData(
+    sectionsSpace: 2,
+    centerSpaceRadius: 55,
+    sections: entries.map((e) {
+      final color = _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
+      return PieChartSectionData(
+        color: color,
+        value: e.count.toDouble(),
+        title: '',
+        radius: 22 * t,
+      );
+    }).toList(),
+  );
+
   @override
   Widget build(BuildContext context) {
     return SectionCard(
@@ -795,27 +918,23 @@ class _DealDistributionCard extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 55,
-                      sections: entries.map((e) {
-                        final color =
-                            _tierColors[e.tier.toLowerCase()] ??
-                            AppColors.textMuted;
-                        return PieChartSectionData(
-                          color: color,
-                          value: e.count.toDouble(),
-                          title: '',
-                          radius: 22,
-                        );
-                      }).toList(),
+                  if (_Motion.off(context))
+                    PieChart(_donutData(1))
+                  else
+                    TweenAnimationBuilder<double>(
+                      // The ring thickens out of the centre hole. Scaling the
+                      // radius rather than the values keeps every slice's share
+                      // correct from the first frame — only the depth grows.
+                      tween: Tween(begin: 0, end: 1),
+                      duration: _Motion.draw,
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, _) =>
+                          PieChart(_donutData(t), duration: Duration.zero),
                     ),
-                  ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('$total', style: AppTextStyles.h1),
+                      _CountUp(value: total, style: AppTextStyles.h1),
                       Text('Total Deals', style: AppTextStyles.caption),
                     ],
                   ),
@@ -1157,3 +1276,123 @@ class _TrendCell extends StatelessWidget {
 
 String _titleCase(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+// ─── Motion ─────────────────────────────────────────────
+/// Every duration on this page in one place, so the dashboard animates as one
+/// system rather than as a dozen independently-tuned widgets.
+///
+/// The page reloads through [DashboardLoading] on every period switch, which
+/// unmounts the content — so fl_chart's own data-swap tweens never actually
+/// fire here. The charts drive their own entrance instead (see `_chartData`'s
+/// `t` and the donut's radius tween), and their implicit duration is zeroed so
+/// the two don't fight.
+class _Motion {
+  _Motion._();
+
+  static const Duration entrance = Duration(milliseconds: 360);
+  static const Duration stagger = Duration(milliseconds: 55);
+  static const Duration count = Duration(milliseconds: 700);
+  static const Duration draw = Duration(milliseconds: 700);
+  static const Duration hover = Duration(milliseconds: 140);
+  static const Duration swap = Duration(milliseconds: 220);
+  static const Duration segment = Duration(milliseconds: 150);
+
+  /// Ceiling on stagger steps. Without it a long activity feed or a wide tile
+  /// row would push the last item's delay past the point where it reads as
+  /// "loading" rather than "arriving".
+  static const int maxSteps = 8;
+
+  /// Honours the platform's reduce-motion setting: everything here is
+  /// decoration, so it all collapses to its end state rather than degrading.
+  static bool off(BuildContext context) =>
+      MediaQuery.disableAnimationsOf(context);
+}
+
+/// Fades a section in while lifting it a few pixels. One controller per child,
+/// with the stagger delay baked into an [Interval] rather than a `Future.delayed`
+/// — nothing can fire after dispose, and the delay stays in the animation
+/// system where the framework can drive it.
+///
+/// Only used at the section level. Cards that stagger *their own* children
+/// deliberately don't nest a second fade inside this one: the parent's opacity
+/// multiplies through, so an inner fade running on the same clock is simply
+/// invisible. Inner motion is width/height/value based instead.
+class _FadeSlideIn extends StatefulWidget {
+  const _FadeSlideIn({required this.child, this.index = 0});
+
+  final Widget child;
+  final int index;
+
+  /// Pixels travelled upward. Kept small — this is a settle, not a slide.
+  static const double offset = 14;
+
+  @override
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<_FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    final steps = widget.index.clamp(0, _Motion.maxSteps);
+    final delayMs = _Motion.stagger.inMilliseconds * steps;
+    final totalMs = delayMs + _Motion.entrance.inMilliseconds;
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: totalMs),
+    );
+    _anim = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(delayMs / totalMs, 1, curve: Curves.easeOutCubic),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_Motion.off(context)) return widget.child;
+    return FadeTransition(
+      opacity: _anim,
+      child: AnimatedBuilder(
+        animation: _anim,
+        // The child is built once and passed through — only the transform is
+        // rebuilt per frame.
+        child: widget.child,
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, (1 - _anim.value) * _FadeSlideIn.offset),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Counts a stat up to its value. On a period switch the tile is rebuilt from
+/// scratch, so this runs from zero each time — which is the point: it draws the
+/// eye to the numbers that just changed.
+class _CountUp extends StatelessWidget {
+  const _CountUp({required this.value, required this.style});
+
+  final int value;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value.toDouble()),
+      duration: _Motion.off(context) ? Duration.zero : _Motion.count,
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => Text('${v.round()}', style: style),
+    );
+  }
+}
