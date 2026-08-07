@@ -354,23 +354,26 @@ class _DealCardState extends State<_DealCard> {
 
   @override
   Widget build(BuildContext context) {
-    final side = BorderSide(color: AppColors.border);
-    final leftColor = _dueSoon
+    // Red for a deal that's due (or overdue), primary while hovered, nothing
+    // otherwise. Painted as an overlaid stripe rather than a thick left
+    // BorderSide — see the note on the decoration below.
+    final accentColor = _dueSoon
         ? AppColors.error
-        : (_hover ? AppColors.primary : AppColors.border);
-    final leftWidth = _dueSoon ? 4.0 : (_hover ? 3.0 : 1.0);
+        : (_hover ? AppColors.primary : null);
+    final accentWidth = _dueSoon ? 4.0 : 3.0;
 
     final card = Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border(
-          top: side,
-          right: side,
-          bottom: side,
-          left: BorderSide(color: leftColor, width: leftWidth),
-        ),
+        // Uniform on purpose. BoxDecoration can only paint a *rounded* border
+        // when all four sides match; give it a thicker or differently-coloured
+        // left side alongside a borderRadius and painting throws part-way
+        // through — after the shadow and background, before the child. The card
+        // keeps its slot and its size but renders as an empty white rectangle.
+        // That was the "sometimes the deal card is empty" bug: it hit exactly
+        // the deals whose left border went red for being due soon.
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -379,125 +382,148 @@ class _DealCardState extends State<_DealCard> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tier badge + overflow menu.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: deal.tier.isNotEmpty
-                    ? Align(
-                        alignment: Alignment.centerLeft,
-                        child: TierBadge(tier: deal.tier),
-                      )
-                    : const SizedBox.shrink(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Stack(
+          children: [
+            // The Stack takes its size from this, the only unpositioned child;
+            // the stripe then stretches to whatever height the content needs.
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: _cardBody(),
+            ),
+            if (accentColor != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(width: accentWidth, color: accentColor),
               ),
-              _overflowMenu(),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // Every line below falls back to a visible placeholder. A deal whose
-          // name/account/owner came back blank — or whose account couldn't be
-          // resolved because the account or user list was unavailable — used to
-          // render as an all-but-empty card with nothing to identify or click.
-          Text(
-            deal.name.trim().isEmpty ? 'Untitled deal #${deal.id}' : deal.name,
-            style: AppTextStyles.labelLarge.copyWith(
-              color: deal.name.trim().isEmpty
-                  ? AppColors.textMuted
-                  : AppColors.textPrimary,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            deal.accountName.trim().isEmpty
-                ? 'No account linked'
-                : deal.accountName,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: deal.accountName.trim().isEmpty
-                  ? AppColors.textMuted
-                  : AppColors.primary,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          // Linked contacts come straight off the wire (`DealRead.contacts`),
-          // needing none of the id→name lookups the account and owner lines
-          // depend on — so they keep the card identifiable even when those
-          // lookups return nothing.
-          if (deal.contacts.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.person_outline,
-                  size: 13,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    deal.contactNames,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
           ],
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            CurrencyFormatter.formatINR(deal.value),
-            style: AppTextStyles.labelMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              if (deal.expectedCloseDate != null) ...[
-                Icon(
-                  Icons.event_outlined,
-                  size: 13,
-                  color: _dueSoon ? AppColors.error : AppColors.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  DateFormatter.shortDate(deal.expectedCloseDate!),
-                  style: AppTextStyles.caption.copyWith(
-                    color: _dueSoon ? AppColors.error : AppColors.textSecondary,
-                  ),
-                ),
-              ] else
-                Text(
-                  'No close date',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              const Spacer(),
-              Tooltip(
-                message: deal.ownerLabel,
-                child: InitialsAvatar(name: deal.ownerLabel, size: 26),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
 
     return MouseRegion(
-      // onEnter: (_) => setState(() => _hover = true),
+      onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: InkWell(
         onTap: widget.onTap ?? _openDetail,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         child: card,
       ),
+    );
+  }
+
+  Widget _cardBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tier badge + overflow menu.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: deal.tier.isNotEmpty
+                  ? Align(
+                      alignment: Alignment.centerLeft,
+                      child: TierBadge(tier: deal.tier),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            _overflowMenu(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        // Every line below falls back to a visible placeholder. A deal whose
+        // name/account/owner came back blank — or whose account couldn't be
+        // resolved because the account or user list was unavailable — used to
+        // render as an all-but-empty card with nothing to identify or click.
+        Text(
+          deal.name.trim().isEmpty ? 'Untitled deal #${deal.id}' : deal.name,
+          style: AppTextStyles.labelLarge.copyWith(
+            color: deal.name.trim().isEmpty
+                ? AppColors.textMuted
+                : AppColors.textPrimary,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          deal.accountName.trim().isEmpty
+              ? 'No account linked'
+              : deal.accountName,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: deal.accountName.trim().isEmpty
+                ? AppColors.textMuted
+                : AppColors.primary,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        // Linked contacts come straight off the wire (`DealRead.contacts`),
+        // needing none of the id→name lookups the account and owner lines
+        // depend on — so they keep the card identifiable even when those
+        // lookups return nothing.
+        if (deal.contacts.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(
+                Icons.person_outline,
+                size: 13,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  deal.contactNames,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          CurrencyFormatter.formatINR(deal.value),
+          style: AppTextStyles.labelMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            if (deal.expectedCloseDate != null) ...[
+              Icon(
+                Icons.event_outlined,
+                size: 13,
+                color: _dueSoon ? AppColors.error : AppColors.textMuted,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                DateFormatter.shortDate(deal.expectedCloseDate!),
+                style: AppTextStyles.caption.copyWith(
+                  color: _dueSoon ? AppColors.error : AppColors.textSecondary,
+                ),
+              ),
+            ] else
+              Text(
+                'No close date',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+            const Spacer(),
+            Tooltip(
+              message: deal.ownerLabel,
+              child: InitialsAvatar(name: deal.ownerLabel, size: 26),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
