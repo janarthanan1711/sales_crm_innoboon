@@ -12,3 +12,10 @@ class AccountDetailLoadRequested extends AccountDetailEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class AccountDetailDeleteRequested extends AccountDetailEvent {
+  final String id;
+  const AccountDetailDeleteRequested(this.id);
+  @override
+  List<Object?> get props => [id];
+}

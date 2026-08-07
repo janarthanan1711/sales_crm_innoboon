@@ -80,7 +80,18 @@ class _AccountDetailViewState extends State<_AccountDetailView>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BlocBuilder<AccountDetailBloc, AccountDetailState>(
+      body: BlocConsumer<AccountDetailBloc, AccountDetailState>(
+        listener: (context, state) {
+          if (state is AccountDetailDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account deleted.'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go('/accounts');
+          }
+        },
         builder: (context, state) {
           if (state is AccountDetailLoading)
             return const AppLoadingIndicator(message: 'Loading account...');
@@ -184,8 +195,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                     RecordExportButton(
                       fileName: 'account_${account.id}.xlsx',
                       successMessage: 'Account exported.',
-                      fetch: () =>
-                          sl<ExportAccountDetailUseCase>()(account.id),
+                      fetch: () => sl<ExportAccountDetailUseCase>()(account.id),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => _showEditAccountDialog(context, account),
@@ -202,6 +212,33 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                       onPressed: () => _openNewDeal(context, account),
                       icon: const Icon(Icons.add, size: 16),
                       label: const Text('New Deal'),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: 'More actions',
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        if (value == 'delete')
+                          _confirmDeleteAccount(context, account);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'Delete Account',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ];
 
@@ -299,6 +336,35 @@ class _AccountDetailViewState extends State<_AccountDetailView>
     // The dialog pops non-null on a successful save — refresh so the new deal
     // shows in the Deals tab and count.
     if (created != null) bloc.add(AccountDetailLoadRequested(account.id));
+  }
+
+  void _confirmDeleteAccount(BuildContext context, Account account) {
+    final bloc = context.read<AccountDetailBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: Text(
+          'This will permanently delete "${account.companyName}" and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              bloc.add(AccountDetailDeleteRequested(account.id));
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showEditAccountDialog(
@@ -694,7 +760,7 @@ class _OverviewTab extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              d.stageName,
+              d.stageLabel,
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -778,7 +844,6 @@ class _ContactsTab extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            _headerCell('PRIMARY', flex: 2),
                             _headerCell('NAME', flex: 4),
                             _headerCell('JOB TITLE', flex: 3),
                             _headerCell('EMAIL', flex: 4),
@@ -795,9 +860,6 @@ class _ContactsTab extends StatelessWidget {
                             final c = contacts[index];
                             return _ContactRow(
                               contact: c,
-                              onSetPrimary: c.isPrimary
-                                  ? null
-                                  : () => _setPrimary(context, c),
                               onEdit: () =>
                                   _showContactDialog(context, existing: c),
                               onDelete: () => _confirmDelete(context, c),
@@ -825,51 +887,6 @@ class _ContactsTab extends StatelessWidget {
     Widget table, {
     double width = 820,
   }) => accountTableMobileScroll(context, table, width: width);
-
-  /// Promote [target] to primary. Per the API a different existing primary
-  /// must be unset first (it 409s otherwise), so demote-then-promote.
-  Future<void> _setPrimary(BuildContext context, Contact target) async {
-    final bloc = context.read<AccountDetailBloc>();
-    final messenger = ScaffoldMessenger.of(context);
-    final current = contacts.where((c) => c.isPrimary && c.id != target.id);
-
-    if (current.isNotEmpty) {
-      final demote = await sl<UpsertAccountContactUseCase>()(
-        UpsertAccountContactParams(
-          accountId: _accountId,
-          contactId: current.first.id,
-          isPrimary: false,
-        ),
-      );
-      final demoteFailed = demote.isLeft();
-      if (demoteFailed) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Could not update the current primary contact.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-    }
-
-    final result = await sl<UpsertAccountContactUseCase>()(
-      UpsertAccountContactParams(
-        accountId: _accountId,
-        contactId: target.id,
-        isPrimary: true,
-      ),
-    );
-    result.fold(
-      (f) => messenger.showSnackBar(
-        SnackBar(
-          content: Text('Could not set primary: ${f.message}'),
-          backgroundColor: AppColors.error,
-        ),
-      ),
-      (_) => bloc.add(AccountDetailLoadRequested(account.id)),
-    );
-  }
 
   Future<void> _confirmDelete(BuildContext context, Contact c) async {
     final bloc = context.read<AccountDetailBloc>();
@@ -953,7 +970,7 @@ class _ContactsTab extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: TextField(
                               controller: lastNameController,
@@ -964,31 +981,31 @@ class _ContactsTab extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: jobTitleController,
                         decoration: const InputDecoration(
                           labelText: 'Job Title',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: emailController,
                         decoration: const InputDecoration(labelText: 'Email'),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: phoneController,
                         decoration: const InputDecoration(labelText: 'Phone'),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: altPhoneController,
                         decoration: const InputDecoration(
                           labelText: 'Alternate Phone',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: linkedinController,
                         decoration: const InputDecoration(
@@ -1101,14 +1118,10 @@ class _ContactsTab extends StatelessWidget {
 class _ContactRow extends StatelessWidget {
   const _ContactRow({
     required this.contact,
-    required this.onSetPrimary,
     required this.onEdit,
     required this.onDelete,
   });
   final Contact contact;
-
-  /// Null when this contact is already primary (radio shown selected).
-  final VoidCallback? onSetPrimary;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -1121,15 +1134,6 @@ class _ContactRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 2,
-            child: Radio<bool>(
-              value: true,
-              groupValue: contact.isPrimary,
-              onChanged: onSetPrimary == null ? null : (_) => onSetPrimary!(),
-              toggleable: false,
-            ),
-          ),
           Expanded(
             flex: 4,
             child: Row(
@@ -1148,6 +1152,13 @@ class _ContactRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // The dedicated PRIMARY radio column is gone; the flag is now
+                // read-only here and set from the Add/Edit Contact dialog's
+                // checkbox, which already handles demoting the old primary.
+                if (contact.isPrimary) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  const _PrimaryBadge(),
+                ],
               ],
             ),
           ),
@@ -1826,10 +1837,9 @@ class _AccountDealCard extends StatelessWidget {
               runSpacing: AppSpacing.xs,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (deal.stageName.isNotEmpty)
-                  StatusBadge.dealStage(deal.stageName),
+                StatusBadge.dealStage(deal.stageLabel),
                 if (deal.tier.isNotEmpty) TierBadge(tier: deal.tier),
-                _meta(Icons.person_outline, deal.owner),
+                _meta(Icons.person_outline, deal.ownerLabel),
                 if (close != null)
                   _meta(
                     Icons.event_outlined,

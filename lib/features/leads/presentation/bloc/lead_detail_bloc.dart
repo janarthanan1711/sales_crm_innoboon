@@ -6,6 +6,7 @@ import '../../domain/usecases/list_lead_activities_usecase.dart';
 import '../../domain/usecases/log_lead_activity_usecase.dart';
 import '../../domain/usecases/update_lead_activity_usecase.dart';
 import '../../domain/usecases/delete_lead_activity_usecase.dart';
+import '../../domain/usecases/set_lead_favourite_usecase.dart';
 import 'lead_detail_event.dart';
 import 'lead_detail_state.dart';
 export 'lead_detail_event.dart';
@@ -19,6 +20,7 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
   final LogLeadActivityUseCase logLeadActivityUseCase;
   final UpdateLeadActivityUseCase updateLeadActivityUseCase;
   final DeleteLeadActivityUseCase deleteLeadActivityUseCase;
+  final SetLeadFavouriteUseCase setLeadFavouriteUseCase;
 
   LeadDetailBloc({
     required this.getLeadByIdUseCase,
@@ -28,6 +30,7 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     required this.logLeadActivityUseCase,
     required this.updateLeadActivityUseCase,
     required this.deleteLeadActivityUseCase,
+    required this.setLeadFavouriteUseCase,
   }) : super(const LeadDetailInitial()) {
     on<LeadDetailLoadRequested>(_onLoadRequested);
     on<LeadDetailConvertRequested>(_onConvertRequested);
@@ -36,6 +39,7 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     on<LeadDetailActivityLogRequested>(_onActivityLogRequested);
     on<LeadDetailActivityUpdateRequested>(_onActivityUpdateRequested);
     on<LeadDetailActivityDeleteRequested>(_onActivityDeleteRequested);
+    on<LeadDetailFavouriteToggled>(_onFavouriteToggled);
   }
 
   Future<void> _onLoadRequested(
@@ -181,6 +185,21 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     result.fold(
       (failure) => emit(LeadDetailError(failure.message)),
       (accountId) => emit(LeadDetailConverted(accountId)),
+    );
+  }
+
+  Future<void> _onFavouriteToggled(
+    LeadDetailFavouriteToggled event,
+    Emitter<LeadDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! LeadDetailLoaded) return;
+    final result = await setLeadFavouriteUseCase(
+      SetLeadFavouriteParams(id: event.leadId, isFavourite: event.isFavourite),
+    );
+    result.fold(
+      (failure) => emit(LeadDetailError(failure.message)),
+      (lead) => emit(current.copyWith(lead: lead)),
     );
   }
 

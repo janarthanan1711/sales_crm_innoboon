@@ -58,7 +58,13 @@ class DealDetailLoaded extends DealDetailState {
   }
 
   @override
-  List<Object?> get props => [deal, stages, stageHistory, activities, activityBusy];
+  List<Object?> get props => [
+    deal,
+    stages,
+    stageHistory,
+    activities,
+    activityBusy,
+  ];
 }
 
 class DealDetailError extends DealDetailState {
@@ -66,4 +72,8 @@ class DealDetailError extends DealDetailState {
   const DealDetailError(this.message);
   @override
   List<Object?> get props => [message];
+}
+
+class DealDetailDeleted extends DealDetailState {
+  const DealDetailDeleted();
 }

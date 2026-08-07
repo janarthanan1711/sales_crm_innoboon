@@ -6,7 +6,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
-import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/app_notification.dart';
 import '../bloc/notification_bloc.dart';
@@ -16,10 +15,10 @@ class NotificationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<NotificationBloc>()..add(const NotificationLoadRequested()),
-      child: const _NotificationsView(),
-    );
+    // Deliberately no BlocProvider here: the bloc lives on the shell so the
+    // top-bar bell sees every read/delete this page performs. Building a second
+    // instance is what left the badge stale until the next app start.
+    return const _NotificationsView();
   }
 }
 
@@ -38,6 +37,15 @@ class _NotificationsViewState extends State<_NotificationsView> {
   _NotificationTab _tab = _NotificationTab.all;
   NotificationType? _typeFilter;
   final Set<int> _selectedIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // The shared bloc may be holding whatever the last visit left behind (an
+    // older page, a stale filter), so re-load on entry to put it back in step
+    // with this screen's default tab and pick up anything that arrived since.
+    _applyFilters();
+  }
 
   void _applyFilters() {
     _selectedIds.clear();

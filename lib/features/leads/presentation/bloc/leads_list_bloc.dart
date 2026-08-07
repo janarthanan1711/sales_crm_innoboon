@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/get_leads_usecase.dart';
+import '../../domain/usecases/set_lead_favourite_usecase.dart';
 import 'leads_list_event.dart';
 import 'leads_list_state.dart';
 export 'leads_list_event.dart';
@@ -7,18 +8,35 @@ export 'leads_list_state.dart';
 
 class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
   final GetLeadsUseCase getLeadsUseCase;
+  final SetLeadFavouriteUseCase setLeadFavouriteUseCase;
 
   String? _search;
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
 
-  LeadsListBloc({required this.getLeadsUseCase})
+  LeadsListBloc({required this.getLeadsUseCase, required this.setLeadFavouriteUseCase})
     : super(const LeadsListInitial()) {
     on<LeadsListLoadRequested>(_onLoadRequested);
     on<LeadsListSearchChanged>(_onSearchChanged);
     on<LeadsListFilterChanged>(_onFilterChanged);
     on<LeadsListCleared>(_onCleared);
+    on<LeadsListFavouriteToggled>(_onFavouriteToggled);
+  }
+
+  /// Reloads afterward (rather than splicing the one row in place) so the
+  /// list picks up the server's favourites-first sort immediately.
+  Future<void> _onFavouriteToggled(
+    LeadsListFavouriteToggled event,
+    Emitter<LeadsListState> emit,
+  ) async {
+    final result = await setLeadFavouriteUseCase(
+      SetLeadFavouriteParams(id: event.leadId, isFavourite: event.isFavourite),
+    );
+    await result.fold(
+      (failure) async => emit(LeadsListError(failure.message)),
+      (_) => _loadLeads(emit),
+    );
   }
 
   Future<void> _onCleared(

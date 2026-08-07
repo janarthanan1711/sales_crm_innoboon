@@ -51,7 +51,18 @@ class _DealDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: BlocBuilder<DealDetailBloc, DealDetailState>(
+      body: BlocConsumer<DealDetailBloc, DealDetailState>(
+        listener: (context, state) {
+          if (state is DealDetailDeleted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Deal deleted.'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            context.go('/deals');
+          }
+        },
         builder: (context, state) {
           if (state is DealDetailLoading) {
             return const AppLoadingIndicator(message: 'Loading deal...');
@@ -172,7 +183,7 @@ class _DealDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Owner: ${deal.owner}',
+                      'Owner: ${deal.ownerLabel}',
                       style: AppTextStyles.bodySmall,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -186,6 +197,8 @@ class _DealDetailView extends StatelessWidget {
                             icon: const Icon(Icons.edit, size: 16),
                             label: const Text('Edit Deal'),
                           ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _deleteMenuButton(context, deal),
                         ],
                       ],
                     ),
@@ -232,7 +245,7 @@ class _DealDetailView extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  deal.stageName,
+                                  deal.stageLabel,
                                   style: AppTextStyles.caption.copyWith(
                                     color: AppColors.primary,
                                   ),
@@ -254,7 +267,7 @@ class _DealDetailView extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
-                          'Owner: ${deal.owner}',
+                          'Owner: ${deal.ownerLabel}',
                           style: AppTextStyles.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -270,6 +283,8 @@ class _DealDetailView extends StatelessWidget {
                                 icon: const Icon(Icons.edit, size: 16),
                                 label: const Text('Edit Deal'),
                               ),
+                              const SizedBox(width: AppSpacing.sm),
+                              _deleteMenuButton(context, deal),
                             ],
                           ],
                         ),
@@ -372,6 +387,57 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
+  Widget _deleteMenuButton(BuildContext context, Deal deal) {
+    return PopupMenuButton<String>(
+      tooltip: 'More actions',
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) {
+        if (value == 'delete') _confirmDeleteDeal(context, deal);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+              SizedBox(width: AppSpacing.sm),
+              Text('Delete Deal', style: TextStyle(color: AppColors.error)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteDeal(BuildContext context, Deal deal) {
+    final bloc = context.read<DealDetailBloc>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete deal?'),
+        content: Text(
+          'This will permanently delete "${deal.name}" and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              bloc.add(DealDetailDeleteRequested(deal.id));
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Tab views ──────────────────────────────────────────
   Widget _dealInfoTab(Deal deal) {
     final close = deal.expectedCloseDate;
@@ -397,7 +463,7 @@ class _DealDetailView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _infoRow('Account', deal.accountName),
-            _infoRow('Stage', deal.stageName),
+            _infoRow('Stage', deal.stageLabel),
             _infoRow('Value', CurrencyFormatter.formatINR(deal.value)),
             _infoRowWidget(
               'Tier',
@@ -405,7 +471,7 @@ class _DealDetailView extends StatelessWidget {
                   ? TierBadge(tier: deal.tier)
                   : Text('—', style: AppTextStyles.bodyMedium),
             ),
-            _infoRow('Owner', deal.owner),
+            _infoRow('Owner', deal.ownerLabel),
             _infoRow(
               'Contacts',
               deal.contacts.isEmpty ? '—' : deal.contactNames,
@@ -420,15 +486,15 @@ class _DealDetailView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    close != null
-                        ? DateFormatter.displayDate(close)
-                        : 'N/A',
+                    close != null ? DateFormatter.displayDate(close) : 'N/A',
                     style: AppTextStyles.bodyMedium,
                   ),
                   if (remaining != null)
                     Text(
                       '($remaining)',
-                      style: AppTextStyles.caption.copyWith(color: remainingColor),
+                      style: AppTextStyles.caption.copyWith(
+                        color: remainingColor,
+                      ),
                     ),
                 ],
               ),
@@ -438,7 +504,6 @@ class _DealDetailView extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _activityTab(BuildContext context, DealDetailLoaded state) {
     final canManage = context.can(Perms.dealsManage);
@@ -692,7 +757,8 @@ class _DealActivityRow extends StatelessWidget {
         ? '$typeLabel: $title'
         : '$typeLabel: ${activity.note}';
     // When a title is set, the note is shown as a secondary line.
-    final secondary = (title != null && title.isNotEmpty && activity.note.isNotEmpty)
+    final secondary =
+        (title != null && title.isNotEmpty && activity.note.isNotEmpty)
         ? activity.note
         : null;
     final byline = activity.updatedAt != null
@@ -730,14 +796,22 @@ class _DealActivityRow extends StatelessWidget {
                   onTap: () => _showEditDialog(context),
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textMuted),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 InkWell(
                   onTap: () => _confirmDelete(context),
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(Icons.delete_outline, size: 16, color: AppColors.error),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: AppColors.error,
+                    ),
                   ),
                 ),
               ],
@@ -747,13 +821,19 @@ class _DealActivityRow extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               secondary,
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              const Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
+              const Icon(
+                Icons.person_outline,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
@@ -924,7 +1004,9 @@ class _ActivityTimeline extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
         child: Text(
           'No activity logged yet. Track calls, meetings, and notes here.',
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       );
     }
@@ -1034,7 +1116,7 @@ class _StageNode extends StatelessWidget {
 }
 
 /// Inline (non-card) timeline entry for a stage change, e.g.
-/// "Stage moved from Evaluation to Proposals".
+/// "Priya Shah moved this deal from Evaluation to Proposals".
 class _StageMoveContent extends StatelessWidget {
   const _StageMoveContent({required this.entry, required this.state});
   final DealStageHistoryEntry entry;
@@ -1042,8 +1124,15 @@ class _StageMoveContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final toName = state.stageName(entry.toStageId);
-    final fromName = state.stageName(entry.fromStageId);
+    // Prefer a name the API supplied; fall back to the stage catalog.
+    final toName = entry.toStageName ?? state.stageName(entry.toStageId);
+    final fromName = entry.fromStageName ?? state.stageName(entry.fromStageId);
+    // Who made the move — `changed_by_name` from the stage-history response,
+    // or resolved from the user list by the bloc. Unknown only when neither is
+    // available, in which case the sentence drops the actor entirely rather
+    // than naming a bare user id.
+    final actor = entry.changedByName?.trim();
+    final hasActor = actor != null && actor.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Column(
@@ -1051,27 +1140,56 @@ class _StageMoveContent extends StatelessWidget {
         children: [
           Text.rich(
             TextSpan(
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-              children: entry.fromStageId != null
-                  ? [
-                      const TextSpan(text: 'Stage moved from '),
-                      TextSpan(
-                        text: fromName,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                      const TextSpan(text: ' to '),
-                      TextSpan(
-                        text: toName,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                    ]
-                  : [
-                      const TextSpan(text: 'Stage set to '),
-                      TextSpan(
-                        text: toName,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                    ],
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              children: [
+                if (hasActor)
+                  TextSpan(
+                    text: actor,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ...entry.fromStageId != null
+                    ? [
+                        TextSpan(
+                          text: hasActor
+                              ? ' moved this deal from '
+                              : 'Stage moved from ',
+                        ),
+                        TextSpan(
+                          text: fromName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const TextSpan(text: ' to '),
+                        TextSpan(
+                          text: toName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ]
+                    : [
+                        TextSpan(
+                          text: hasActor
+                              ? ' created this deal in '
+                              : 'Stage set to ',
+                        ),
+                        TextSpan(
+                          text: toName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+              ],
             ),
           ),
           const SizedBox(height: 2),
@@ -1083,7 +1201,9 @@ class _StageMoveContent extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               entry.note!,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ],
@@ -1148,10 +1268,8 @@ class _ContactsTabState extends State<_ContactsTab> {
     final linkedIds = widget.deal.contactIds.toSet();
     final picked = await showDialog<Contact>(
       context: context,
-      builder: (_) => _LinkContactDialog(
-        accountId: accountId,
-        excludedIds: linkedIds,
-      ),
+      builder: (_) =>
+          _LinkContactDialog(accountId: accountId, excludedIds: linkedIds),
     );
     if (picked == null || !mounted) return;
     await _save([...linkedIds, picked.id], 'Contact linked to this deal.');
@@ -1512,10 +1630,12 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
     final f = picked.files.first;
     final Uint8List? bytes = f.bytes;
     if (bytes == null) {
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Could not read the selected file.'),
-        backgroundColor: AppColors.error,
-      ));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not read the selected file.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
     setState(() => _uploading = true);
@@ -1530,13 +1650,17 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
     result.fold(
       (fail) {
         setState(() => _uploading = false);
-        messenger.showSnackBar(SnackBar(
-          content: Text('Upload failed: ${fail.message}'),
-          backgroundColor: AppColors.error,
-        ));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: ${fail.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       },
       (doc) {
-        messenger.showSnackBar(SnackBar(content: Text('“${f.name}” uploaded.')));
+        messenger.showSnackBar(
+          SnackBar(content: Text('“${f.name}” uploaded.')),
+        );
         // Reflect immediately from the authoritative upload response — a
         // follow-up GET can race the server's write and return a stale list,
         // so insert the returned document directly instead of re-fetching.
@@ -1575,10 +1699,12 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
     );
     if (!mounted) return;
     result.fold(
-      (f) => messenger.showSnackBar(SnackBar(
-        content: Text('Failed to delete: ${f.message}'),
-        backgroundColor: AppColors.error,
-      )),
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
       (_) {
         messenger.showSnackBar(
           const SnackBar(content: Text('Document deleted.')),
@@ -1832,10 +1958,7 @@ class _DashedRectPainter extends CustomPainter {
     for (final metric in path.computeMetrics()) {
       double dist = 0;
       while (dist < metric.length) {
-        canvas.drawPath(
-          metric.extractPath(dist, dist + dash),
-          paint,
-        );
+        canvas.drawPath(metric.extractPath(dist, dist + dash), paint);
         dist += dash + gap;
       }
     }

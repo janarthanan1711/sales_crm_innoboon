@@ -35,3 +35,11 @@ class LeadsListFilterChanged extends LeadsListEvent {
 class LeadsListCleared extends LeadsListEvent {
   const LeadsListCleared();
 }
+
+class LeadsListFavouriteToggled extends LeadsListEvent {
+  final int leadId;
+  final bool isFavourite;
+  const LeadsListFavouriteToggled(this.leadId, this.isFavourite);
+  @override
+  List<Object?> get props => [leadId, isFavourite];
+}

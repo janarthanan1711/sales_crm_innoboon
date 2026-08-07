@@ -60,6 +60,11 @@ DashboardSummary _summaryFromJson(Map<String, dynamic> json) {
       json['deals_in_pipeline'] as Map<String, dynamic>?,
     ),
     dealsClosed: _statFromJson(json['deals_closed'] as Map<String, dynamic>?),
+    // Left null (tile hidden) rather than defaulted to zero when the API
+    // build in use doesn't return the section yet.
+    numAccounts: json['num_accounts'] is Map<String, dynamic>
+        ? _statFromJson(json['num_accounts'] as Map<String, dynamic>)
+        : null,
   );
 }
 
@@ -84,6 +89,10 @@ LeaderboardEntry _leaderboardFromJson(Map<String, dynamic> json) {
     ownerName: json['owner_name'] as String? ?? 'Unknown',
     revenue: (json['revenue'] as num?)?.toDouble() ?? 0,
     dealsClosed: (json['deals_closed'] as num?)?.toInt() ?? 0,
+    // `owner_avatar_url` is the documented field; `avatar_url` is accepted as
+    // an alias so either server naming works without a client release.
+    avatarUrl:
+        json['owner_avatar_url'] as String? ?? json['avatar_url'] as String?,
   );
 }
 

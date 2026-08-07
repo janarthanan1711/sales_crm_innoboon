@@ -287,6 +287,15 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     }
   }
 
+  @override
+  Future<void> deleteAccount(String id) async {
+    try {
+      await _dioClient.delete(ApiEndpoints.accountById(id));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
   String _formatDate(DateTime date) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${date.year}-${two(date.month)}-${two(date.day)}';

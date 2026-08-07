@@ -43,7 +43,9 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   @override
   Future<int> getUnreadCount() async {
     try {
-      final response = await dioClient.get(ApiEndpoints.notificationsUnreadCount);
+      final response = await dioClient.get(
+        ApiEndpoints.notificationsUnreadCount,
+      );
       return (response.data as Map<String, dynamic>)['unread_count'] as int;
     } on DioException catch (e) {
       throw _normalize(e);
@@ -51,18 +53,21 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   }
 
   @override
-  Future<void> markAsRead(int notificationId) async {
-    try {
-      await dioClient.patch(ApiEndpoints.markNotificationRead('$notificationId'));
-    } on DioException catch (e) {
-      throw _normalize(e);
-    }
-  }
+  Future<void> markAsRead(int notificationId) =>
+      _setReadState(notificationId, isRead: true);
 
   @override
-  Future<void> markAsUnread(int notificationId) async {
+  Future<void> markAsUnread(int notificationId) =>
+      _setReadState(notificationId, isRead: false);
+
+  /// One `PATCH` toggles read state in either direction (doc §9.3): sending
+  /// `is_read: true` stamps `read_at`, `false` clears it.
+  Future<void> _setReadState(int notificationId, {required bool isRead}) async {
     try {
-      await dioClient.patch(ApiEndpoints.markNotificationUnread('$notificationId'));
+      await dioClient.patch(
+        ApiEndpoints.notificationById('$notificationId'),
+        data: {'is_read': isRead},
+      );
     } on DioException catch (e) {
       throw _normalize(e);
     }

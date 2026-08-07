@@ -27,6 +27,11 @@ class Perms {
 
   static const String usersManage = 'users.manage';
   static const String rolesManage = 'roles.manage';
+
+  /// `GET /dashboard` is gated on this — Sales Manager/Admin hold it by
+  /// default, Sales Rep/Delivery SME don't. Unlike the module codes there's no
+  /// `.access`/`.view_all` split: the dashboard is read-only either way.
+  static const String dashboardView = 'dashboard.view';
 }
 
 /// Reads the authenticated user's permissions from [AuthBloc] to gate UI.

@@ -150,6 +150,18 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
+          // Material's default TextButton shape is a StadiumBorder, so a
+          // "Cancel" TextButton sat next to a "Save" ElevatedButton with two
+          // visibly different silhouettes — pill vs 8px rounded rectangle.
+          // Matching the shape/height here fixes every dialog at once.
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.buttonPaddingH,
+            vertical: AppSpacing.buttonPaddingV,
+          ),
+          minimumSize: const Size(0, AppSpacing.buttonHeight),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
           textStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -179,10 +191,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        hintStyle: GoogleFonts.inter(
-          fontSize: 14,
-          color: AppColors.textMuted,
-        ),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
         labelStyle: GoogleFonts.inter(
           fontSize: 14,
           color: AppColors.textSecondary,
@@ -208,15 +217,31 @@ class AppTheme {
           }
           return Colors.transparent;
         }),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         side: const BorderSide(color: AppColors.border, width: 1.5),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
+        // Material 3 draws its own full-width divider under a TabBar, in a
+        // colour far darker than this design's borders — that's the "black
+        // line under the tabs". The pages that want a rule already draw their
+        // own bottom border, so switch M3's off rather than doubling it.
+        dividerColor: Colors.transparent,
+        dividerHeight: 0,
+        // Without an explicit overlay the tabs pick up the default grey ripple,
+        // which reads as a smudge that outlives the pointer. A faint tint of
+        // the indicator colour is the same language as the rest of the app.
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return AppColors.primary.withValues(alpha: 0.12);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return AppColors.primary.withValues(alpha: 0.06);
+          }
+          return Colors.transparent;
+        }),
         labelStyle: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -251,10 +276,7 @@ class AppTheme {
           color: AppColors.textPrimary,
           borderRadius: BorderRadius.circular(6),
         ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 12,
-          color: AppColors.surface,
-        ),
+        textStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.surface),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.divider,

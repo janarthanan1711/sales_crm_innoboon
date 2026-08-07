@@ -230,10 +230,26 @@ class _Header extends StatelessWidget {
                 spacing: AppSpacing.sm,
                 children: [
                   Text(displayName, style: AppTextStyles.h2),
-                  const Icon(
-                    Icons.star_border,
-                    size: 18,
-                    color: AppColors.textMuted,
+                  IconButton(
+                    onPressed: () => context.read<LeadDetailBloc>().add(
+                      LeadDetailFavouriteToggled(lead.id, !lead.isFavourite),
+                    ),
+                    icon: Icon(
+                      lead.isFavourite ? Icons.star : Icons.star_border,
+                      size: 18,
+                      color: lead.isFavourite
+                          ? AppColors.warning
+                          : AppColors.textMuted,
+                    ),
+                    tooltip: lead.isFavourite
+                        ? 'Remove from favourites'
+                        : 'Mark as favourite',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    visualDensity: VisualDensity.compact,
                   ),
                   StatusBadge.leadStatus(
                     labelForWireValue(leadStatusLabels, lead.status),

@@ -57,3 +57,7 @@ class AccountDetailError extends AccountDetailState {
   @override
   List<Object?> get props => [message];
 }
+
+class AccountDetailDeleted extends AccountDetailState {
+  const AccountDetailDeleted();
+}

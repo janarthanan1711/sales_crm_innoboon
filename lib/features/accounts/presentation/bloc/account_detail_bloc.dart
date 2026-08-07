@@ -3,6 +3,7 @@ import '../../../deals/domain/entities/deal.dart';
 import '../../../deals/domain/entities/deal_stage_def.dart';
 import '../../../deals/domain/usecases/get_deal_stages_usecase.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
+import '../../domain/usecases/delete_account_usecase.dart';
 import '../../domain/usecases/get_account_contacts_usecase.dart';
 import '../../domain/usecases/get_account_deals_usecase.dart';
 import '../../domain/usecases/get_account_overview_usecase.dart';
@@ -17,6 +18,7 @@ class AccountDetailBloc extends Bloc<AccountDetailEvent, AccountDetailState> {
   final GetAccountDealsUseCase getAccountDealsUseCase;
   final GetDealStagesUseCase getDealStagesUseCase;
   final GetUsersUseCase getUsersUseCase;
+  final DeleteAccountUseCase deleteAccountUseCase;
 
   AccountDetailBloc({
     required this.getAccountOverviewUseCase,
@@ -24,8 +26,22 @@ class AccountDetailBloc extends Bloc<AccountDetailEvent, AccountDetailState> {
     required this.getAccountDealsUseCase,
     required this.getDealStagesUseCase,
     required this.getUsersUseCase,
+    required this.deleteAccountUseCase,
   }) : super(const AccountDetailInitial()) {
     on<AccountDetailLoadRequested>(_onLoadRequested);
+    on<AccountDetailDeleteRequested>(_onDeleteRequested);
+  }
+
+  Future<void> _onDeleteRequested(
+    AccountDetailDeleteRequested event,
+    Emitter<AccountDetailState> emit,
+  ) async {
+    emit(const AccountDetailLoading());
+    final result = await deleteAccountUseCase(event.id);
+    result.fold(
+      (failure) => emit(AccountDetailError(failure.message)),
+      (_) => emit(const AccountDetailDeleted()),
+    );
   }
 
   Future<void> _onLoadRequested(

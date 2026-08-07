@@ -453,7 +453,9 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
+        // Form rows sit on the lg step, not md — at 12px the floating labels
+        // of one field crowded the box above it.
+        const SizedBox(height: AppSpacing.lg),
         TextField(
           enabled: false,
           controller: TextEditingController(text: widget.user.email),
@@ -462,12 +464,12 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
             prefixIcon: Icon(Icons.lock_outline, size: 18),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
         TextField(
           controller: _phoneController,
           decoration: const InputDecoration(labelText: 'Phone Number'),
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.xl),
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: _saving

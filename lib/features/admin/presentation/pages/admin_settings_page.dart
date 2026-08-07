@@ -12,6 +12,7 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
+import '../../../users/domain/usecases/activate_user_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
 
@@ -494,22 +495,39 @@ class _UserRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // The chip hugs its label instead of stretching to fill the column:
+          // an Expanded Container with no alignment wrapper spanned the full
+          // cell width, so every role read as one long tinted bar, and the
+          // 2px padding left the text touching its own edges.
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
+            child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                user.role.name.toUpperCase(),
-                style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  user.role.name.toUpperCase(),
+                  style: AppTextStyles.badge.copyWith(color: AppColors.primary),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ),
-          Expanded(flex: 2, child: _statusBadge(user.status)),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: StatusBadge.userStatus(user.status),
+            ),
+          ),
           Expanded(
             flex: 2,
             child: Text(
@@ -558,47 +576,35 @@ class _UserRow extends StatelessWidget {
                     ),
                     (_) => onChanged(),
                   );
+                } else if (value == 'activate') {
+                  final result = await sl<ActivateUserUseCase>()(user.id);
+                  result.fold(
+                    (f) => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to activate: ${f.message}'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    ),
+                    (_) => onChanged(),
+                  );
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'deactivate',
-                  child: Text('Deactivate'),
-                ),
+                if (user.status == 'deactivated')
+                  const PopupMenuItem(
+                    value: 'activate',
+                    child: Text('Activate'),
+                  )
+                else
+                  const PopupMenuItem(
+                    value: 'deactivate',
+                    child: Text('Deactivate'),
+                  ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _statusBadge(String status) {
-    Color color;
-    switch (status) {
-      case 'active':
-        color = AppColors.success;
-        break;
-      case 'invited':
-        color = AppColors.warning;
-        break;
-      default:
-        color = AppColors.textMuted;
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          status[0].toUpperCase() + status.substring(1),
-          style: AppTextStyles.bodySmall,
-        ),
-      ],
     );
   }
 }

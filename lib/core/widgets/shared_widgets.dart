@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -116,6 +117,20 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  /// A user's account state (`active` / `invited` / `deactivated`), in the same
+  /// pill every other Status column uses — the Admin Settings users table used
+  /// to render this as a bare coloured dot plus text, which was the odd one out.
+  factory StatusBadge.userStatus(String status) {
+    final colors = _getUserStatusColors(status);
+    return StatusBadge(
+      label: status.isEmpty
+          ? '—'
+          : status[0].toUpperCase() + status.substring(1),
+      backgroundColor: colors.bg,
+      textColor: colors.text,
+    );
+  }
+
   /// Tier badge in the plain [StatusBadge] pill style (no leading dot).
   /// Reuses [TierBadge]'s tier→colour mapping so tiers stay consistent
   /// wherever they're shown.
@@ -186,6 +201,20 @@ class StatusBadge extends StatelessWidget {
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
       case 'junk lead':
       case 'lost lead':
+        return (bg: AppColors.errorLight, text: AppColors.error);
+      default:
+        return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
+    }
+  }
+
+  static ({Color bg, Color text}) _getUserStatusColors(String status) {
+    // Matches saleshub's user `status` values (see doc §2.7).
+    switch (status.toLowerCase()) {
+      case 'active':
+        return (bg: AppColors.successLight, text: AppColors.success);
+      case 'invited':
+        return (bg: AppColors.warningLight, text: AppColors.warning);
+      case 'deactivated':
         return (bg: AppColors.errorLight, text: AppColors.error);
       default:
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
@@ -267,6 +296,44 @@ class InitialsAvatar extends StatelessWidget {
     ];
     final index = name.hashCode.abs() % colors.length;
     return colors[index];
+  }
+}
+
+/// A user's photo when one is known, degrading to [InitialsAvatar] when it
+/// isn't — or when the image fails to load (a stale `avatar_url` pointing at a
+/// deleted file would otherwise leave a blank square).
+///
+/// [avatarUrl] must already be absolute; pass it through `resolveMediaUrl`
+/// (with `bustCache: true`, since avatar paths are derived from the user id and
+/// so don't change when the photo does).
+class UserAvatar extends StatelessWidget {
+  const UserAvatar({
+    super.key,
+    required this.name,
+    this.avatarUrl,
+    this.size = 36,
+  });
+
+  final String name;
+  final String? avatarUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = InitialsAvatar(name: name, size: size);
+    if (avatarUrl == null || avatarUrl!.isEmpty) return fallback;
+    return ClipRRect(
+      // Matches InitialsAvatar's squircle so mixed rows stay visually aligned.
+      borderRadius: BorderRadius.circular(size / 4),
+      child: CachedNetworkImage(
+        imageUrl: avatarUrl!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => fallback,
+        errorWidget: (_, _, _) => fallback,
+      ),
+    );
   }
 }
 

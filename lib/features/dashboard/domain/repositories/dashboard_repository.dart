@@ -1,15 +1,16 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/dashboard_data.dart';
+import '../entities/dashboard_range.dart';
 
 abstract class DashboardRepository {
   /// `GET /dashboard` — the single combined payload for the whole page.
-  /// [period] is `today|this_week|this_month`, [granularity] is
-  /// `daily|weekly|monthly` (drives the conversion-trend buckets), and
-  /// [limit]/[offset] paginate the activity feed.
+  /// [range] carries the period (`this_week|this_month|custom`) plus the
+  /// start/end bounds `custom` requires; its [DashboardRange.granularity]
+  /// drives the conversion-trend buckets. [limit]/[offset] paginate the
+  /// activity feed.
   Future<Either<Failure, DashboardData>> getDashboard({
-    String period,
-    String granularity,
+    DashboardRange range,
     int limit,
     int offset,
   });
@@ -17,8 +18,7 @@ abstract class DashboardRepository {
 
 abstract class DashboardRemoteDataSource {
   Future<DashboardData> getDashboard({
-    String period,
-    String granularity,
+    DashboardRange range,
     int limit,
     int offset,
   });

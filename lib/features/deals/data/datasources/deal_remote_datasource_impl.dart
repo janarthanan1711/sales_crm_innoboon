@@ -234,8 +234,9 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
 
   @override
   Future<Uint8List> exportDeals({
+    int? ownerId,
     int? stageId,
-    String? tier,
+    List<String>? tiers,
     String? search,
   }) async {
     try {
@@ -243,8 +244,11 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         ApiEndpoints.deals,
         queryParameters: {
           'to_export': true,
+          if (ownerId != null) 'owner_id': ownerId,
           if (stageId != null) 'stage_id': stageId,
-          if (tier != null && tier.isNotEmpty) 'tier': tier,
+          // `tier` is repeatable (doc §6.3) — Dio serialises a List as
+          // `?tier=gold&tier=silver`, which the API ORs together.
+          if (tiers != null && tiers.isNotEmpty) 'tier': tiers,
           if (search != null && search.isNotEmpty) 'search': search,
         },
         options: Options(responseType: ResponseType.bytes),
@@ -264,6 +268,15 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         options: Options(responseType: ResponseType.bytes),
       );
       return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> deleteDeal(String id) async {
+    try {
+      await dioClient.delete(ApiEndpoints.dealById(id));
     } on DioException catch (e) {
       throw _normalize(e);
     }
