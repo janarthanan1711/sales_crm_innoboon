@@ -32,4 +32,15 @@ abstract class AuthRepository {
   /// `DELETE /users/me/avatar` — removes the uploaded avatar and returns the
   /// updated user with `avatarUrl` cleared. Succeeds even if none was set.
   Future<Either<Failure, User>> deleteAvatar();
+
+  /// Always succeeds server-side whether or not [email] is registered, to
+  /// avoid leaking which emails have accounts.
+  Future<Either<Failure, void>> forgotPassword(String email);
+
+  /// Fails with [ServerFailure] ("Invalid or expired reset token") when
+  /// [token] is unknown, already used, or past its expiry.
+  Future<Either<Failure, void>> resetPassword({
+    required String token,
+    required String newPassword,
+  });
 }

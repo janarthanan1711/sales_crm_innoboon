@@ -29,6 +29,14 @@ class LeadDetailDeleteRequested extends LeadDetailEvent {
   List<Object?> get props => [leadId];
 }
 
+class LeadDetailFavouriteToggled extends LeadDetailEvent {
+  final int leadId;
+  final bool isFavourite;
+  const LeadDetailFavouriteToggled(this.leadId, this.isFavourite);
+  @override
+  List<Object?> get props => [leadId, isFavourite];
+}
+
 /// Re-fetches the activity list (Activity tab) with the given filters.
 /// Pass empty [types] and null [dateFrom]/[dateTo] to clear all filters.
 class LeadDetailActivityFilterChanged extends LeadDetailEvent {

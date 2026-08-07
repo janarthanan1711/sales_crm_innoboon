@@ -7,6 +7,7 @@ import 'route_paths.dart';
 import '../shell/app_shell.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/leads/presentation/pages/leads_list_page.dart';
 import '../../features/leads/presentation/pages/lead_detail_page.dart';
@@ -100,8 +101,9 @@ class AppRouter {
       final isAuthenticated = authNotifier.isAuthenticated;
       final loggingIn = state.matchedLocation == RoutePaths.login;
       final forgotPwd = state.matchedLocation == RoutePaths.forgotPassword;
+      final resetPwd = state.matchedLocation == RoutePaths.resetPassword;
 
-      if (!isAuthenticated && !loggingIn && !forgotPwd) {
+      if (!isAuthenticated && !loggingIn && !forgotPwd && !resetPwd) {
         return RoutePaths.login;
       }
       if (isAuthenticated && loggingIn) {
@@ -130,6 +132,11 @@ class AppRouter {
         path: RoutePaths.forgotPassword,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.resetPassword,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => ResetPasswordPage(token: state.uri.queryParameters['token']),
       ),
 
       // ─── Main Shell Routes ───────────────────────────

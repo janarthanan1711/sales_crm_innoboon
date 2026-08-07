@@ -13,6 +13,7 @@ import '../../../../core/utils/media_url.dart';
 import '../../domain/entities/dashboard_data.dart';
 import '../../domain/entities/dashboard_range.dart';
 import '../bloc/dashboard_bloc.dart';
+import '../dashboard_filter_memory.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -20,7 +21,12 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<DashboardBloc>()..add(const DashboardLoadRequested()),
+      // DashboardBloc is a fresh instance every visit (GoRouter tears this
+      // page down when you navigate away), so the last-picked range has to
+      // come from outside it -- null on the very first-ever visit, which
+      // DashboardLoadRequested treats as "keep the bloc's own default".
+      create: (_) => sl<DashboardBloc>()
+        ..add(DashboardLoadRequested(range: sl<DashboardFilterMemory>().lastRange)),
       child: const _DashboardView(),
     );
   }
@@ -119,8 +125,10 @@ class _DashboardView extends StatelessWidget {
 
     final toggle = _PeriodToggle(
       range: range,
-      onSelected: (r) =>
-          context.read<DashboardBloc>().add(DashboardLoadRequested(range: r)),
+      onSelected: (r) {
+        sl<DashboardFilterMemory>().lastRange = r;
+        context.read<DashboardBloc>().add(DashboardLoadRequested(range: r));
+      },
     );
 
     if (context.isMobile) {
@@ -292,16 +300,14 @@ class _PeriodToggle extends StatelessWidget {
   Future<void> _pickRange(BuildContext context) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final picked = await showDateRangePicker(
+    final picked = await showDialog<DateTimeRange>(
       context: context,
-      firstDate: DateTime(today.year - 5),
-      // No future dates — the dashboard only aggregates what already happened.
-      lastDate: today,
-      initialDateRange: range.start != null && range.end != null
-          ? DateTimeRange(start: range.start!, end: range.end!)
-          : null,
-      helpText: 'Select dashboard date range',
-      saveText: 'Apply',
+      builder: (_) => _CustomRangeDialog(
+        initialStart: range.start,
+        initialEnd: range.end,
+        firstDate: DateTime(today.year - 5),
+        lastDate: today,
+      ),
     );
     if (picked == null) return;
     onSelected(DashboardRange.between(picked.start, picked.end));
@@ -352,6 +358,129 @@ class _PeriodToggle extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Compact replacement for Flutter's built-in [showDateRangePicker], which
+/// renders as a near-full-screen dialog and, in its manual-entry mode, makes
+/// you type the `/` separators yourself. This picks each bound with
+/// [showDatePicker] instead — the same tap-to-open, read-only field pattern
+/// already used for every other date input in this app (see
+/// create_deal_page's "Expected Close Date") — so there's no typing at all.
+class _CustomRangeDialog extends StatefulWidget {
+  const _CustomRangeDialog({
+    required this.initialStart,
+    required this.initialEnd,
+    required this.firstDate,
+    required this.lastDate,
+  });
+
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+  final DateTime firstDate;
+  final DateTime lastDate;
+
+  @override
+  State<_CustomRangeDialog> createState() => _CustomRangeDialogState();
+}
+
+class _CustomRangeDialogState extends State<_CustomRangeDialog> {
+  late DateTime? _start = widget.initialStart;
+  late DateTime? _end = widget.initialEnd;
+
+  static final _format = DateFormat('d MMM y');
+
+  Future<void> _pick({required bool isStart}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: (isStart ? _start : _end) ?? widget.lastDate,
+      firstDate: widget.firstDate,
+      lastDate: widget.lastDate,
+    );
+    if (picked == null) return;
+    setState(() => isStart ? _start = picked : _end = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canApply = _start != null && _end != null;
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Select Date Range', style: AppTextStyles.h3),
+              const SizedBox(height: AppSpacing.lg),
+              _dateField(
+                label: 'Start Date',
+                value: _start,
+                onTap: () => _pick(isStart: true),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _dateField(
+                label: 'End Date',
+                value: _end,
+                onTap: () => _pick(isStart: false),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  ElevatedButton(
+                    onPressed: canApply
+                        ? () => Navigator.of(context).pop(
+                            DateTimeRange(start: _start!, end: _end!),
+                          )
+                        : null,
+                    child: const Text('Apply'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dateField({
+    required String label,
+    required DateTime? value,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
+            ),
+            child: Text(
+              value != null ? _format.format(value) : 'Select date',
+              style: value != null
+                  ? AppTextStyles.bodyMedium
+                  : AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

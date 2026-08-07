@@ -5,6 +5,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../app/router/route_paths.dart';
+import '../../../../app/di/injector.dart';
+import '../../domain/usecases/password_reset_usecases.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -17,11 +19,30 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _submitted = false;
+  bool _sending = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await sl<ForgotPasswordUseCase>()(_emailController.text.trim());
+    if (!mounted) return;
+    setState(() => _sending = false);
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Could not send the reset link. Please try again.'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (_) => setState(() => _submitted = true),
+    );
   }
 
   @override
@@ -76,12 +97,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           SizedBox(
             height: AppSpacing.buttonHeightLarge,
             child: ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState?.validate() ?? false) {
-                  setState(() => _submitted = true);
-                }
-              },
-              child: const Text('Send Reset Link'),
+              onPressed: _sending ? null : _submit,
+              child: _sending
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Send Reset Link'),
             ),
           ),
         ],

@@ -66,6 +66,15 @@ class LeadRepositoryImpl implements LeadRepository {
   }
 
   @override
+  Future<Either<Failure, Lead>> setFavourite(int id, bool isFavourite) async {
+    try {
+      return Right(await remoteDataSource.setFavourite(id, isFavourite));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> deleteLead(int id) async {
     try {
       await remoteDataSource.deleteLead(id);
