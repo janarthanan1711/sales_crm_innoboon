@@ -623,7 +623,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     });
   }
 
-  IconData _iconForActivity(String type) {
+  IconData _iconForActivity(String? type) {
     switch (type) {
       case 'call':
         return Icons.phone;

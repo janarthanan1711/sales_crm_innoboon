@@ -944,6 +944,12 @@ const Map<String, Color> _activityColors = {
   'follow_up': Color(0xFF10B981),
 };
 
+/// `labelForWireValue` returns '' for a null type (auto-logged activities
+/// like the favourite toggle's note don't have one) — blank reads as a
+/// rendering glitch here, so name it instead.
+String _activityTypeLabel(String? type) =>
+    type == null ? 'Update' : labelForWireValue(leadActivityTypeLabels, type);
+
 class _ActivityCenter extends StatefulWidget {
   const _ActivityCenter({required this.state});
   final LeadDetailLoaded state;
@@ -1339,7 +1345,7 @@ class _ActivityRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      labelForWireValue(leadActivityTypeLabels, activity.type),
+                      _activityTypeLabel(activity.type),
                       style: AppTextStyles.labelLarge,
                     ),
                     const SizedBox(height: 2),
@@ -1425,7 +1431,7 @@ class _ActivityRow extends StatelessWidget {
               // The activity type is fixed once logged — only the note can be
               // edited. Show the type read-only for context.
               Text(
-                labelForWireValue(leadActivityTypeLabels, activity.type),
+                _activityTypeLabel(activity.type),
                 style: AppTextStyles.labelMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
