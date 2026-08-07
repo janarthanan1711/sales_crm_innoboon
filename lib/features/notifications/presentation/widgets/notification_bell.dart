@@ -2,33 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../bloc/notification_bloc.dart';
 
+/// Top-bar bell. Reads the shell-scoped [NotificationBloc] — the same instance
+/// the notifications page acts on — so the badge tracks reads immediately.
 class NotificationBell extends StatelessWidget {
   const NotificationBell({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<NotificationBloc>()..add(const NotificationLoadRequested()),
-      child: const _BellWidget(),
-    );
-  }
-}
-
-class _BellWidget extends StatelessWidget {
-  const _BellWidget();
-
-  @override
-  Widget build(BuildContext context) {
     return BlocBuilder<NotificationBloc, NotificationState>(
+      // A reload passes through Loading, which carries no count. Rebuilding on
+      // it would blank the badge and pop it back a moment later every time the
+      // page refilters, so hold the last known count until one arrives.
+      buildWhen: (_, next) => next is NotificationLoaded,
       builder: (context, state) {
-        int unreadCount = 0;
-        if (state is NotificationLoaded) {
-          unreadCount = state.unreadCount;
-        }
+        final unreadCount = state is NotificationLoaded ? state.unreadCount : 0;
 
         return Stack(
           alignment: Alignment.center,

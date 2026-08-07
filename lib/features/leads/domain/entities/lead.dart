@@ -115,6 +115,7 @@ class Lead extends Equatable {
   final List<LeadContact>? contacts;
   final List<LeadActivity>? activities;
   final int? activityCount;
+  final bool isFavourite;
 
   const Lead({
     required this.id,
@@ -138,6 +139,7 @@ class Lead extends Equatable {
     this.contacts,
     this.activities,
     this.activityCount,
+    this.isFavourite = false,
   });
 
   Lead copyWith({
@@ -162,6 +164,7 @@ class Lead extends Equatable {
     List<LeadContact>? contacts,
     List<LeadActivity>? activities,
     int? activityCount,
+    bool? isFavourite,
   }) {
     return Lead(
       id: id ?? this.id,
@@ -185,6 +188,7 @@ class Lead extends Equatable {
       contacts: contacts ?? this.contacts,
       activities: activities ?? this.activities,
       activityCount: activityCount ?? this.activityCount,
+      isFavourite: isFavourite ?? this.isFavourite,
     );
   }
 
@@ -211,5 +215,6 @@ class Lead extends Equatable {
     contacts,
     activities,
     activityCount,
+    isFavourite,
   ];
 }

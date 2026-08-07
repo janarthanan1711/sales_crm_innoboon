@@ -9,6 +9,8 @@ class ApiEndpoints {
   static const String login = '/auth/login';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
 
   // ─── Users ─────────────────────────────────────────────
   static const String users = '/users';
@@ -80,9 +82,11 @@ class ApiEndpoints {
   static const String notifications = '/notifications';
   static const String notificationsUnreadCount = '/notifications/unread-count';
   static const String notificationsReadAll = '/notifications/read-all';
-  static String markNotificationRead(String id) => '/notifications/$id/read';
-  static String markNotificationUnread(String id) =>
-      '/notifications/$id/unread';
+
+  /// Read state is toggled by `PATCH`ing `is_read` on the notification itself
+  /// (doc §9.3) — the older `/{id}/read` and `/{id}/unread` action routes are
+  /// gone.
+  static String notificationById(String id) => '/notifications/$id';
 
   // ─── Search ────────────────────────────────────────────
   static const String search = '/search';

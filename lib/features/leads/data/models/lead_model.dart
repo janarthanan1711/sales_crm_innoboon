@@ -29,6 +29,7 @@ class LeadModel extends Lead {
     super.contacts,
     super.activities,
     super.activityCount,
+    super.isFavourite,
   });
 
   /// Parses a `LeadRead` response body. Also handles `LeadDetailRead`
@@ -75,6 +76,7 @@ class LeadModel extends Lead {
           ?.map((a) => leadActivityFromJson(a as Map<String, dynamic>))
           .toList(),
       activityCount: json['activity_count'] as int?,
+      isFavourite: json['is_favourite'] as bool? ?? false,
     );
   }
 

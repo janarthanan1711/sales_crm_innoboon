@@ -86,6 +86,19 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
   }
 
   @override
+  Future<Lead> setFavourite(int id, bool isFavourite) async {
+    try {
+      final response = await dioClient.post(
+        ApiEndpoints.leads,
+        data: {'id': id, 'is_favourite': isFavourite},
+      );
+      return LeadModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
   Future<void> deleteLead(int id) async {
     try {
       await dioClient.delete(ApiEndpoints.leadById('$id'));

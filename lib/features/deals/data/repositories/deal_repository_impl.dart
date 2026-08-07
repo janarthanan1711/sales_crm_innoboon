@@ -207,16 +207,20 @@ class DealRepositoryImpl implements DealRepository {
 
   @override
   Future<Either<Failure, Uint8List>> exportDeals({
+    int? ownerId,
     int? stageId,
-    String? tier,
+    List<String>? tiers,
     String? search,
   }) async {
     try {
-      return Right(await remoteDataSource.exportDeals(
-        stageId: stageId,
-        tier: tier,
-        search: search,
-      ));
+      return Right(
+        await remoteDataSource.exportDeals(
+          ownerId: ownerId,
+          stageId: stageId,
+          tiers: tiers,
+          search: search,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -226,6 +230,16 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, Uint8List>> exportDeal(String id) async {
     try {
       return Right(await remoteDataSource.exportDeal(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteDeal(String id) async {
+    try {
+      await remoteDataSource.deleteDeal(id);
+      return const Right(unit);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

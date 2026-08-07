@@ -15,6 +15,8 @@ abstract class AuthRemoteDataSource {
   Future<void> changePassword({required String currentPassword, required String newPassword});
   Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename});
   Future<UserModel> deleteAvatar();
+  Future<void> forgotPassword(String email);
+  Future<void> resetPassword({required String token, required String newPassword});
 }
 
 /// Real API implementation of AuthRemoteDataSource.
@@ -143,6 +145,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       // `avatar_url: null`), and is a no-op 200 when no avatar is set.
       final response = await dioClient.delete(ApiEndpoints.usersMeAvatar);
       return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {
+    try {
+      await dioClient.post(ApiEndpoints.forgotPassword, data: {'email': email});
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> resetPassword({required String token, required String newPassword}) async {
+    try {
+      await dioClient.post(
+        ApiEndpoints.resetPassword,
+        data: {'token': token, 'new_password': newPassword},
+      );
     } on DioException catch (e) {
       throw _normalize(e);
     }

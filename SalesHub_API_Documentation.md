@@ -1017,7 +1017,7 @@ Example Response (`view=board`) — groups the same filtered results by stage wi
 
 Response: `DealRead` (see 6.1). Errors: `404` / `403`.
 
-**`to_export=true`:** returns an `xlsx` file stream (`Content-Disposition: attachment; filename="deal_{deal_id}.xlsx"`) instead of the JSON body above. Two sheets: "Deal" (Field/Value pairs — all `DealRead` scalar fields plus a comma-joined "Contacts" name list) and "Stage History" (From Stage ID, To Stage ID, Changed By, Note, Created At — one row per stage transition).
+**`to_export=true`:** returns an `xlsx` file stream (`Content-Disposition: attachment; filename="deal_{deal_id}.xlsx"`) instead of the JSON body above. Two sheets: "Deal" (Field/Value pairs — all `DealRead` scalar fields plus a comma-joined "Contacts" name list) and "Stage History" (From Stage, To Stage, Changed By, Note, Created At — one row per stage transition, stages written as names rather than ids).
 
 ### 6.5. Update Deal
 `note` is write-only — it populates the resulting `DealStageHistory` row on a stage change, it is not a `Deal` column.
@@ -1055,9 +1055,9 @@ Response: `204 No Content`. Errors: `404` / `403`.
 
 Example Response
 ```json
-[ { "id": 7, "deal_id": 33, "from_stage_id": 1, "to_stage_id": 4, "changed_by": 12, "note": "Sent proposal doc", "created_at": "2026-07-15T09:00:00Z" } ]
+[ { "id": 7, "deal_id": 33, "from_stage_id": 1, "from_stage_name": "Received Requirements", "to_stage_id": 4, "to_stage_name": "Proposals", "changed_by": 12, "changed_by_name": "Priya Shah", "note": "Sent proposal doc", "created_at": "2026-07-15T09:00:00Z" } ]
 ```
-Errors: `404` / `403`.
+`from_stage_name`/`to_stage_name` are resolved server-side so the timeline reads "Stage moved from Received Requirements to Proposals" without a second call — and, unlike a client-side lookup against `/deal-stages`, they still render correctly for a stage that has since been deleted. `from_stage_name` is `null` exactly when `from_stage_id` is (the initial row written at creation). Errors: `404` / `403`.
 
 ### 6.8. Add Deal Activity
 | | |
@@ -1237,6 +1237,8 @@ Prefix: `/dashboard`. **Any authenticated user, no permission code** — read-on
 
 **Known caveat:** "closed/won/lost" is inferred by matching `DealStage.name` against the fixed Phase 1 stage list (`"Closed Won"`, `"Closed Lost"`) — since `DealStage` is per-company, this breaks silently if a company ever renames those stages. Accepted for Phase 1's fixed stage list.
 
+**Period filter:** the entire page — summary, funnel, deal distribution, leaderboard, drop-off reasons, conversion trend, and activity feed — moves together when `period` (or a custom `start_date`/`end_date`) changes. The only thing that stays constant regardless of period is the *bucket size* of the conversion trend chart (`granularity`), since collapsing it to a single bucket would defeat its purpose as a trend line.
+
 ### 8.1. Dashboard Overview
 **To** power the entire dashboard page (stat tiles, funnel, deal distribution, leaderboard, drop-off reasons, conversion trend, activity feed) in one call.
 
@@ -1246,7 +1248,9 @@ Prefix: `/dashboard`. **Any authenticated user, no permission code** — read-on
 | Method | `GET` |
 | Header Parameter | Bearer access token required |
 | Permission Required | None (any authenticated user) |
-| Params | `period=today\|this_week\|this_month` (default `this_month`), `granularity=daily\|weekly\|monthly` (default `monthly`), `limit=20` (1-100), `offset=0` |
+| Params | `period=this_week\|this_month\|custom` (default `this_month`), `start_date?`, `end_date?` (both required, `422` otherwise, when `period=custom`), `granularity=daily\|weekly\|monthly` (default `monthly`), `limit=20` (1-100), `offset=0` |
+
+`today` was removed as a period value — use `period=custom&start_date=<today>&end_date=<today>` instead. `custom` accepts any date range, e.g. `?period=custom&start_date=2026-07-01&end_date=2026-07-31`.
 
 Example Response
 ```json
@@ -1254,8 +1258,9 @@ Example Response
   "summary": {
     "leads_generated": { "value": 1248, "change_pct": 12.4 },
     "qualified_leads": { "value": 842, "change_pct": 8.1 },
-    "deals_in_pipeline": { "value": 480, "change_pct": null },
-    "deals_closed": { "value": 42, "change_pct": 12.5 }
+    "deals_in_pipeline": { "value": 480, "change_pct": 3.2 },
+    "deals_closed": { "value": 42, "change_pct": 12.5 },
+    "num_accounts": { "value": 96, "change_pct": 5.0 }
   },
   "funnel": {
     "stages": [
@@ -1275,8 +1280,8 @@ Example Response
   },
   "leaderboard": {
     "entries": [
-      { "owner_id": 12, "owner_name": "Sarah Jenks", "revenue": 124000.0, "deals_closed": 9 },
-      { "owner_id": 7, "owner_name": "Mike Ross", "revenue": 98000.0, "deals_closed": 6 }
+      { "owner_id": 12, "owner_name": "Sarah Jenks", "owner_avatar_url": "/media/avatars/12.png", "revenue": 124000.0, "deals_closed": 9 },
+      { "owner_id": 7, "owner_name": "Mike Ross", "owner_avatar_url": null, "revenue": 98000.0, "deals_closed": 6 }
     ]
   },
   "drop_off_reasons": {
@@ -1300,15 +1305,15 @@ Example Response
 }
 ```
 
-Per-section notes (params apply across the whole response, not per-section):
+Per-section notes — **every section is scoped by `period`/`start_date`/`end_date`**, so switching the filter redraws the whole page consistently:
 
-- **summary** — 4 stat tiles (Leads Generated, Qualified Leads, Deals in Pipeline, Deals Closed), scoped by `period`. `change_pct` compares the selected period against the immediately preceding period of equal length; `null` if the prior period had zero to compare against. `deals_in_pipeline` has no `change_pct` — it's a current snapshot (deals not in a closed/cold stage), not a period count. "Deals closed" and its trend are keyed off `Deal.updated_at` (no `closed_at` column exists).
-- **funnel** — Pipeline Funnel chart, ordered by `DealStage.sort_order` (per-company; stage names/count reflect all companies' deals currently in each stage). Not affected by any query param.
-- **deal_distribution** — Deal Distribution donut chart. `tier` enum: `diamond`, `gold`, `silver`, `bronze` (`Deal.tier`, same `LeadTier` enum shared with Lead/Account). Deals with no tier set are excluded. Not affected by any query param.
-- **leaderboard** — ranked by actual won-deal revenue descending. **No "% of target" figure** — see deferred note above. Only owners with at least one "Closed Won" deal appear. Not affected by any query param.
+- **summary** — 5 stat tiles (Leads Generated, Qualified Leads, Deals in Pipeline, Deals Closed, Num Accounts), all scoped by `period`. `change_pct` compares the selected period against the immediately preceding period of equal length; `null` if the prior period had zero to compare against. "Deals closed" is **Closed Won only** (Closed Lost deals never count here) and is keyed off `Deal.updated_at`, since no `closed_at` column exists. `deals_in_pipeline` = open (not closed/cold) deals *opened* (`Deal.created_at`) during the period — not a live count of everything currently open regardless of age. `num_accounts` = accounts *created* (`Account.created_at`) during the period.
+- **funnel** — Pipeline Funnel chart, ordered by `DealStage.sort_order` (per-company). Counts deals that **entered** each stage during the period (via `DealStageHistory`), not a live snapshot of current stage occupancy — a deal that moved on to a later stage within the period still counts under every stage it passed through.
+- **deal_distribution** — Deal Distribution donut chart, scoped to deals *created* (`Deal.created_at`) in the period. `tier` enum: `diamond`, `gold`, `silver`, `bronze` (`Deal.tier`, same `LeadTier` enum shared with Lead/Account). Deals with no tier set are excluded.
+- **leaderboard** — ranked by won-deal revenue *closed* (`Deal.updated_at`) in the period, descending. `owner_avatar_url` is the rep's `User.avatar_url` (a relative `/media/...` path, or `null` when they haven't uploaded one) so the row can show their photo without a second call. **No "% of target" figure** — see deferred note above. Only owners with at least one "Closed Won" deal closed in the period appear.
 - **drop_off_reasons** — includes deals whose current stage is `Cold Deals` (`DealStage.is_cold=true`) or `Closed Lost`, grouped by `cold_reason`, scoped by `period` (drives `change_pct` only). `stage_lost` is the stage the deal was in immediately before moving to its current cold/lost stage (via `DealStageHistory`); `"Unknown"` if there's no prior stage (created directly into a cold/lost stage) or no history row at all. `change_pct` compares deal-loss *count* in the selected period vs. the immediately preceding period of equal length (by the timestamp of that stage transition, not `Deal.created_at`); `null` if the prior period had zero.
-- **conversion_trend** — Conversion Trend line chart, scoped by `granularity`. Counts `DealStageHistory` transitions *into* each stage, bucketed by `period` (the truncated start date of each bucket). Returns raw per-stage series across all stages — pick which stage(s) to plot client-side (e.g. "Closed Won" for a win-rate trend).
-- **activity_feed** — merged, paginated feed across Deal/Lead/Account activity logs, scoped by `limit`/`offset`. `entity_type` is `deal`, `lead`, or `account`; `type` is that entity's activity type (`note`, `meeting`, `call`, `comment`, `follow_up`). Ordered `created_at` descending across all three sources merged together.
+- **conversion_trend** — Conversion Trend line chart, scoped by both `granularity` (bucket size) and `period`/`start_date`/`end_date` (date range drawn) — a custom range zooms the chart into that window instead of always showing all-time. Counts `DealStageHistory` transitions *into* each stage, bucketed by `granularity` (the truncated start date of each bucket). Returns raw per-stage series across all stages — pick which stage(s) to plot client-side (e.g. "Closed Won" for a win-rate trend).
+- **activity_feed** — merged feed across Deal/Lead/Account activity logs, scoped by `period` and paginated by `limit`/`offset`. `entity_type` is `deal`, `lead`, or `account`; `type` is that entity's activity type (`note`, `meeting`, `call`, `comment`, `follow_up`). Ordered `created_at` descending across all three sources merged together.
 
 ---
 

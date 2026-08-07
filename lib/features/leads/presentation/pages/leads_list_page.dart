@@ -339,7 +339,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
 
 /// ─── Web/Tablet: Data Table ─────────────────────────────
 const double _kCheckboxColWidth = 44;
-const double _kActionsColWidth = 56;
+const double _kActionsColWidth = 88;
 
 class _WebLeadsTable extends StatefulWidget {
   const _WebLeadsTable({required this.leads, required this.total});
@@ -618,13 +618,35 @@ class _LeadTableRowState extends State<_LeadTableRow> {
               // Actions
               SizedBox(
                 width: _kActionsColWidth,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textMuted,
-                  ),
-                  tooltip: 'View lead',
-                  onPressed: () => context.go('/leads/${lead.id}'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        lead.isFavourite ? Icons.star : Icons.star_border,
+                        size: 18,
+                        color: lead.isFavourite
+                            ? AppColors.warning
+                            : AppColors.textMuted,
+                      ),
+                      tooltip: lead.isFavourite
+                          ? 'Remove from favourites'
+                          : 'Mark as favourite',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => context.read<LeadsListBloc>().add(
+                        LeadsListFavouriteToggled(lead.id, !lead.isFavourite),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.chevron_right,
+                        color: AppColors.textMuted,
+                      ),
+                      tooltip: 'View lead',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => context.go('/leads/${lead.id}'),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -735,6 +757,22 @@ class _LeadCard extends StatelessWidget {
                         Text(lead.company, style: AppTextStyles.h4),
                         Text(contactName, style: AppTextStyles.bodySmall),
                       ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      lead.isFavourite ? Icons.star : Icons.star_border,
+                      size: 20,
+                      color: lead.isFavourite
+                          ? AppColors.warning
+                          : AppColors.textMuted,
+                    ),
+                    tooltip: lead.isFavourite
+                        ? 'Remove from favourites'
+                        : 'Mark as favourite',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => context.read<LeadsListBloc>().add(
+                      LeadsListFavouriteToggled(lead.id, !lead.isFavourite),
                     ),
                   ),
                 ],

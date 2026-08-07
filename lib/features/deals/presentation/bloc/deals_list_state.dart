@@ -21,6 +21,7 @@ class DealsListLoaded extends DealsListState {
   final List<DealStageDef> stages;
   final int? ownerIdFilter;
   final int? stageIdFilter;
+
   /// One-shot error surfaced after a failed stage update (e.g. a kanban
   /// drag) — read once via `BlocListener`, not persisted.
   final String? actionError;
@@ -34,7 +35,13 @@ class DealsListLoaded extends DealsListState {
   });
 
   @override
-  List<Object?> get props => [deals, stages, ownerIdFilter, stageIdFilter, actionError];
+  List<Object?> get props => [
+    deals,
+    stages,
+    ownerIdFilter,
+    stageIdFilter,
+    actionError,
+  ];
 }
 
 class DealsListError extends DealsListState {

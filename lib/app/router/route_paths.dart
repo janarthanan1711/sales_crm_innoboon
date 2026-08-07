@@ -5,6 +5,7 @@ class RoutePaths {
   // ─── Auth ──────────────────────────────────────────────
   static const String login = '/login';
   static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
 
   // ─── Main Shell ────────────────────────────────────────
   static const String dashboard = '/';

@@ -138,7 +138,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('BASIC INFORMATION', style: AppTextStyles.overline),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
                     Expanded(
@@ -157,26 +157,26 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _jobTitle,
                   decoration: _dec('Job Title'),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _linkedin,
                   decoration: _dec('LinkedIn URL'),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xxl),
                 Text('CONTACT DETAILS', style: AppTextStyles.overline),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _email,
                   validator: (v) =>
                       v == null || v.isEmpty ? null : Validators.email(v),
                   decoration: _dec('Primary Email'),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
@@ -194,9 +194,9 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xxl),
                 Text('ACCOUNT ASSOCIATION', style: AppTextStyles.overline),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<int>(
                   initialValue: _accountOptions.any((e) => e.key == _accountId)
                       ? _accountId
@@ -212,7 +212,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                       .toList(),
                   onChanged: (v) => setState(() => _accountId = v),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,

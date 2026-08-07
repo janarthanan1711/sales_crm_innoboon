@@ -13,6 +13,7 @@ import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/logout_usecase.dart';
 import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/domain/usecases/profile_usecases.dart';
+import '../../features/auth/domain/usecases/password_reset_usecases.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 // Roles feature
@@ -42,6 +43,7 @@ import '../../features/leads/domain/usecases/delete_lead_activity_usecase.dart';
 import '../../features/leads/domain/usecases/import_leads_usecase.dart';
 import '../../features/leads/domain/usecases/download_import_template_usecase.dart';
 import '../../features/leads/domain/usecases/export_leads_usecase.dart';
+import '../../features/leads/domain/usecases/set_lead_favourite_usecase.dart';
 import '../../features/leads/presentation/bloc/leads_list_bloc.dart';
 import '../../features/leads/presentation/bloc/lead_detail_bloc.dart';
 
@@ -52,6 +54,7 @@ import '../../features/users/domain/repositories/user_repository.dart';
 import '../../features/users/domain/usecases/get_users_usecase.dart';
 import '../../features/users/domain/usecases/create_user_usecase.dart';
 import '../../features/users/domain/usecases/delete_user_usecase.dart';
+import '../../features/users/domain/usecases/activate_user_usecase.dart';
 
 // Accounts feature
 import '../../features/accounts/data/datasources/account_remote_datasource_impl.dart';
@@ -60,6 +63,7 @@ import '../../features/accounts/domain/repositories/account_repository.dart';
 import '../../features/accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
+import '../../features/accounts/domain/usecases/delete_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_deals_usecase.dart';
@@ -81,6 +85,7 @@ import '../../features/dashboard/data/repositories/dashboard_repository_impl.dar
 import '../../features/dashboard/domain/repositories/dashboard_repository.dart';
 import '../../features/dashboard/domain/usecases/get_dashboard_usecase.dart';
 import '../../features/dashboard/presentation/bloc/dashboard_bloc.dart';
+import '../../features/dashboard/presentation/dashboard_filter_memory.dart';
 
 // Deals feature
 import '../../features/deals/data/datasources/deal_remote_datasource_impl.dart';
@@ -94,6 +99,7 @@ import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
 import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
+import '../../features/deals/domain/usecases/delete_deal_usecase.dart';
 import '../../features/deals/domain/usecases/export_deals_usecase.dart';
 import '../../features/deals/presentation/bloc/deals_list_bloc.dart';
 import '../../features/deals/presentation/bloc/deal_detail_bloc.dart';
@@ -188,6 +194,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => FetchCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => UpdateCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => ResetPasswordUseCase(sl()));
   sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAvatarUseCase(sl()));
 
@@ -243,7 +251,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => DownloadImportTemplateUseCase(sl()));
   sl.registerLazySingleton(() => ExportLeadsUseCase(sl()));
   sl.registerLazySingleton(() => ExportLeadDetailUseCase(sl()));
-  sl.registerFactory(() => LeadsListBloc(getLeadsUseCase: sl()));
+  sl.registerLazySingleton(() => SetLeadFavouriteUseCase(sl()));
+  sl.registerFactory(
+    () => LeadsListBloc(getLeadsUseCase: sl(), setLeadFavouriteUseCase: sl()),
+  );
   sl.registerFactory(
     () => LeadDetailBloc(
       getLeadByIdUseCase: sl(),
@@ -253,6 +264,7 @@ Future<void> initDependencies() async {
       logLeadActivityUseCase: sl(),
       updateLeadActivityUseCase: sl(),
       deleteLeadActivityUseCase: sl(),
+      setLeadFavouriteUseCase: sl(),
     ),
   );
 
@@ -266,6 +278,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetUsersUseCase(sl()));
   sl.registerLazySingleton(() => CreateUserUseCase(sl()));
   sl.registerLazySingleton(() => DeleteUserUseCase(sl()));
+  sl.registerLazySingleton(() => ActivateUserUseCase(sl()));
 
   // ─── Accounts Feature ───────────────────────────────
   sl.registerLazySingleton<AccountRemoteDataSource>(
@@ -287,6 +300,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ExportAccountsUseCase(sl()));
   sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAccountUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -295,6 +309,7 @@ Future<void> initDependencies() async {
       getAccountDealsUseCase: sl(),
       getDealStagesUseCase: sl(),
       getUsersUseCase: sl(),
+      deleteAccountUseCase: sl(),
     ),
   );
 
@@ -334,7 +349,10 @@ Future<void> initDependencies() async {
     () => DashboardRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetDashboardUseCase(sl()));
-  sl.registerFactory(() => DashboardBloc(getDashboardUseCase: sl()));
+  sl.registerLazySingleton(() => DashboardFilterMemory());
+  sl.registerFactory(
+    () => DashboardBloc(getDashboardUseCase: sl(), getUsersUseCase: sl()),
+  );
 
   // ─── Deals Feature ──────────────────────────────────
   sl.registerLazySingleton<DealRemoteDataSource>(
@@ -356,6 +374,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LogDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => UpdateDealActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteDealActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteDealUseCase(sl()));
   sl.registerFactory(
     () => DealsListBloc(
       getDealsUseCase: sl(),
@@ -377,6 +396,7 @@ Future<void> initDependencies() async {
       logDealActivityUseCase: sl(),
       updateDealActivityUseCase: sl(),
       deleteDealActivityUseCase: sl(),
+      deleteDealUseCase: sl(),
     ),
   );
   // ─── Checklist Feature ──────────────────────────────

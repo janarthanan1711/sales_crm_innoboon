@@ -13,18 +13,26 @@ class DashboardStat extends Equatable {
   List<Object?> get props => [value, changePct];
 }
 
-/// The four top-of-page stat tiles, scoped by the selected period.
+/// The top-of-page stat tiles, scoped by the selected period.
 class DashboardSummary extends Equatable {
   final DashboardStat leadsGenerated;
   final DashboardStat qualifiedLeads;
   final DashboardStat dealsInPipeline;
   final DashboardStat dealsClosed;
 
+  /// Accounts created in the period (`summary.num_accounts`).
+  ///
+  /// Null — not a zero stat — when the API omits the section, so the tile can
+  /// be left out entirely rather than reporting a fabricated 0 against a
+  /// build that doesn't compute it yet.
+  final DashboardStat? numAccounts;
+
   const DashboardSummary({
     required this.leadsGenerated,
     required this.qualifiedLeads,
     required this.dealsInPipeline,
     required this.dealsClosed,
+    this.numAccounts,
   });
 
   @override
@@ -33,6 +41,7 @@ class DashboardSummary extends Equatable {
     qualifiedLeads,
     dealsInPipeline,
     dealsClosed,
+    numAccounts,
   ];
 }
 
@@ -70,15 +79,36 @@ class LeaderboardEntry extends Equatable {
   final double revenue;
   final int dealsClosed;
 
+  /// The rep's avatar path (`/media/avatars/12.png`) when known, so the row
+  /// shows their photo instead of initials. Comes from the payload's
+  /// `owner_avatar_url` if present, otherwise filled in from `GET /users` —
+  /// see `DashboardBloc`. Null means "fall back to initials".
+  final String? avatarUrl;
+
   const LeaderboardEntry({
     required this.ownerId,
     required this.ownerName,
     required this.revenue,
     required this.dealsClosed,
+    this.avatarUrl,
   });
 
+  LeaderboardEntry copyWith({String? avatarUrl}) => LeaderboardEntry(
+    ownerId: ownerId,
+    ownerName: ownerName,
+    revenue: revenue,
+    dealsClosed: dealsClosed,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+  );
+
   @override
-  List<Object?> get props => [ownerId, ownerName, revenue, dealsClosed];
+  List<Object?> get props => [
+    ownerId,
+    ownerName,
+    revenue,
+    dealsClosed,
+    avatarUrl,
+  ];
 }
 
 /// One row of the Drop-off Reasons (lost/cold deals) table.
@@ -166,6 +196,19 @@ class DashboardData extends Equatable {
     this.conversionTrend = const [],
     this.activityFeed = const [],
   });
+
+  /// Replaces the leaderboard, preserving every other section — used to graft
+  /// avatar URLs on after the payload has been parsed.
+  DashboardData withLeaderboard(List<LeaderboardEntry> entries) =>
+      DashboardData(
+        summary: summary,
+        funnel: funnel,
+        dealDistribution: dealDistribution,
+        leaderboard: entries,
+        dropOffReasons: dropOffReasons,
+        conversionTrend: conversionTrend,
+        activityFeed: activityFeed,
+      );
 
   @override
   List<Object?> get props => [

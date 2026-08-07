@@ -86,6 +86,8 @@ abstract class AccountRepository {
   /// (`GET /accounts/{id}?to_export=true`) — sheets "Account", "Contacts",
   /// "Deals".
   Future<Either<Failure, Uint8List>> exportAccount(String id);
+
+  Future<Either<Failure, Unit>> deleteAccount(String id);
 }
 
 abstract class AccountRemoteDataSource {
@@ -150,4 +152,6 @@ abstract class AccountRemoteDataSource {
     int? ownerId,
   });
   Future<Uint8List> exportAccount(String id);
+
+  Future<void> deleteAccount(String id);
 }

@@ -20,6 +20,7 @@ abstract class UserRemoteDataSource {
     required int roleId,
   });
   Future<void> deleteUser(int id);
+  Future<void> activateUser(int id);
 }
 
 /// Real API implementation — calls `GET /users`, `POST /users`,
@@ -82,6 +83,15 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   Future<void> deleteUser(int id) async {
     try {
       await dioClient.delete(ApiEndpoints.userById('$id'));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<void> activateUser(int id) async {
+    try {
+      await dioClient.post('${ApiEndpoints.userById('$id')}/activate');
     } on DioException catch (e) {
       throw _normalize(e);
     }

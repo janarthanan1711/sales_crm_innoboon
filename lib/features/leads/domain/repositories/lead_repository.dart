@@ -21,6 +21,11 @@ abstract class LeadRepository {
   Future<Either<Failure, Lead>> updateLead(int id, LeadUpsertParams params);
   Future<Either<Failure, void>> deleteLead(int id);
 
+  /// Partial update via the same upsert endpoint (`POST /leads` with just
+  /// `id` + `is_favourite`) — doesn't require the rest of the edit form's
+  /// fields the way [updateLead] does.
+  Future<Either<Failure, Lead>> setFavourite(int id, bool isFavourite);
+
   /// Returns the new account's id — conversion is out of Week-1 scope for
   /// the (still-mocked) Account feature, so this deliberately doesn't model
   /// the full `AccountRead` response.
@@ -91,6 +96,7 @@ abstract class LeadRemoteDataSource {
   Future<Lead> createLead(LeadUpsertParams params);
   Future<Lead> updateLead(int id, LeadUpsertParams params);
   Future<void> deleteLead(int id);
+  Future<Lead> setFavourite(int id, bool isFavourite);
   Future<int> convertToAccount(int leadId, {String? tier, int? ownerId});
   Future<LeadActivity> logActivity(int leadId, {required String type, required String note});
   Future<List<LeadActivity>> listActivities(
