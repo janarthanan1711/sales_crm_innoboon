@@ -32,14 +32,23 @@ void bumpMediaVersion() => mediaVersion.value++;
 /// files like document downloads, which should stay cacheable.
 String? resolveMediaUrl(String? path, {bool bustCache = false}) {
   if (path == null || path.isEmpty) return null;
+  final bool isAbsolute =
+      path.startsWith('http://') || path.startsWith('https://');
   final String url;
-  if (path.startsWith('http://') || path.startsWith('https://')) {
+  if (isAbsolute) {
     url = path;
   } else {
     final baseUrl = sl<DioClient>().dio.options.baseUrl;
     final origin = baseUrl.replaceFirst(RegExp(r'/api/v1/?$'), '');
     url = '$origin${path.startsWith('/') ? path : '/$path'}';
   }
-  if (!bustCache) return url;
+  // An absolute URL here is always a presigned S3 GET -- AWS SigV4 signs
+  // over the exact query string, so appending anything (including our own
+  // cache-buster) invalidates the signature and S3 returns a 403 XML body
+  // instead of the image. Not a problem this needs to solve anyway: a
+  // presigned URL already gets a fresh signature/date every time it's
+  // regenerated, so it can't collide with a stale cached copy the way a
+  // stable `/media/...` path can.
+  if (!bustCache || isAbsolute) return url;
   return '$url${url.contains('?') ? '&' : '?'}v=${mediaVersion.value}';
 }
