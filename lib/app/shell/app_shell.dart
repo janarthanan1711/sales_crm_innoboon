@@ -128,6 +128,15 @@ const List<NavItem> _sidebarMainItems = [
     icon: Icons.description_outlined,
     activeIcon: Icons.description,
     path: RoutePaths.documents,
+    // Documents is just a combined view of Account + Deal documents — no
+    // dedicated backend permission, so gate the tab on whichever of those
+    // two a role already holds.
+    requiredPermissions: [
+      'accounts.access',
+      'accounts.view_all',
+      'deals.access',
+      'deals.view_all',
+    ],
   ),
 ];
 

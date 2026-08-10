@@ -57,6 +57,12 @@ const Map<String, List<String>> _routePermissions = {
   RoutePaths.dealDetail: [Perms.dealsManage, Perms.dealsViewAll],
   RoutePaths.contacts: [Perms.contactsManage],
   RoutePaths.contactDetail: [Perms.contactsManage],
+  RoutePaths.documents: [
+    Perms.accountsManage,
+    Perms.accountsViewAll,
+    Perms.dealsManage,
+    Perms.dealsViewAll,
+  ],
   RoutePaths.settings: [Perms.usersManage, Perms.rolesManage],
 };
 
