@@ -26,7 +26,9 @@ class DashboardPage extends StatelessWidget {
       // come from outside it -- null on the very first-ever visit, which
       // DashboardLoadRequested treats as "keep the bloc's own default".
       create: (_) => sl<DashboardBloc>()
-        ..add(DashboardLoadRequested(range: sl<DashboardFilterMemory>().lastRange)),
+        ..add(
+          DashboardLoadRequested(range: sl<DashboardFilterMemory>().lastRange),
+        ),
       child: const _DashboardView(),
     );
   }
@@ -438,9 +440,9 @@ class _CustomRangeDialogState extends State<_CustomRangeDialog> {
                   const SizedBox(width: AppSpacing.sm),
                   ElevatedButton(
                     onPressed: canApply
-                        ? () => Navigator.of(context).pop(
-                            DateTimeRange(start: _start!, end: _end!),
-                          )
+                        ? () => Navigator.of(
+                            context,
+                          ).pop(DateTimeRange(start: _start!, end: _end!))
                         : null,
                     child: const Text('Apply'),
                   ),
@@ -1167,16 +1169,50 @@ class _LeaderboardCard extends StatelessWidget {
 }
 
 // ─── Activity feed ──────────────────────────────────────
-class _ActivityFeedCard extends StatelessWidget {
+class _ActivityFeedCard extends StatefulWidget {
   const _ActivityFeedCard({required this.entries});
   final List<DashboardActivity> entries;
+
+  @override
+  State<_ActivityFeedCard> createState() => _ActivityFeedCardState();
+}
+
+class _ActivityFeedCardState extends State<_ActivityFeedCard> {
+  /// The feed needs its own controller rather than borrowing the ambient one:
+  /// this card sits inside the page's [SingleChildScrollView], so a [Scrollbar]
+  /// left to find a controller itself would attach to the *page's* scroll
+  /// position and drive the wrong list.
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Activity Feed',
-      child: Column(
-        children: entries.map((a) => _ActivityRow(activity: a)).toList(),
+      child: SizedBox(
+        // Fixed viewport. The feed is unbounded server-side, so letting it set
+        // the card's height moved everything below it by an amount that changed
+        // with the data.
+        height: context.isMobile ? 240 : 300,
+        child: Scrollbar(
+          controller: _controller,
+          // Kept visible so it's obvious the list continues past the fold —
+          // without it a cut-off row just looks like the end of the feed.
+          thumbVisibility: true,
+          child: ListView.builder(
+            controller: _controller,
+            // Room for the thumb so it doesn't sit on top of the text.
+            padding: const EdgeInsets.only(right: AppSpacing.md),
+            itemCount: widget.entries.length,
+            itemBuilder: (context, i) =>
+                _ActivityRow(activity: widget.entries[i]),
+          ),
+        ),
       ),
     );
   }
@@ -1265,18 +1301,56 @@ class _ActivityRow extends StatelessWidget {
 }
 
 // ─── Drop-off reasons table ─────────────────────────────
-class _DropOffCard extends StatelessWidget {
+class _DropOffCard extends StatefulWidget {
   const _DropOffCard({required this.entries});
   final List<DropOffReason> entries;
 
+  @override
+  State<_DropOffCard> createState() => _DropOffCardState();
+}
+
+class _DropOffCardState extends State<_DropOffCard> {
   /// Below this the five columns squeeze into unreadable slivers, so the table
   /// scrolls sideways instead of shrinking.
   static const double _minTableWidth = 720;
 
+  /// Same reasoning as the activity feed's: the card is inside the page's
+  /// [SingleChildScrollView], so the [Scrollbar] has to be handed the table's
+  /// own controller rather than resolving one from the tree.
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final table = Column(
+    return SectionCard(
+      title: 'Drop-off Reasons (Lost Deals)',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Lay the table out at the card's own width when there's room.
+          // Wrapping it in a horizontal scroll view unconditionally hands the
+          // rows unbounded width, which pushes every column after the reason
+          // name off-screen.
+          if (constraints.maxWidth >= _minTableWidth) return _table(context);
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: _minTableWidth, child: _table(context)),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _table(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        // Header and rule stay outside the scroll view, so the column labels
+        // are still there once you've scrolled down past the first few reasons.
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           child: Row(
@@ -1290,25 +1364,27 @@ class _DropOffCard extends StatelessWidget {
           ),
         ),
         const Divider(height: 1),
-        for (final e in entries) _DropOffRow(reason: e),
+        SizedBox(
+          // Fixed body height — the reason list grows with the pipeline, and
+          // this card is last on the page, so an uncapped table left the scroll
+          // length changing with the data.
+          height: context.isMobile ? 260 : 320,
+          child: Scrollbar(
+            controller: _controller,
+            // Visible by design: a row clipped at the fold otherwise reads as
+            // the last reason rather than the start of more.
+            thumbVisibility: true,
+            child: ListView.builder(
+              controller: _controller,
+              // Room for the thumb so it doesn't sit over the Trend column.
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              itemCount: widget.entries.length,
+              itemBuilder: (context, i) =>
+                  _DropOffRow(reason: widget.entries[i]),
+            ),
+          ),
+        ),
       ],
-    );
-
-    return SectionCard(
-      title: 'Drop-off Reasons (Lost Deals)',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Lay the table out at the card's own width when there's room.
-          // Wrapping it in a horizontal scroll view unconditionally hands the
-          // rows unbounded width, which pushes every column after the reason
-          // name off-screen.
-          if (constraints.maxWidth >= _minTableWidth) return table;
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(width: _minTableWidth, child: table),
-          );
-        },
-      ),
     );
   }
 

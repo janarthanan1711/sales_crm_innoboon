@@ -179,10 +179,12 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           ? null
           : _followUpNoteController.text.trim(),
       additionalContacts: _additionalContactControllers
-          .map((c) => LeadContactDraft(
-                email: c.email.text.trim().isEmpty ? null : c.email.text.trim(),
-                phone: c.phone.text.trim().isEmpty ? null : c.phone.text.trim(),
-              ))
+          .map(
+            (c) => LeadContactDraft(
+              email: c.email.text.trim().isEmpty ? null : c.email.text.trim(),
+              phone: c.phone.text.trim().isEmpty ? null : c.phone.text.trim(),
+            ),
+          )
           .where((d) => !d.isEmpty)
           .toList(),
     );
@@ -349,9 +351,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                       false,
                       TextFormField(
                         controller: _additionalContactControllers[i].email,
-                        validator: (v) => v == null || v.isEmpty
-                            ? null
-                            : Validators.email(v),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? null : Validators.email(v),
                         decoration: _inputDecoration(
                           'alternate@acme.com',
                           prefix: const Icon(
@@ -548,39 +549,45 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           builder: (context, setState) {
             return AlertDialog(
               title: const Text('Log Activity'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildField(
-                    'Activity Type',
-                    true,
-                    DropdownButtonFormField<String>(
-                      value: typeController.text,
-                      decoration: _inputDecoration(''),
-                      items: leadActivityTypeLabels.entries
-                          .map(
-                            (e) => DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => typeController.text = v!),
+              // Fixed width so a long note wraps instead of stretching the
+              // dialog — AlertDialog otherwise sizes to the field's intrinsic
+              // width. Matches the other Log Activity dialogs.
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildField(
+                      'Activity Type',
+                      true,
+                      DropdownButtonFormField<String>(
+                        value: typeController.text,
+                        decoration: _inputDecoration(''),
+                        items: leadActivityTypeLabels.entries
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => typeController.text = v!),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildField(
-                    'Note',
-                    true,
-                    TextFormField(
-                      controller: noteController,
-                      maxLines: 4,
-                      decoration: _inputDecoration('Activity details...'),
+                    const SizedBox(height: 16),
+                    _buildField(
+                      'Note',
+                      true,
+                      TextFormField(
+                        controller: noteController,
+                        maxLines: 4,
+                        decoration: _inputDecoration('Activity details...'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -989,8 +996,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
 /// lead form.
 class _ContactDraftControllers {
   _ContactDraftControllers({String? email, String? phone})
-      : email = TextEditingController(text: email),
-        phone = TextEditingController(text: phone);
+    : email = TextEditingController(text: email),
+      phone = TextEditingController(text: phone);
 
   final TextEditingController email;
   final TextEditingController phone;
