@@ -20,7 +20,11 @@ class LeadContact extends Equatable {
 class LeadActivity extends Equatable {
   final int id;
   final int leadId;
-  final String type; // backend wire value: note/meeting/call/comment
+  // Backend wire value: note/meeting/call/comment/follow_up. Null for
+  // auto-logged activities that don't fit a category (e.g. the favourite
+  // toggle's "marked as favourite" note) -- the backend's own schema types
+  // this `LeadActivityType | None` for exactly that reason.
+  final String? type;
   final String note;
   final int createdBy;
   final DateTime createdAt;
