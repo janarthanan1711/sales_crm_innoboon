@@ -132,7 +132,7 @@ LeadActivity leadActivityFromJson(Map<String, dynamic> json) {
   return LeadActivity(
     id: json['id'] as int,
     leadId: json['lead_id'] as int,
-    type: json['type'] as String,
+    type: json['type'] as String?,
     note: json['note'] as String,
     createdBy: json['created_by'] as int,
     createdAt: DateTime.parse(json['created_at'] as String),
