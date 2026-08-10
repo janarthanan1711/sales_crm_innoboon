@@ -478,58 +478,63 @@ class _Header extends StatelessWidget {
           builder: (context, setState) {
             return AlertDialog(
               title: const Text('Convert to Account'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Select an Account Tier:'),
-                  const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
-                    value: selectedTier,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+              // A long user name in the owner dropdown would otherwise widen
+              // the dialog to fit it.
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select an Account Tier:'),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      value: selectedTier,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      items: leadTierLabels.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => selectedTier = v!),
                     ),
-                    items: leadTierLabels.entries
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => selectedTier = v!),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const Text('Select Account Owner:'),
-                  const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<int?>(
-                    value: selectedOwnerId,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Select Account Owner:'),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<int?>(
+                      value: selectedOwnerId,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      items: users
+                          .map(
+                            (u) => DropdownMenuItem<int?>(
+                              value: u.id,
+                              child: Text(u.displayName),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => selectedOwnerId = v),
                     ),
-                    items: users
-                        .map(
-                          (u) => DropdownMenuItem<int?>(
-                            value: u.id,
-                            child: Text(u.displayName),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => selectedOwnerId = v),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -771,7 +776,6 @@ class _HeaderConvertProxy {
   static Future<void> show(BuildContext context, Lead lead) {
     return _Header(lead: lead)._showConvertDialog(context, lead);
   }
-
 }
 
 class _OverviewCenter extends StatelessWidget {
@@ -1173,47 +1177,50 @@ class _ActivityCenterState extends State<_ActivityCenter> {
           builder: (dialogContext, setState) {
             return AlertDialog(
               title: const Text('Log Activity'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Type'),
-                  const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
-                    value: type,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Type'),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      value: type,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      items: leadActivityTypeLabels.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => type = v!),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Note'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        hintText: 'What happened?',
                       ),
                     ),
-                    items: leadActivityTypeLabels.entries
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => type = v!),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const Text('Note'),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      hintText: 'What happened?',
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -1424,32 +1431,37 @@ class _ActivityRow extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Edit Activity'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // The activity type is fixed once logged — only the note can be
-              // edited. Show the type read-only for context.
-              Text(
-                _activityTypeLabel(activity.type),
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const Text('Note'),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: noteController,
-                maxLines: 4,
-                autofocus: true,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+          // Fixed width for the same reason as the Log Activity dialog: an
+          // existing long note would otherwise set the dialog's width.
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // The activity type is fixed once logged — only the note can be
+                // edited. Show the type read-only for context.
+                Text(
+                  _activityTypeLabel(activity.type),
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.textSecondary,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.md),
+                const Text('Note'),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: noteController,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(

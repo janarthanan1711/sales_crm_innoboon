@@ -13,6 +13,7 @@ import '../../domain/entities/lead_enums.dart';
 import '../../domain/usecases/lead_upsert_params.dart';
 import '../../domain/usecases/create_lead_usecase.dart';
 import '../../domain/usecases/update_lead_usecase.dart';
+import '../../domain/usecases/convert_lead_usecase.dart';
 import '../../domain/usecases/log_lead_activity_usecase.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
@@ -51,6 +52,10 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   late String _sourceLabel;
   late String _statusLabel;
   bool _submitting = false;
+
+  /// True while the in-flight submit is the "Save & Convert" one, so only that
+  /// button shows a spinner while both stay disabled.
+  bool _submittingConvert = false;
 
   List<OwnerUser> _users = [];
   bool _loadingUsers = true;
@@ -148,10 +153,26 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     super.dispose();
   }
 
-  Future<void> _onSubmit() async {
+  /// Saves the form. With [convert] the new lead is immediately turned into an
+  /// account — only offered on create, since an existing lead converts from its
+  /// own detail page (and a converted one can't convert twice).
+  Future<void> _onSubmit({bool convert = false}) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() => _submitting = true);
+    // Ask for the account's tier and owner *before* writing anything. Asking
+    // afterwards would leave an unconverted lead behind whenever the user backs
+    // out of the dialog — this way cancelling costs nothing.
+    ({String tier, int? ownerId})? conversion;
+    if (convert) {
+      conversion = await _askConversionOptions();
+      if (conversion == null || !mounted) return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _submitting = true;
+      _submittingConvert = convert;
+    });
 
     final params = LeadUpsertParams(
       firstName: _firstNameController.text.trim(),
@@ -179,10 +200,12 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           ? null
           : _followUpNoteController.text.trim(),
       additionalContacts: _additionalContactControllers
-          .map((c) => LeadContactDraft(
-                email: c.email.text.trim().isEmpty ? null : c.email.text.trim(),
-                phone: c.phone.text.trim().isEmpty ? null : c.phone.text.trim(),
-              ))
+          .map(
+            (c) => LeadContactDraft(
+              email: c.email.text.trim().isEmpty ? null : c.email.text.trim(),
+              phone: c.phone.text.trim().isEmpty ? null : c.phone.text.trim(),
+            ),
+          )
           .where((d) => !d.isEmpty)
           .toList(),
     );
@@ -194,19 +217,26 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
         : await sl<CreateLeadUseCase>()(params);
 
     if (!mounted) return;
-    setState(() => _submitting = false);
+    setState(() {
+      _submitting = false;
+      _submittingConvert = false;
+    });
 
-    result.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
+    await result.fold(
+      (failure) async {
+        messenger.showSnackBar(
           SnackBar(
             content: Text(failure.message),
             backgroundColor: AppColors.error,
           ),
         );
       },
-      (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      (lead) async {
+        if (conversion != null) {
+          await _convertCreatedLead(lead.id, conversion, messenger);
+          return;
+        }
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               isEdit
@@ -218,6 +248,134 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
         );
         _safePop();
       },
+    );
+  }
+
+  /// Second half of "Save & Convert": the lead already exists at this point, so
+  /// a failure here is reported as a *partial* success and lands the user on
+  /// the saved lead — telling them it failed outright would imply their typing
+  /// was lost, and they can retry the conversion from the detail page.
+  Future<void> _convertCreatedLead(
+    int leadId,
+    ({String tier, int? ownerId}) conversion,
+    ScaffoldMessengerState messenger,
+  ) async {
+    final result = await sl<ConvertLeadToAccountUseCase>()(
+      ConvertLeadParams(
+        leadId: leadId,
+        tier: conversion.tier,
+        ownerId: conversion.ownerId,
+      ),
+    );
+    if (!mounted) return;
+
+    result.fold(
+      (failure) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Lead saved, but conversion failed: ${failure.message}',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        context.go('${RoutePaths.leads}/$leadId');
+      },
+      (accountId) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Lead created and converted to Account!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        context.go('${RoutePaths.accounts}/$accountId');
+      },
+    );
+  }
+
+  /// Tier + owner for the account the lead is about to become. Returns null if
+  /// the user cancels, which aborts the whole save.
+  Future<({String tier, int? ownerId})?> _askConversionOptions() {
+    var tier = leadTierLabels.keys.first;
+    var ownerId = _selectedOwnerId;
+
+    return showDialog<({String tier, int? ownerId})>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Convert to Account'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This lead will be saved and immediately converted into an '
+                  'account.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildField(
+                  'Account Tier',
+                  true,
+                  DropdownButtonFormField<String>(
+                    value: tier,
+                    decoration: _inputDecoration(''),
+                    items: leadTierLabels.entries
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => tier = v!),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildField(
+                  'Account Owner',
+                  true,
+                  DropdownButtonFormField<int?>(
+                    // Defaults to the Lead Owner already chosen on the form.
+                    value: _users.any((u) => u.id == ownerId) ? ownerId : null,
+                    decoration: _inputDecoration('Select owner'),
+                    items: _users
+                        .map(
+                          (u) => DropdownMenuItem<int?>(
+                            value: u.id,
+                            child: Text(u.displayName),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => ownerId = v),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              // An account needs an owner, so this stays disabled until one is
+              // picked — same rule as the detail page's convert dialog.
+              onPressed: ownerId == null
+                  ? null
+                  : () => Navigator.pop(dialogContext, (
+                      tier: tier,
+                      ownerId: ownerId,
+                    )),
+              child: const Text('Save & Convert'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -349,9 +507,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                       false,
                       TextFormField(
                         controller: _additionalContactControllers[i].email,
-                        validator: (v) => v == null || v.isEmpty
-                            ? null
-                            : Validators.email(v),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? null : Validators.email(v),
                         decoration: _inputDecoration(
                           'alternate@acme.com',
                           prefix: const Icon(
@@ -548,39 +705,45 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           builder: (context, setState) {
             return AlertDialog(
               title: const Text('Log Activity'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildField(
-                    'Activity Type',
-                    true,
-                    DropdownButtonFormField<String>(
-                      value: typeController.text,
-                      decoration: _inputDecoration(''),
-                      items: leadActivityTypeLabels.entries
-                          .map(
-                            (e) => DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => typeController.text = v!),
+              // Fixed width so a long note wraps instead of stretching the
+              // dialog — AlertDialog otherwise sizes to the field's intrinsic
+              // width. Matches the other Log Activity dialogs.
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildField(
+                      'Activity Type',
+                      true,
+                      DropdownButtonFormField<String>(
+                        value: typeController.text,
+                        decoration: _inputDecoration(''),
+                        items: leadActivityTypeLabels.entries
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => typeController.text = v!),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildField(
-                    'Note',
-                    true,
-                    TextFormField(
-                      controller: noteController,
-                      maxLines: 4,
-                      decoration: _inputDecoration('Activity details...'),
+                    const SizedBox(height: 16),
+                    _buildField(
+                      'Note',
+                      true,
+                      TextFormField(
+                        controller: noteController,
+                        maxLines: 4,
+                        decoration: _inputDecoration('Activity details...'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -835,8 +998,42 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           ),
         ),
         const SizedBox(width: 16),
+        // Create only. An existing lead is converted from its own detail page,
+        // and one that's already an account can't be converted twice.
+        if (!isEdit) ...[
+          ElevatedButton(
+            onPressed: _submitting ? null : () => _onSubmit(convert: true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryLight,
+              foregroundColor: AppColors.primary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : 24,
+                vertical: isMobile ? 12 : 16,
+              ),
+            ),
+            child: _submitting && _submittingConvert
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : Text(
+                    // The full label doesn't fit a phone's action row.
+                    isMobile ? 'Save & Convert' : 'Save & Convert to Account',
+                    style: AppTextStyles.buttonMedium,
+                  ),
+          ),
+          const SizedBox(width: 12),
+        ],
         ElevatedButton(
-          onPressed: _submitting ? null : _onSubmit,
+          onPressed: _submitting ? null : () => _onSubmit(),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0F47C6),
             foregroundColor: Colors.white,
@@ -849,7 +1046,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
               vertical: isMobile ? 12 : 16,
             ),
           ),
-          child: _submitting
+          child: _submitting && !_submittingConvert
               ? const SizedBox(
                   width: 18,
                   height: 18,
@@ -989,8 +1186,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
 /// lead form.
 class _ContactDraftControllers {
   _ContactDraftControllers({String? email, String? phone})
-      : email = TextEditingController(text: email),
-        phone = TextEditingController(text: phone);
+    : email = TextEditingController(text: email),
+      phone = TextEditingController(text: phone);
 
   final TextEditingController email;
   final TextEditingController phone;
