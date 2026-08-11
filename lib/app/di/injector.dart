@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/theme/theme_controller.dart';
 import '../../core/network/interceptors/auth_interceptor.dart';
 
 import '../router/auth_notifier.dart';
@@ -172,6 +173,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DioClient>(() => dioClient);
 
   sl.registerLazySingleton<AuthNotifier>(() => AuthNotifier());
+  sl.registerLazySingleton<ThemeController>(() => ThemeController());
 
   // ─── Auth Feature ────────────────────────────────────
   // Datasources

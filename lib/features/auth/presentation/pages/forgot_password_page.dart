@@ -31,13 +31,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
-    final result = await sl<ForgotPasswordUseCase>()(_emailController.text.trim());
+    final result = await sl<ForgotPasswordUseCase>()(
+      _emailController.text.trim(),
+    );
     if (!mounted) return;
     setState(() => _sending = false);
     result.fold(
       (f) => messenger.showSnackBar(
         SnackBar(
-          content: const Text('Could not send the reset link. Please try again.'),
+          content: const Text(
+            'Could not send the reset link. Please try again.',
+          ),
           backgroundColor: AppColors.error,
         ),
       ),
@@ -102,7 +106,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Send Reset Link'),
             ),
@@ -115,7 +122,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget _buildSuccessView() {
     return Column(
       children: [
-        const Icon(
+        Icon(
           Icons.mark_email_read_outlined,
           size: 72,
           color: AppColors.success,

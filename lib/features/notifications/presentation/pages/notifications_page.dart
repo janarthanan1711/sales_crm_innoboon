@@ -49,10 +49,12 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
   void _applyFilters() {
     _selectedIds.clear();
-    context.read<NotificationBloc>().add(NotificationLoadRequested(
-          unreadOnly: _tab == _NotificationTab.unread,
-          typeFilter: _typeFilter,
-        ));
+    context.read<NotificationBloc>().add(
+      NotificationLoadRequested(
+        unreadOnly: _tab == _NotificationTab.unread,
+        typeFilter: _typeFilter,
+      ),
+    );
   }
 
   void _toggleSelected(int id) {
@@ -86,13 +88,17 @@ class _NotificationsViewState extends State<_NotificationsView> {
                     const SizedBox(height: 4),
                     Text(
                       'Stay updated with your tasks and deals',
-                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
                 TextButton.icon(
                   onPressed: () {
-                    context.read<NotificationBloc>().add(const NotificationMarkedAllRead());
+                    context.read<NotificationBloc>().add(
+                      const NotificationMarkedAllRead(),
+                    );
                   },
                   icon: const Icon(Icons.done_all, size: 18),
                   label: const Text('Mark all as read'),
@@ -100,48 +106,56 @@ class _NotificationsViewState extends State<_NotificationsView> {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            Builder(builder: (context) {
-              final segmented = SegmentedButton<_NotificationTab>(
-                segments: const [
-                  ButtonSegment(value: _NotificationTab.all, label: Text('All Notifications')),
-                  ButtonSegment(value: _NotificationTab.unread, label: Text('Unread Only')),
-                ],
-                selected: {_tab},
-                onSelectionChanged: (s) => setState(() {
-                  _tab = s.first;
-                  _applyFilters();
-                }),
-              );
-              final typeFilter = _TypeFilterDropdown(
-                value: _typeFilter,
-                onChanged: (v) => setState(() {
-                  _typeFilter = v;
-                  _applyFilters();
-                }),
-              );
-              // Stack on phones so the segmented control + type filter don't
-              // overflow a narrow row.
-              if (context.isMobile) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: segmented,
+            Builder(
+              builder: (context) {
+                final segmented = SegmentedButton<_NotificationTab>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _NotificationTab.all,
+                      label: Text('All Notifications'),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Align(alignment: Alignment.centerLeft, child: typeFilter),
+                    ButtonSegment(
+                      value: _NotificationTab.unread,
+                      label: Text('Unread Only'),
+                    ),
+                  ],
+                  selected: {_tab},
+                  onSelectionChanged: (s) => setState(() {
+                    _tab = s.first;
+                    _applyFilters();
+                  }),
+                );
+                final typeFilter = _TypeFilterDropdown(
+                  value: _typeFilter,
+                  onChanged: (v) => setState(() {
+                    _typeFilter = v;
+                    _applyFilters();
+                  }),
+                );
+                // Stack on phones so the segmented control + type filter don't
+                // overflow a narrow row.
+                if (context.isMobile) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: segmented,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Align(alignment: Alignment.centerLeft, child: typeFilter),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: segmented),
+                    const SizedBox(width: AppSpacing.sm),
+                    typeFilter,
                   ],
                 );
-              }
-              return Row(
-                children: [
-                  Expanded(child: segmented),
-                  const SizedBox(width: AppSpacing.sm),
-                  typeFilter,
-                ],
-              );
-            }),
+              },
+            ),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: BlocConsumer<NotificationBloc, NotificationState>(
@@ -153,17 +167,23 @@ class _NotificationsViewState extends State<_NotificationsView> {
                   }
                 },
                 builder: (context, state) {
-                  if (state is NotificationLoading || state is NotificationInitial) {
+                  if (state is NotificationLoading ||
+                      state is NotificationInitial) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (state is NotificationError) {
                     return Center(
-                      child: Text(state.message, style: const TextStyle(color: Colors.red)),
+                      child: Text(
+                        state.message,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     );
                   }
                   if (state is NotificationLoaded) {
                     if (state.notifications.isEmpty) {
-                      return _EmptyNotifications(onGoToDashboard: () => context.go(RoutePaths.dashboard));
+                      return _EmptyNotifications(
+                        onGoToDashboard: () => context.go(RoutePaths.dashboard),
+                      );
                     }
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,11 +192,19 @@ class _NotificationsViewState extends State<_NotificationsView> {
                           _BulkActionBar(
                             count: _selectedIds.length,
                             onMarkRead: () {
-                              context.read<NotificationBloc>().add(NotificationsBulkMarkReadRequested(_selectedIds.toList()));
+                              context.read<NotificationBloc>().add(
+                                NotificationsBulkMarkReadRequested(
+                                  _selectedIds.toList(),
+                                ),
+                              );
                               setState(_selectedIds.clear);
                             },
                             onDelete: () {
-                              context.read<NotificationBloc>().add(NotificationsBulkDeleteRequested(_selectedIds.toList()));
+                              context.read<NotificationBloc>().add(
+                                NotificationsBulkDeleteRequested(
+                                  _selectedIds.toList(),
+                                ),
+                              );
                               setState(_selectedIds.clear);
                             },
                             onClear: () => setState(_selectedIds.clear),
@@ -192,18 +220,26 @@ class _NotificationsViewState extends State<_NotificationsView> {
                         Center(
                           child: state.hasMore
                               ? (state.isLoadingMore
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(AppSpacing.sm),
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      ),
-                                    )
-                                  : TextButton(
-                                      onPressed: () => context.read<NotificationBloc>().add(const NotificationLoadMoreRequested()),
-                                      child: const Text('Load Older Notifications'),
-                                    ))
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(AppSpacing.sm),
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : TextButton(
+                                        onPressed: () => context
+                                            .read<NotificationBloc>()
+                                            .add(
+                                              const NotificationLoadMoreRequested(),
+                                            ),
+                                        child: const Text(
+                                          'Load Older Notifications',
+                                        ),
+                                      ))
                               : Text(
                                   "You're all caught up — no older notifications.",
                                   style: AppTextStyles.caption,
@@ -243,7 +279,12 @@ class _TypeFilterDropdown extends StatelessWidget {
           items: [
             const DropdownMenuItem(value: null, child: Text('All Types')),
             ...NotificationType.values.map(
-              (t) => DropdownMenuItem(value: t, child: Text(notificationTypeLabels[notificationTypeWireValue(t)]!)),
+              (t) => DropdownMenuItem(
+                value: t,
+                child: Text(
+                  notificationTypeLabels[notificationTypeWireValue(t)]!,
+                ),
+              ),
             ),
           ],
           onChanged: onChanged,
@@ -269,28 +310,55 @@ class _BulkActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.textPrimary,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Row(
         children: [
-          CircleAvatar(radius: 12, backgroundColor: AppColors.primary, child: Text('$count', style: const TextStyle(fontSize: 12, color: Colors.white))),
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: AppColors.primary,
+            child: Text(
+              '$count',
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
-          Text('$count selected', style: AppTextStyles.bodyMedium.copyWith(color: Colors.white)),
+          Text(
+            '$count selected',
+            style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+          ),
           const Spacer(),
           TextButton.icon(
             onPressed: onMarkRead,
-            icon: const Icon(Icons.mark_email_read_outlined, size: 16, color: Colors.white),
-            label: const Text('Mark Read', style: TextStyle(color: Colors.white)),
+            icon: const Icon(
+              Icons.mark_email_read_outlined,
+              size: 16,
+              color: Colors.white,
+            ),
+            label: const Text(
+              'Mark Read',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
           TextButton.icon(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 16,
+              color: Colors.white,
+            ),
             label: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
-          IconButton(onPressed: onClear, icon: const Icon(Icons.close, size: 18, color: Colors.white)),
+          IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.close, size: 18, color: Colors.white),
+          ),
         ],
       ),
     );
@@ -307,14 +375,16 @@ class _EmptyNotifications extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.done_all, size: 48, color: AppColors.textMuted),
+          Icon(Icons.done_all, size: 48, color: AppColors.textMuted),
           const SizedBox(height: AppSpacing.md),
           Text("You're all caught up!", style: AppTextStyles.h3),
           const SizedBox(height: 4),
           Text(
             'There are no new notifications. Check back later for updates on your deals, tasks, and team assignments.',
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           ElevatedButton.icon(
@@ -371,7 +441,9 @@ class _GroupedNotificationList extends StatelessWidget {
               child: _NotificationCard(
                 notification: n,
                 selected: selectedIds.contains(n.id),
-                onToggleSelected: n.isComputed ? null : () => onToggleSelected(n.id),
+                onToggleSelected: n.isComputed
+                    ? null
+                    : () => onToggleSelected(n.id),
               ),
             ),
           ),
@@ -382,9 +454,14 @@ class _GroupedNotificationList extends StatelessWidget {
 }
 
 class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({required this.notification, required this.selected, required this.onToggleSelected});
+  const _NotificationCard({
+    required this.notification,
+    required this.selected,
+    required this.onToggleSelected,
+  });
   final AppNotification notification;
   final bool selected;
+
   /// Null when the notification is a computed `task_overdue` entry — those
   /// aren't stored rows so they can't be bulk-selected for read/delete.
   final VoidCallback? onToggleSelected;
@@ -394,14 +471,23 @@ class _NotificationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: notification.isRead ? AppColors.cardBackground : AppColors.primaryLight,
+        color: notification.isRead
+            ? AppColors.cardBackground
+            : AppColors.primaryLight,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+        border: Border.all(
+          color: selected ? AppColors.primary : AppColors.border,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Checkbox(value: selected, onChanged: onToggleSelected == null ? null : (_) => onToggleSelected!()),
+          Checkbox(
+            value: selected,
+            onChanged: onToggleSelected == null
+                ? null
+                : (_) => onToggleSelected!(),
+          ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -426,18 +512,25 @@ class _NotificationCard extends StatelessWidget {
                       child: Text(
                         notification.title,
                         style: AppTextStyles.labelLarge.copyWith(
-                          fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w600,
+                          fontWeight: notification.isRead
+                              ? FontWeight.normal
+                              : FontWeight.w600,
                         ),
                       ),
                     ),
-                    Text(_formatDate(notification.createdAt), style: AppTextStyles.caption),
+                    Text(
+                      _formatDate(notification.createdAt),
+                      style: AppTextStyles.caption,
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   notification.body,
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: notification.isRead ? AppColors.textSecondary : AppColors.textPrimary,
+                    color: notification.isRead
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -459,7 +552,9 @@ class _NotificationCard extends StatelessWidget {
               icon: Icon(
                 notification.isRead ? Icons.circle_outlined : Icons.circle,
                 size: 12,
-                color: notification.isRead ? AppColors.textMuted : AppColors.primary,
+                color: notification.isRead
+                    ? AppColors.textMuted
+                    : AppColors.primary,
               ),
               tooltip: notification.isRead ? 'Mark as unread' : 'Mark as read',
             ),
@@ -482,19 +577,27 @@ class _NotificationCard extends StatelessWidget {
 
   IconData _getIcon(NotificationType type) {
     switch (type) {
-      case NotificationType.leadAssigned: return Icons.person_add;
-      case NotificationType.dealStageChanged: return Icons.trending_up;
-      case NotificationType.taskOverdue: return Icons.access_time;
-      case NotificationType.newLead: return Icons.star_outline;
+      case NotificationType.leadAssigned:
+        return Icons.person_add;
+      case NotificationType.dealStageChanged:
+        return Icons.trending_up;
+      case NotificationType.taskOverdue:
+        return Icons.access_time;
+      case NotificationType.newLead:
+        return Icons.star_outline;
     }
   }
 
   Color _getIconColor(NotificationType type) {
     switch (type) {
-      case NotificationType.leadAssigned: return AppColors.success;
-      case NotificationType.dealStageChanged: return AppColors.primary;
-      case NotificationType.taskOverdue: return AppColors.warning;
-      case NotificationType.newLead: return AppColors.primary;
+      case NotificationType.leadAssigned:
+        return AppColors.success;
+      case NotificationType.dealStageChanged:
+        return AppColors.primary;
+      case NotificationType.taskOverdue:
+        return AppColors.warning;
+      case NotificationType.newLead:
+        return AppColors.primary;
     }
   }
 

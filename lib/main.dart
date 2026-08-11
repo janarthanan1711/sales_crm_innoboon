@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'app/app.dart';
 import 'app/di/injector.dart';
+import 'core/theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,5 +16,8 @@ void main() async {
   // unknown paths (nginx `try_files`, a `_redirects`/rewrite rule, etc.).
   usePathUrlStrategy();
   await initDependencies();
+  // Resolve the stored theme before the first frame — registering it after
+  // runApp would paint one frame of light mode for a dark-mode user.
+  sl<ThemeController>().hydrate(await ThemeController.load());
   runApp(const SalesHubApp());
 }

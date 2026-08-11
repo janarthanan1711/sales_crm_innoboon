@@ -10,14 +10,19 @@ import '../../domain/entities/activity.dart';
 import '../bloc/activity_bloc.dart';
 
 class ActivityTimelineView extends StatelessWidget {
-  const ActivityTimelineView({super.key, required this.entityType, required this.entityId});
+  const ActivityTimelineView({
+    super.key,
+    required this.entityType,
+    required this.entityId,
+  });
   final String entityType;
   final String entityId;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ActivityBloc>()..add(ActivityLoadRequested(entityType, entityId)),
+      create: (_) =>
+          sl<ActivityBloc>()..add(ActivityLoadRequested(entityType, entityId)),
       child: const _ActivityContent(),
     );
   }
@@ -49,7 +54,12 @@ class _ActivityContent extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
             if (state is ActivityError) {
-              return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+              return Center(
+                child: Text(
+                  state.message,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              );
             }
             if (state is ActivityLoaded) {
               if (state.activities.isEmpty) {
@@ -59,7 +69,7 @@ class _ActivityContent extends StatelessWidget {
                   subtitle: 'Log an activity to track progress.',
                 );
               }
-              
+
               return ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -109,12 +119,7 @@ class _TimelineItem extends StatelessWidget {
                   ),
                 ),
                 if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: AppColors.border,
-                    ),
-                  ),
+                  Expanded(child: Container(width: 2, color: AppColors.border)),
               ],
             ),
           ),
@@ -137,21 +142,33 @@ class _TimelineItem extends StatelessWidget {
                       children: [
                         Text(activity.title, style: AppTextStyles.labelLarge),
                         Text(
-                          DateFormat('MMM d, yyyy • h:mm a').format(activity.performedAt.toLocal()),
+                          DateFormat(
+                            'MMM d, yyyy • h:mm a',
+                          ).format(activity.performedAt.toLocal()),
                           style: AppTextStyles.caption,
                         ),
                       ],
                     ),
                     if (activity.description.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.sm),
-                      Text(activity.description, style: AppTextStyles.bodyMedium),
+                      Text(
+                        activity.description,
+                        style: AppTextStyles.bodyMedium,
+                      ),
                     ],
                     const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
-                        const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.person_outline,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
-                        Text(activity.performedBy, style: AppTextStyles.caption),
+                        Text(
+                          activity.performedBy,
+                          style: AppTextStyles.caption,
+                        ),
                       ],
                     ),
                   ],
@@ -166,23 +183,35 @@ class _TimelineItem extends StatelessWidget {
 
   IconData _getIcon(ActivityType type) {
     switch (type) {
-      case ActivityType.call: return Icons.phone;
-      case ActivityType.email: return Icons.email;
-      case ActivityType.meeting: return Icons.event;
-      case ActivityType.note: return Icons.note;
-      case ActivityType.stageChange: return Icons.swap_horiz;
-      case ActivityType.taskComplete: return Icons.check_circle;
+      case ActivityType.call:
+        return Icons.phone;
+      case ActivityType.email:
+        return Icons.email;
+      case ActivityType.meeting:
+        return Icons.event;
+      case ActivityType.note:
+        return Icons.note;
+      case ActivityType.stageChange:
+        return Icons.swap_horiz;
+      case ActivityType.taskComplete:
+        return Icons.check_circle;
     }
   }
 
   Color _getIconColor(ActivityType type) {
     switch (type) {
-      case ActivityType.call: return AppColors.error;
-      case ActivityType.email: return AppColors.primary;
-      case ActivityType.meeting: return AppColors.success;
-      case ActivityType.note: return AppColors.warning;
-      case ActivityType.stageChange: return AppColors.primary;
-      case ActivityType.taskComplete: return AppColors.success;
+      case ActivityType.call:
+        return AppColors.error;
+      case ActivityType.email:
+        return AppColors.primary;
+      case ActivityType.meeting:
+        return AppColors.success;
+      case ActivityType.note:
+        return AppColors.warning;
+      case ActivityType.stageChange:
+        return AppColors.primary;
+      case ActivityType.taskComplete:
+        return AppColors.success;
     }
   }
 

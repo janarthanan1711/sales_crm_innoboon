@@ -283,7 +283,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       },
       (accountId) {
         messenger.showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Lead created and converted to Account!'),
             backgroundColor: AppColors.success,
           ),
@@ -395,20 +395,20 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   InputDecoration _inputDecoration(String hint, {Widget? prefix}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       prefixIcon: prefix,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary),
+        borderSide: BorderSide(color: AppColors.primary),
       ),
     );
   }
@@ -421,11 +421,11 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
           text: TextSpan(
             text: label,
             style: AppTextStyles.labelMedium.copyWith(
-              color: const Color(0xFF334155),
+              color: AppColors.fieldLabel,
             ),
             children: [
               if (required)
-                const TextSpan(
+                TextSpan(
                   text: ' *',
                   style: TextStyle(color: AppColors.error),
                 ),
@@ -442,7 +442,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
@@ -458,12 +458,12 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                 title,
                 style: AppTextStyles.h3.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 16.0),
             child: Divider(color: AppColors.border),
           ),
@@ -511,7 +511,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                             v == null || v.isEmpty ? null : Validators.email(v),
                         decoration: _inputDecoration(
                           'alternate@acme.com',
-                          prefix: const Icon(
+                          prefix: Icon(
                             Icons.mail_outline,
                             size: 18,
                             color: AppColors.textMuted,
@@ -527,7 +527,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                         keyboardType: TextInputType.phone,
                         decoration: _inputDecoration(
                           '+1 (555) 000-0000',
-                          prefix: const Icon(
+                          prefix: Icon(
                             Icons.phone_outlined,
                             size: 18,
                             color: AppColors.textMuted,
@@ -547,7 +547,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                       c.dispose();
                     });
                   },
-                  icon: const Icon(Icons.close, color: AppColors.textMuted),
+                  icon: Icon(Icons.close, color: AppColors.textMuted),
                   tooltip: 'Remove contact',
                 ),
               ],
@@ -615,7 +615,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                 controller: _domainController,
                 decoration: _inputDecoration(
                   'acme.com',
-                  prefix: const Icon(
+                  prefix: Icon(
                     Icons.link,
                     size: 18,
                     color: AppColors.textMuted,
@@ -641,7 +641,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
               controller: _linkedinController,
               decoration: _inputDecoration(
                 'linkedin.com/in/arjumehta',
-                prefix: const Icon(
+                prefix: Icon(
                   Icons.share_outlined,
                   size: 18,
                   color: AppColors.textMuted,
@@ -660,7 +660,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                 validator: Validators.email,
                 decoration: _inputDecoration(
                   'jane.doe@acme.com',
-                  prefix: const Icon(
+                  prefix: Icon(
                     Icons.mail_outline,
                     size: 18,
                     color: AppColors.textMuted,
@@ -675,7 +675,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                 controller: _phoneController,
                 decoration: _inputDecoration(
                   '+1 (555) 000-0000',
-                  prefix: const Icon(
+                  prefix: Icon(
                     Icons.phone_outlined,
                     size: 18,
                     color: AppColors.textMuted,
@@ -827,7 +827,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       ),
       const SizedBox(height: 16),
       if (_activities.isEmpty)
-        const Text(
+        Text(
           'No activities logged yet.',
           style: TextStyle(color: AppColors.textMuted),
         )
@@ -926,7 +926,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                         : null,
                     decoration: _inputDecoration(
                       'Select owner',
-                      prefix: const Icon(
+                      prefix: Icon(
                         Icons.search,
                         size: 18,
                         color: AppColors.textMuted,
@@ -1016,7 +1016,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
               ),
             ),
             child: _submitting && _submittingConvert
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
@@ -1035,7 +1035,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
         ElevatedButton(
           onPressed: _submitting ? null : () => _onSubmit(),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0F47C6),
+            backgroundColor: AppColors.primaryButton,
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -1077,7 +1077,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                       if (isEdit)
                         IconButton(
                           onPressed: () => _safePop(),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close,
                             size: 24,
                             color: AppColors.textSecondary,
@@ -1116,7 +1116,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                   if (isEdit)
                     IconButton(
                       onPressed: () => _safePop(),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close,
                         size: 24,
                         color: AppColors.textSecondary,
@@ -1150,7 +1150,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                   headerActions,
                 ],
               ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 24.0),
               child: Divider(color: AppColors.border),
             ),

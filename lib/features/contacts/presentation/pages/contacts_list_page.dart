@@ -393,15 +393,12 @@ class _ContactsListViewState extends State<_ContactsListView> {
             ),
             TextButton.icon(
               onPressed: () => _confirmBulkDelete(context),
-              icon: const Icon(
+              icon: Icon(
                 Icons.delete_outline,
                 size: 16,
                 color: AppColors.error,
               ),
-              label: const Text(
-                'Delete',
-                style: TextStyle(color: AppColors.error),
-              ),
+              label: Text('Delete', style: TextStyle(color: AppColors.error)),
             ),
             IconButton(
               onPressed: () => setState(_selected.clear),
@@ -431,7 +428,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -534,10 +531,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
               bloc.add(ContactsListDeleteRequested(ids));
               setState(_selected.clear);
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -689,7 +683,7 @@ class _PrimaryBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star, size: 10, color: AppColors.success),
+          Icon(Icons.star, size: 10, color: AppColors.success),
           const SizedBox(width: 2),
           Text(
             'PRIMARY',
@@ -746,7 +740,7 @@ class _MenuFilter<T> extends StatelessWidget {
               children: [
                 Expanded(child: Text(options[i].value)),
                 if (options[i].key == selected)
-                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  Icon(Icons.check, size: 16, color: AppColors.primary),
               ],
             ),
           ),
@@ -984,7 +978,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                 child: _pickedFile == null
                     ? Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.upload_file_outlined,
                             size: 28,
                             color: AppColors.textMuted,
@@ -1000,7 +994,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                       )
                     : Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.description_outlined,
                             color: AppColors.primary,
                           ),
@@ -1049,7 +1043,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 18,
                         color: AppColors.primary,
@@ -1148,7 +1142,7 @@ class _ContactImportResultDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_outline,
                   size: 18,
                   color: AppColors.success,
@@ -1163,11 +1157,7 @@ class _ContactImportResultDialog extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 18,
-                  color: AppColors.error,
-                ),
+                Icon(Icons.error_outline, size: 18, color: AppColors.error),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${result.errors.length} row(s) skipped',

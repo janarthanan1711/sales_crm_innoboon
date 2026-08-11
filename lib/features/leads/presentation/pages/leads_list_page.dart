@@ -394,7 +394,7 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -445,7 +445,7 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -638,7 +638,7 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_right,
                         color: AppColors.textMuted,
                       ),
@@ -677,11 +677,7 @@ class _ContactLine extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            size: 14,
-            color: AppColors.error,
-          ),
+          Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.error),
           const SizedBox(width: 4),
           Text(
             missingLabel,
@@ -798,7 +794,7 @@ class _LeadCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.email_outlined,
                     size: 14,
                     color: AppColors.textMuted,
@@ -858,8 +854,7 @@ class _FilterDropdown extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text(option)),
-              if (isSel)
-                const Icon(Icons.check, size: 16, color: AppColors.primary),
+              if (isSel) Icon(Icons.check, size: 16, color: AppColors.primary),
             ],
           ),
         );
@@ -954,7 +949,7 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
             children: [
               const Expanded(child: Text('All')),
               if (selectedId == null)
-                const Icon(Icons.check, size: 16, color: AppColors.primary),
+                Icon(Icons.check, size: 16, color: AppColors.primary),
             ],
           ),
         ),
@@ -965,7 +960,7 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
               children: [
                 Expanded(child: Text(owner.displayName)),
                 if (owner.id == selectedId)
-                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  Icon(Icons.check, size: 16, color: AppColors.primary),
               ],
             ),
           ),
@@ -1149,7 +1144,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                 child: _pickedFile == null
                     ? Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.upload_file_outlined,
                             size: 28,
                             color: AppColors.textMuted,
@@ -1165,7 +1160,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                       )
                     : Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.description_outlined,
                             color: AppColors.primary,
                           ),
@@ -1213,7 +1208,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 18,
                         color: AppColors.primary,
@@ -1312,7 +1307,7 @@ class _ImportResultDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_outline,
                   size: 18,
                   color: AppColors.success,
@@ -1327,11 +1322,7 @@ class _ImportResultDialog extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 18,
-                  color: AppColors.error,
-                ),
+                Icon(Icons.error_outline, size: 18, color: AppColors.error),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${result.errors.length} row(s) skipped',

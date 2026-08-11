@@ -286,7 +286,7 @@ class _UsersTabState extends State<_UsersTab> {
                 (_) {
                   Navigator.pop(dialogContext);
                   messenger.showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text('Invitation sent.'),
                       backgroundColor: AppColors.success,
                     ),
@@ -352,7 +352,7 @@ class _UsersTabState extends State<_UsersTab> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline,
                               size: 16,
                               color: AppColors.error,
@@ -424,7 +424,7 @@ class _UsersTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -557,7 +557,7 @@ class _UserRow extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text(
+                          child: Text(
                             'Deactivate',
                             style: TextStyle(color: AppColors.error),
                           ),
@@ -714,7 +714,7 @@ class _RolesTabState extends State<_RolesTab> {
                                   _showRoleDialog(context, role: role),
                             ),
                             IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.delete_outline,
                                 size: 18,
                                 color: AppColors.error,
@@ -759,10 +759,7 @@ class _RolesTabState extends State<_RolesTab> {
                 (_) => _load(),
               );
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -1147,7 +1144,7 @@ class _AuditTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(

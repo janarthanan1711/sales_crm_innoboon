@@ -186,7 +186,9 @@ class _SourceToggle extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: active ? AppColors.primaryLight : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius - 2),
+                borderRadius: BorderRadius.circular(
+                  AppSpacing.buttonRadius - 2,
+                ),
               ),
               child: Text(
                 s.$1,
@@ -223,7 +225,7 @@ class _DocumentsTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -258,8 +260,10 @@ class _DocumentsTable extends StatelessWidget {
     return table;
   }
 
-  Widget _h(String label, {int flex = 1}) =>
-      Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+  Widget _h(String label, {int flex = 1}) => Expanded(
+    flex: flex,
+    child: Text(label, style: AppTextStyles.tableHeader),
+  );
 }
 
 class _DocumentRow extends StatefulWidget {
@@ -296,7 +300,9 @@ class _DocumentRowState extends State<_DocumentRow> {
 
   void _goToEntity() {
     final d = widget.document;
-    context.go(d.isAccount ? '/accounts/${d.entityId}' : '/deals/${d.entityId}');
+    context.go(
+      d.isAccount ? '/accounts/${d.entityId}' : '/deals/${d.entityId}',
+    );
   }
 
   @override
@@ -319,7 +325,11 @@ class _DocumentRowState extends State<_DocumentRow> {
                 flex: 4,
                 child: Row(
                   children: [
-                    Icon(_icon(d.extension), size: 22, color: AppColors.primary),
+                    Icon(
+                      _icon(d.extension),
+                      size: 22,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
