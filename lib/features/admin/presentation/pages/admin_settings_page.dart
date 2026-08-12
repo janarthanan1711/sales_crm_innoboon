@@ -12,6 +12,7 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../users/domain/usecases/activate_user_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
@@ -117,6 +118,8 @@ class _UsersTabState extends State<_UsersTab> {
   String _search = '';
   int? _roleFilter;
   String? _statusFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   @override
   void initState() {
@@ -131,6 +134,8 @@ class _UsersTabState extends State<_UsersTab> {
       roleId: _roleFilter,
       status: _statusFilter,
       search: _search.isEmpty ? null : _search,
+      dateFrom: _dateFrom,
+      dateTo: _dateTo,
     );
     if (!mounted) return;
     rolesResult.fold((_) {}, (r) => _roles = r);
@@ -146,6 +151,26 @@ class _UsersTabState extends State<_UsersTab> {
       }),
     );
   }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked != null) {
+      setState(() {
+        _dateFrom = picked.start;
+        _dateTo = picked.end;
+      });
+      _load();
+    }
+  }
+
+  bool get _hasDateRange => _dateFrom != null && _dateTo != null;
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +227,26 @@ class _UsersTabState extends State<_UsersTab> {
                   _load();
                 },
               ),
+              OutlinedButton.icon(
+                onPressed: _pickDateRange,
+                icon: const Icon(Icons.date_range, size: 18),
+                label: Text(
+                  _hasDateRange
+                      ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                      : 'Date Range',
+                ),
+              ),
+              if (_hasDateRange)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _dateFrom = null;
+                      _dateTo = null;
+                    });
+                    _load();
+                  },
+                  child: const Text('Clear Dates'),
+                ),
               ElevatedButton.icon(
                 onPressed: () => _showInviteDialog(context),
                 icon: const Icon(Icons.add, size: 18),
@@ -984,13 +1029,12 @@ class _AuditLogTabState extends State<_AuditLogTab> {
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final picked = await showCompactDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: _dateFrom != null && _dateTo != null
-          ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
-          : null,
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
     );
     if (picked != null) {
       _applyFilter(() {

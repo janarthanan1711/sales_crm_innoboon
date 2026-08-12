@@ -12,6 +12,8 @@ abstract class UserRemoteDataSource {
     bool? isActive,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
   });
   Future<OwnerUser> createUser({
     required String email,
@@ -36,6 +38,8 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     bool? isActive,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
   }) async {
     try {
       final response = await dioClient.get(
@@ -45,6 +49,8 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
           if (isActive != null) 'is_active': isActive,
           if (status != null) 'status': status,
           if (search != null && search.isNotEmpty) 'search': search,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
         },
       );
       final data = response.data as List<dynamic>;
@@ -95,6 +101,11 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 
   Exception _normalize(DioException e) {

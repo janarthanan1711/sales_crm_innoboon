@@ -19,6 +19,7 @@ import '../../domain/entities/lead_import_result.dart';
 import '../../domain/usecases/import_leads_usecase.dart';
 import '../../domain/usecases/download_import_template_usecase.dart';
 import '../../domain/usecases/export_leads_usecase.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
@@ -48,6 +49,8 @@ class _LeadsListViewState extends State<_LeadsListView> {
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   bool _exporting = false;
 
   @override
@@ -112,6 +115,8 @@ class _LeadsListViewState extends State<_LeadsListView> {
         status: _statusFilter,
         source: _sourceFilter,
         ownerId: _ownerIdFilter,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
       ),
     );
   }
@@ -122,8 +127,45 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _statusFilter = null;
       _sourceFilter = null;
       _ownerIdFilter = null;
+      _dateFrom = null;
+      _dateTo = null;
     });
     context.read<LeadsListBloc>().add(const LeadsListCleared());
+  }
+
+  /// Created-at date-range filter — mirrors the Audit Log tab's picker
+  /// (admin_settings_page.dart's `_AuditLogTab`). Both ends are inclusive.
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateFrom = picked.start;
+      _dateTo = picked.end;
+    });
+    if (!context.mounted) return;
+    _applyFilters(context);
+  }
+
+  void _clearDateRange(BuildContext context) {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    context.read<LeadsListBloc>().add(
+      LeadsListFilterChanged(
+        status: _statusFilter,
+        source: _sourceFilter,
+        ownerId: _ownerIdFilter,
+        clearDate: true,
+      ),
+    );
   }
 
   @override
@@ -325,6 +367,23 @@ class _LeadsListViewState extends State<_LeadsListView> {
               _applyFilters(context);
             },
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => _pickDateRange(context),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _dateFrom != null && _dateTo != null
+                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (_dateFrom != null && _dateTo != null)
+            IconButton(
+              onPressed: () => _clearDateRange(context),
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear date range',
+              visualDensity: VisualDensity.compact,
+            ),
           const SizedBox(width: AppSpacing.sm),
           TextButton.icon(
             onPressed: () => _clearFilters(context),

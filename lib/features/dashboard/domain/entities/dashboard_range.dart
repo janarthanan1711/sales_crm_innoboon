@@ -58,6 +58,23 @@ class DashboardRange extends Equatable {
     return period == thisWeek ? 'daily' : 'weekly';
   }
 
+  /// The concrete `(start, end)` this range resolves to server-side
+  /// (`dashboard_service.py`'s `_period_bounds`: Monday-start for
+  /// `this_week`, the 1st of the month for `this_month`, both ending today;
+  /// the caller-supplied bounds for `custom`). Lets a "Deals Closed" tile tap
+  /// drill into `GET /deals?date_from=...&date_to=...` with the exact window
+  /// the tile counted, without a matching field in the dashboard response.
+  (DateTime, DateTime) resolvedBounds() {
+    if (isCustom) return (start!, end!);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (period == thisWeek) {
+      // DateTime.weekday: Monday=1..Sunday=7 (vs. Python's Monday=0).
+      return (today.subtract(Duration(days: today.weekday - 1)), today);
+    }
+    return (DateTime(today.year, today.month, 1), today);
+  }
+
   @override
   List<Object?> get props => [period, start, end];
 }

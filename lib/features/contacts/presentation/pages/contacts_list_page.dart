@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
@@ -15,6 +16,7 @@ import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../domain/entities/contact.dart';
 import '../../domain/entities/contact_import_result.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contacts_list_bloc.dart';
 import '../widgets/contact_form_dialog.dart';
@@ -71,6 +73,26 @@ class _ContactsListViewState extends State<_ContactsListView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDateRange(
+    BuildContext context,
+    DateTime? currentFrom,
+    DateTime? currentTo,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: currentFrom,
+      initialEnd: currentTo,
+    );
+    if (picked != null && context.mounted) {
+      context.read<ContactsListBloc>().add(
+        ContactsListFilterChanged(dateFrom: picked.start, dateTo: picked.end),
+      );
+    }
   }
 
   void _clearFilters() {
@@ -276,6 +298,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
         ? loaded.accountFilter
         : null;
     final tierFilter = loaded is ContactsListLoaded ? loaded.tierFilter : null;
+    final dateFromFilter = loaded is ContactsListLoaded
+        ? loaded.dateFromFilter
+        : null;
+    final dateToFilter = loaded is ContactsListLoaded
+        ? loaded.dateToFilter
+        : null;
+    final hasDateRange = dateFromFilter != null && dateToFilter != null;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -335,6 +364,24 @@ class _ContactsListViewState extends State<_ContactsListView> {
             onSelected: (v) =>
                 bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () =>
+                _pickDateRange(context, dateFromFilter, dateToFilter),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              hasDateRange
+                  ? '${DateFormatter.shortDate(dateFromFilter)} – ${DateFormatter.shortDate(dateToFilter)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (hasDateRange)
+            IconButton(
+              onPressed: () =>
+                  bloc.add(const ContactsListFilterChanged(clearDate: true)),
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: 'Clear date range',
+            ),
           const SizedBox(width: AppSpacing.md),
           Row(
             mainAxisSize: MainAxisSize.min,

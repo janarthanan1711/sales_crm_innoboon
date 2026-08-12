@@ -13,6 +13,8 @@ abstract class AccountRepository {
     String? industry,
     String? tier,
     int? ownerId,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit,
     int offset,
   });
@@ -96,6 +98,8 @@ abstract class AccountRemoteDataSource {
     String? industry,
     String? tier,
     int? ownerId,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit,
     int offset,
   });

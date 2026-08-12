@@ -16,8 +16,12 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals({
     int? ownerId,
     String? accountId,
-    int? stageId,
+    List<int>? stageId,
     String? search,
+    String? dateField,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? stageState,
   }) async {
     try {
       final deals = await remoteDataSource.getDeals(
@@ -25,6 +29,10 @@ class DealRepositoryImpl implements DealRepository {
         accountId: accountId,
         stageId: stageId,
         search: search,
+        dateField: dateField,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        stageState: stageState,
       );
       return Right(deals);
     } on Exception catch (e) {
@@ -208,7 +216,7 @@ class DealRepositoryImpl implements DealRepository {
   @override
   Future<Either<Failure, Uint8List>> exportDeals({
     int? ownerId,
-    int? stageId,
+    List<int>? stageId,
     List<String>? tiers,
     String? search,
   }) async {

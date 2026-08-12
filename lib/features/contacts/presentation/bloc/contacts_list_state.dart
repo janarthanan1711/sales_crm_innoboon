@@ -25,6 +25,8 @@ class ContactsListLoaded extends ContactsListState {
   final int? accountFilter;
   final String? tierFilter;
   final bool primaryOnly;
+  final DateTime? dateFromFilter;
+  final DateTime? dateToFilter;
 
   /// Non-null when a mutation (e.g. delete) failed — surfaced as a snackbar.
   final String? actionError;
@@ -39,6 +41,8 @@ class ContactsListLoaded extends ContactsListState {
     this.accountFilter,
     this.tierFilter,
     this.primaryOnly = false,
+    this.dateFromFilter,
+    this.dateToFilter,
     this.actionError,
   });
 
@@ -53,6 +57,8 @@ class ContactsListLoaded extends ContactsListState {
     accountFilter,
     tierFilter,
     primaryOnly,
+    dateFromFilter,
+    dateToFilter,
     actionError,
   ];
 }

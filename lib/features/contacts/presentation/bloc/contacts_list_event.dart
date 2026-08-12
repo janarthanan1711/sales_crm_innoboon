@@ -18,7 +18,8 @@ class ContactsListSearchChanged extends ContactsListEvent {
 }
 
 /// Filter change. A `null` field means "leave unchanged"; to clear the owner
-/// or account filter, pass the [clearOwner]/[clearAccount] sentinel.
+/// or account filter, pass the [clearOwner]/[clearAccount] sentinel. The
+/// `created_at` date range is cleared as a pair via [clearDate].
 class ContactsListFilterChanged extends ContactsListEvent {
   /// Sentinel passed as `ownerId`/`accountId` to explicitly clear that filter.
   static const int clearOwner = -1;
@@ -28,16 +29,30 @@ class ContactsListFilterChanged extends ContactsListEvent {
   final Object? accountId; // int | clearAccount sentinel | null (unchanged)
   final String? tier; // wire value, or 'all' to clear
   final bool? isPrimary; // toggle; null = leave unchanged
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final bool clearDate; // clears dateFrom + dateTo together
 
   const ContactsListFilterChanged({
     this.ownerId,
     this.accountId,
     this.tier,
     this.isPrimary,
+    this.dateFrom,
+    this.dateTo,
+    this.clearDate = false,
   });
 
   @override
-  List<Object?> get props => [ownerId, accountId, tier, isPrimary];
+  List<Object?> get props => [
+    ownerId,
+    accountId,
+    tier,
+    isPrimary,
+    dateFrom,
+    dateTo,
+    clearDate,
+  ];
 }
 
 /// Clears search + every filter in one atomic reload.

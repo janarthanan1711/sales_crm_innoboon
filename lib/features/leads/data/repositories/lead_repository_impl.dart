@@ -17,6 +17,8 @@ class LeadRepositoryImpl implements LeadRepository {
     String? source,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -26,6 +28,8 @@ class LeadRepositoryImpl implements LeadRepository {
         source: source,
         status: status,
         search: search,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
         limit: limit,
         offset: offset,
       );

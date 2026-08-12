@@ -14,6 +14,8 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   LeadsListBloc({required this.getLeadsUseCase, required this.setLeadFavouriteUseCase})
     : super(const LeadsListInitial()) {
@@ -47,6 +49,8 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
     _statusFilter = null;
     _sourceFilter = null;
     _ownerIdFilter = null;
+    _dateFrom = null;
+    _dateTo = null;
     await _loadLeads(emit);
   }
 
@@ -73,6 +77,13 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
     _statusFilter = event.status;
     _sourceFilter = event.source;
     _ownerIdFilter = event.ownerId;
+    if (event.clearDate) {
+      _dateFrom = null;
+      _dateTo = null;
+    } else {
+      _dateFrom = event.dateFrom;
+      _dateTo = event.dateTo;
+    }
     await _loadLeads(emit);
   }
 
@@ -83,6 +94,8 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
         status: _statusFilter,
         source: _sourceFilter,
         ownerId: _ownerIdFilter,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
       ),
     );
 
@@ -96,6 +109,8 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
           statusFilter: _statusFilter,
           sourceFilter: _sourceFilter,
           ownerIdFilter: _ownerIdFilter,
+          dateFromFilter: _dateFrom,
+          dateToFilter: _dateTo,
         ),
       ),
     );

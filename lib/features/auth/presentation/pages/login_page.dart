@@ -195,7 +195,7 @@ class _WebLoginLayout extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '© 2024 SalesHub Inc.',
+                        '© 2026 SalesHub Inc.',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),

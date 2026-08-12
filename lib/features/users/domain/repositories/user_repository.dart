@@ -9,6 +9,8 @@ abstract class UserRepository {
     bool? isActive,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
   });
   Future<Either<Failure, OwnerUser>> createUser({
     required String email,

@@ -39,6 +39,7 @@ Future<_MoveResult?> _showMoveDialog(
 ) async {
   final noteController = TextEditingController();
   final coldController = TextEditingController();
+  final needsReason = dealStageRequiresReason(target);
   final result = await showDialog<Object>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -46,16 +47,16 @@ Future<_MoveResult?> _showMoveDialog(
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (target.isCold)
+          if (needsReason)
             TextField(
               controller: coldController,
-              decoration: const InputDecoration(
-                labelText: 'Cold reason *',
-                helperText: 'Required when moving to a cold stage',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Reason *',
+                helperText: 'Required when moving to ${target.name}',
+                border: const OutlineInputBorder(),
               ),
             ),
-          if (target.isCold) const SizedBox(height: AppSpacing.md),
+          if (needsReason) const SizedBox(height: AppSpacing.md),
           TextField(
             controller: noteController,
             maxLines: 3,
@@ -73,7 +74,7 @@ Future<_MoveResult?> _showMoveDialog(
         ),
         ElevatedButton(
           onPressed: () {
-            if (target.isCold && coldController.text.trim().isEmpty) return;
+            if (needsReason && coldController.text.trim().isEmpty) return;
             Navigator.of(dialogContext).pop(
               _MoveResult(
                 note: noteController.text.trim().isEmpty

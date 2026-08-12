@@ -24,6 +24,8 @@ class AccountsListLoaded extends AccountsListState {
   final String? industryFilter;
   final String? tierFilter;
   final int? ownerFilter;
+  final DateTime? dateFromFilter;
+  final DateTime? dateToFilter;
 
   const AccountsListLoaded({
     required this.accounts,
@@ -34,6 +36,8 @@ class AccountsListLoaded extends AccountsListState {
     this.industryFilter,
     this.tierFilter,
     this.ownerFilter,
+    this.dateFromFilter,
+    this.dateToFilter,
   });
 
   int get pageStart => total == 0 ? 0 : offset + 1;
@@ -51,6 +55,8 @@ class AccountsListLoaded extends AccountsListState {
     industryFilter,
     tierFilter,
     ownerFilter,
+    dateFromFilter,
+    dateToFilter,
   ];
 }
 

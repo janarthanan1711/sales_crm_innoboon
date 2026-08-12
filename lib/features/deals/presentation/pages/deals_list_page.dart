@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/formatters.dart' hide CurrencyFormatter;
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/widgets/shared_widgets.dart';
@@ -16,6 +17,7 @@ import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/export_deals_usecase.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
 import 'create_deal_page.dart';
@@ -27,19 +29,55 @@ const List<String> _kTierOrder = ['diamond', 'gold', 'silver', 'bronze'];
 enum _CloseSort { none, soonest, latest }
 
 class DealsListPage extends StatelessWidget {
-  const DealsListPage({super.key});
+  /// Drill-down entry point from a dashboard tile tap (Deals in Pipeline /
+  /// Deals Closed) — all optional, defaulting to the plain "Deals" list.
+  /// `stageState`/`dateField`/`dateFrom`/`dateTo` mirror the `GET /deals`
+  /// query params (API doc §6.3); `title` overrides the page heading so the
+  /// drilled-down list reads as "Deals in Pipeline" rather than "Deals".
+  const DealsListPage({
+    super.key,
+    this.title,
+    this.stageState,
+    this.dateField,
+    this.dateFrom,
+    this.dateTo,
+  });
+
+  final String? title;
+  final String? stageState;
+  final String? dateField;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<DealsListBloc>()..add(const DealsListLoadRequested()),
-      child: const _DealsListView(),
+      create: (_) => DealsListBloc(
+        getDealsUseCase: sl(),
+        getDealStagesUseCase: sl(),
+        updateDealStageUseCase: sl(),
+        getAccountsUseCase: sl(),
+        getUsersUseCase: sl(),
+        stageState: stageState,
+        dateField: dateField,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+      )..add(const DealsListLoadRequested()),
+      // The on-page created-at filter only shows when there's no incoming
+      // drill-down range to conflict with.
+      child: _DealsListView(
+        title: title,
+        showDateFilter: dateFrom == null && dateTo == null,
+      ),
     );
   }
 }
 
 class _DealsListView extends StatefulWidget {
-  const _DealsListView();
+  const _DealsListView({this.title, required this.showDateFilter});
+
+  final String? title;
+  final bool showDateFilter;
 
   @override
   State<_DealsListView> createState() => _DealsListViewState();
@@ -53,11 +91,31 @@ class _DealsListViewState extends State<_DealsListView> {
   // Client-side filters (owner is server-side via the bloc).
   final TextEditingController _searchController = TextEditingController();
   String _search = '';
-  final Set<String> _selectedTiers = {..._kTierOrder};
+  // null = "All" (no filter), same single-select convention as Owner.
+  String? _selectedTier;
   _CloseSort _closeSort = _CloseSort.none;
   String? _closeLabel;
   String? _ownerName;
   bool _exporting = false;
+
+  // Stage filter — server-side via the bloc, same as owner. Stages are
+  // dynamic/per-company (loaded from GET /deal-stages into `_stages`), so
+  // unlike Tier this can't be a fixed checkbox list. Defaults to every stage
+  // checked once `_loadStages` resolves ("All", same as the other dropdowns)
+  // rather than starting empty -- see `_loadStages` for why that also means
+  // dispatching the full id list up front instead of leaving it unset.
+  final Set<int> _selectedStageIds = {};
+
+  // On-page date-range filter — server-side via the bloc, same as owner.
+  // Only rendered when `widget.showDateFilter` is true (i.e. no drill-down
+  // range came in via the constructor). Always filters on `closed_at` (via
+  // deal_stage_history, API doc §6.3) rather than `created_at` — there used
+  // to be a "Date Type" toggle between the two, but that let a rep pick
+  // `created_at` and see a different count than the dashboard's Deals Closed
+  // tile for the same range. Hard-coding `closed_at` makes the two agree by
+  // construction, with no filter step required to reconcile them.
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   @override
   void initState() {
@@ -81,7 +139,22 @@ class _DealsListViewState extends State<_DealsListView> {
   Future<void> _loadStages() async {
     final result = await sl<GetDealStagesUseCase>()();
     if (!mounted) return;
-    result.fold((_) {}, (s) => setState(() => _stages = s));
+    result.fold((_) {}, (s) {
+      setState(() {
+        _stages = s;
+        _selectedStageIds
+          ..clear()
+          ..addAll(s.map((e) => e.id));
+      });
+      // Send the full id list explicitly, rather than leaving stage_id unset,
+      // so a `closed_at` date range picked afterwards doesn't fall back to
+      // the API's Closed-Won-only default meant for the dashboard drill-down
+      // (`deal_service._deal_filters`) — every stage checked here means "no
+      // filter", same as the dropdown's own convention below.
+      context.read<DealsListBloc>().add(
+        DealsListFilterChanged(stageId: _selectedStageIds.toList()),
+      );
+    });
   }
 
   /// Applies the client-side search / tier / expected-close-sort over the
@@ -98,13 +171,8 @@ class _DealsListViewState extends State<_DealsListView> {
           )
           .toList();
     }
-    // Only filter when a strict subset of tiers is selected — all (or none)
-    // selected means "no tier filter", so nothing is hidden unexpectedly.
-    if (_selectedTiers.isNotEmpty &&
-        _selectedTiers.length < _kTierOrder.length) {
-      out = out
-          .where((d) => _selectedTiers.contains(d.tier.toLowerCase()))
-          .toList();
+    if (_selectedTier != null) {
+      out = out.where((d) => d.tier.toLowerCase() == _selectedTier).toList();
     }
     if (_closeSort != _CloseSort.none) {
       out = [...out]
@@ -215,12 +283,7 @@ class _DealsListViewState extends State<_DealsListView> {
     final bloc = context.read<DealsListBloc>();
     setState(() => _exporting = true);
 
-    // All (or none) ticked means "no tier filter" — same rule the on-screen
-    // list uses in _applyClientFilters, so the two can't disagree.
-    final tiers =
-        _selectedTiers.isEmpty || _selectedTiers.length == _kTierOrder.length
-        ? null
-        : _kTierOrder.where(_selectedTiers.contains).toList();
+    final tiers = _selectedTier == null ? null : [_selectedTier!];
     final search = _search.trim().isEmpty ? null : _search.trim();
     final blocState = bloc.state;
     final ownerId = blocState is DealsListLoaded
@@ -309,7 +372,7 @@ class _DealsListViewState extends State<_DealsListView> {
     final canManage = context.can(Perms.dealsManage);
     final title = Row(
       children: [
-        Text('Deals', style: AppTextStyles.h1),
+        Text(widget.title ?? 'Deals', style: AppTextStyles.h1),
         const SizedBox(width: AppSpacing.lg),
         _ViewToggle(
           isBoard: _isKanbanView,
@@ -343,7 +406,7 @@ class _DealsListViewState extends State<_DealsListView> {
         children: [
           Row(
             children: [
-              Text('Deals', style: AppTextStyles.h1),
+              Text(widget.title ?? 'Deals', style: AppTextStyles.h1),
               const Spacer(),
               _ViewToggle(
                 isBoard: _isKanbanView,
@@ -411,12 +474,58 @@ class _DealsListViewState extends State<_DealsListView> {
           options: const ['Soonest first', 'Latest first', 'Clear'],
           onSelected: _onCloseSelected,
         ),
+        if (widget.showDateFilter) ...[
+          const SizedBox(width: AppSpacing.sm),
+          // Always filters by Closed Date (`closed_at`, via
+          // deal_stage_history) — see the field comment on `_dateFrom` above
+          // for why there's no Created/Closed toggle here anymore.
+          OutlinedButton.icon(
+            onPressed: () => _pickDateRange(context),
+            icon: const Icon(Icons.date_range, size: 16),
+            label: Text(
+              _dateFrom != null && _dateTo != null
+                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (_dateFrom != null && _dateTo != null)
+            IconButton(
+              onPressed: () => _clearDateRange(context),
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear date filter',
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
         const SizedBox(width: AppSpacing.md),
         Container(width: 1, height: 24, color: AppColors.border),
         const SizedBox(width: AppSpacing.md),
-        Text('Tier:', style: AppTextStyles.labelMedium),
-        const SizedBox(width: AppSpacing.sm),
-        ..._kTierOrder.map(_tierCheck),
+        _FilterDropdown(
+          label: 'Tier',
+          icon: Icons.diamond_outlined,
+          selected: _selectedTier == null
+              ? null
+              : '${_selectedTier![0].toUpperCase()}${_selectedTier!.substring(1)}',
+          options: [
+            'All',
+            ..._kTierOrder.map((t) => '${t[0].toUpperCase()}${t.substring(1)}'),
+          ],
+          onSelected: (v) => setState(
+            () => _selectedTier = v == 'All' ? null : v.toLowerCase(),
+          ),
+        ),
+        if (_stages.isNotEmpty) ...[
+          const SizedBox(width: AppSpacing.sm),
+          _MultiSelectFilterDropdown<DealStageDef>(
+            label: 'Stage',
+            icon: Icons.flag_outlined,
+            options: _stages,
+            optionLabel: (s) => s.name,
+            selected: _stages
+                .where((s) => _selectedStageIds.contains(s.id))
+                .toSet(),
+            onChanged: _onStageSelectionChanged,
+          ),
+        ],
       ],
     );
 
@@ -440,46 +549,22 @@ class _DealsListViewState extends State<_DealsListView> {
     );
   }
 
-  Widget _tierCheck(String tier) {
-    final selected = _selectedTiers.contains(tier);
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.sm),
-      child: InkWell(
-        onTap: () => setState(() {
-          if (selected) {
-            _selectedTiers.remove(tier);
-          } else {
-            _selectedTiers.add(tier);
-          }
-        }),
-        borderRadius: BorderRadius.circular(4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: Checkbox(
-                value: selected,
-                onChanged: (v) => setState(() {
-                  if (v == true) {
-                    _selectedTiers.add(tier);
-                  } else {
-                    _selectedTiers.remove(tier);
-                  }
-                }),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '${tier[0].toUpperCase()}${tier.substring(1)}',
-              style: AppTextStyles.bodySmall,
-            ),
-          ],
-        ),
-      ),
+  void _onStageSelectionChanged(Set<DealStageDef> next) {
+    setState(() {
+      _selectedStageIds
+        ..clear()
+        ..addAll(next.map((s) => s.id));
+    });
+    // Empty (everything unchecked) is treated the same as "all" -- no filter
+    // -- the same convention Tier used to follow. Sent as the full id list
+    // rather than cleared outright so an active `closed_at` date range
+    // doesn't fall back to the API's Closed-Won-only default meant for the
+    // dashboard drill-down (`deal_service._deal_filters`).
+    final effective = _selectedStageIds.isEmpty
+        ? _stages.map((s) => s.id).toList()
+        : _selectedStageIds.toList();
+    context.read<DealsListBloc>().add(
+      DealsListFilterChanged(stageId: effective),
     );
   }
 
@@ -495,6 +580,39 @@ class _DealsListViewState extends State<_DealsListView> {
       setState(() => _ownerName = v);
       bloc.add(DealsListFilterChanged(ownerId: match.first.id));
     }
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked == null || !context.mounted) return;
+    setState(() {
+      _dateFrom = picked.start;
+      _dateTo = picked.end;
+    });
+    context.read<DealsListBloc>().add(
+      DealsListFilterChanged(
+        dateFrom: picked.start,
+        dateTo: picked.end,
+        dateField: 'closed_at',
+      ),
+    );
+  }
+
+  void _clearDateRange(BuildContext context) {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    context.read<DealsListBloc>().add(
+      const DealsListFilterChanged(clearDate: true),
+    );
   }
 
   void _onCloseSelected(String v) {
@@ -517,15 +635,23 @@ class _DealsListViewState extends State<_DealsListView> {
     _searchController.clear();
     setState(() {
       _search = '';
-      _selectedTiers
+      _selectedTier = null;
+      // Back to "all checked" (no filter), not empty -- matches `_loadStages`.
+      _selectedStageIds
         ..clear()
-        ..addAll(_kTierOrder);
+        ..addAll(_stages.map((s) => s.id));
       _closeSort = _CloseSort.none;
       _closeLabel = null;
       _ownerName = null;
+      _dateFrom = null;
+      _dateTo = null;
     });
     context.read<DealsListBloc>().add(
-      const DealsListFilterChanged(clearOwner: true, clearStage: true),
+      DealsListFilterChanged(
+        clearOwner: true,
+        clearDate: true,
+        stageId: _selectedStageIds.toList(),
+      ),
     );
   }
 }
@@ -814,6 +940,128 @@ class _FilterDropdown extends StatelessWidget {
             ],
             Text(
               selected ?? label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: active ? AppColors.primary : null,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: active ? AppColors.primary : AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Same button chrome as [_FilterDropdown], but the menu stays open across
+/// taps so multiple options can be checked in one go (`stage_id` is
+/// repeatable on the API — doc §6.3). A `PopupMenuButton`/`showMenu` always
+/// pops on an item tap by design; `PopupMenuItem.enabled: false` is the
+/// standard workaround — it skips the item's own tap-to-close `InkWell`
+/// entirely, leaving the `Checkbox` inside as the only interactive thing.
+class _MultiSelectFilterDropdown<T> extends StatelessWidget {
+  const _MultiSelectFilterDropdown({
+    required this.label,
+    required this.options,
+    required this.optionLabel,
+    required this.selected,
+    required this.onChanged,
+    this.icon,
+  });
+  final String label;
+  final List<T> options;
+  final String Function(T) optionLabel;
+  final Set<T> selected;
+  final ValueChanged<Set<T>> onChanged;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    // Everything checked reads the same as nothing checked -- "All", not a
+    // filter -- same convention as every single-select dropdown here.
+    final isAllSelected =
+        options.isNotEmpty && selected.length == options.length;
+    final active = selected.isNotEmpty && !isAllSelected;
+    final buttonLabel = selected.isEmpty || isAllSelected
+        ? label
+        : selected.length == 1
+        ? optionLabel(selected.first)
+        : '$label (${selected.length})';
+    return PopupMenuButton<void>(
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      itemBuilder: (context) {
+        // Captured once per menu open (`itemBuilder` runs a single time),
+        // then mutated in place across taps -- `onChanged`'s `selected`
+        // param is snapshotted at open time too, so recomputing "current
+        // selection" from it on every tap would silently drop everything
+        // but the most recent toggle once more than one box is checked in
+        // the same open session.
+        final localSelected = Set<T>.from(selected);
+        return [
+          PopupMenuItem<void>(
+            enabled: false,
+            padding: EdgeInsets.zero,
+            child: StatefulBuilder(
+              builder: (context, setMenuState) => ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: options.map((option) {
+                      final isSelected = localSelected.contains(option);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(optionLabel(option)),
+                        onChanged: (v) {
+                          v == true
+                              ? localSelected.add(option)
+                              : localSelected.remove(option);
+                          setMenuState(() {});
+                          onChanged(Set<T>.from(localSelected));
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ];
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primaryLight : null,
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 15,
+                color: active ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              buttonLabel,
               style: AppTextStyles.labelMedium.copyWith(
                 color: active ? AppColors.primary : null,
               ),

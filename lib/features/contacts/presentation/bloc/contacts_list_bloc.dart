@@ -14,6 +14,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
   int? _accountFilter;
   String? _tierFilter;
   bool _primaryOnly = false;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   int _limit = 10;
   int _offset = 0;
 
@@ -65,6 +67,13 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
       _tierFilter = event.tier == 'all' ? null : event.tier;
     }
     if (event.isPrimary != null) _primaryOnly = event.isPrimary!;
+    if (event.clearDate) {
+      _dateFrom = null;
+      _dateTo = null;
+    } else {
+      if (event.dateFrom != null) _dateFrom = event.dateFrom;
+      if (event.dateTo != null) _dateTo = event.dateTo;
+    }
     _offset = 0;
     await _load(emit);
   }
@@ -78,6 +87,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     _accountFilter = null;
     _tierFilter = null;
     _primaryOnly = false;
+    _dateFrom = null;
+    _dateTo = null;
     _offset = 0;
     await _load(emit);
   }
@@ -131,6 +142,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
         tier: _tierFilter,
         isPrimary: _primaryOnly ? true : null,
         search: _search,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
         limit: _limit,
         offset: _offset,
       ),
@@ -149,6 +162,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
           accountFilter: _accountFilter,
           tierFilter: _tierFilter,
           primaryOnly: _primaryOnly,
+          dateFromFilter: _dateFrom,
+          dateToFilter: _dateTo,
           actionError: actionError,
         ),
       ),

@@ -25,8 +25,12 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   Future<List<Deal>> getDeals({
     int? ownerId,
     String? accountId,
-    int? stageId,
+    List<int>? stageId,
     String? search,
+    String? dateField,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? stageState,
   }) async {
     try {
       final response = await dioClient.get(
@@ -35,8 +39,14 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           'view': 'list',
           'owner_id': ?ownerId,
           'account_id': ?accountId,
-          'stage_id': ?stageId,
+          // Repeatable — Dio serialises a List as `?stage_id=3&stage_id=4`,
+          // which the API ORs together (doc §6.3).
+          if (stageId != null && stageId.isNotEmpty) 'stage_id': stageId,
           if (search != null && search.isNotEmpty) 'search': search,
+          if (dateField != null) 'date_field': dateField,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
+          if (stageState != null) 'stage_state': stageState,
           'limit': 200,
           'offset': 0,
         },
@@ -235,7 +245,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   @override
   Future<Uint8List> exportDeals({
     int? ownerId,
-    int? stageId,
+    List<int>? stageId,
     List<String>? tiers,
     String? search,
   }) async {
@@ -245,7 +255,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         queryParameters: {
           'to_export': true,
           if (ownerId != null) 'owner_id': ownerId,
-          if (stageId != null) 'stage_id': stageId,
+          if (stageId != null && stageId.isNotEmpty) 'stage_id': stageId,
           // `tier` is repeatable (doc §6.3) — Dio serialises a List as
           // `?tier=gold&tier=silver`, which the API ORs together.
           if (tiers != null && tiers.isNotEmpty) 'tier': tiers,

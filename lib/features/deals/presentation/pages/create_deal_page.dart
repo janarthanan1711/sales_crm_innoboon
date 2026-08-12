@@ -54,10 +54,12 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   List<DealStageDef> _stages = [];
   bool get isEdit => widget.deal != null;
 
-  /// True when the currently-selected stage is the terminal "went cold" stage.
-  /// Gates the extra "Reason" field and whether `cold_reason` is sent.
-  bool get _selectedStageIsCold =>
-      _stages.any((s) => s.id == _stageId && s.isCold);
+  /// True when the currently-selected stage needs a reason (cold stages, plus
+  /// Closed Lost). Gates the extra "Reason" field and whether `cold_reason`
+  /// is sent.
+  bool get _selectedStageIsCold => _stages.any(
+    (s) => s.id == _stageId && dealStageRequiresReason(s),
+  );
 
   @override
   void initState() {

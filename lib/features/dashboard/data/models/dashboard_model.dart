@@ -54,7 +54,7 @@ DashboardSummary _summaryFromJson(Map<String, dynamic> json) {
       json['leads_generated'] as Map<String, dynamic>?,
     ),
     qualifiedLeads: _statFromJson(
-      json['qualified_leads'] as Map<String, dynamic>?,
+      json['leads_to_accounts'] as Map<String, dynamic>?,
     ),
     dealsInPipeline: _statFromJson(
       json['deals_in_pipeline'] as Map<String, dynamic>?,

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -13,6 +14,7 @@ import '../../../../app/router/route_paths.dart';
 import '../../domain/usecases/export_accounts_usecase.dart';
 import '../../../leads/domain/entities/lead_enums.dart';
 import '../../../users/domain/entities/owner_user.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/account.dart';
 import '../bloc/accounts_list_bloc.dart';
@@ -44,6 +46,8 @@ class _AccountsListViewState extends State<_AccountsListView> {
   // the dropdown chrome can reflect the active choice.
   String? _tier;
   String? _industry;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   final Set<String> _selected = {};
   bool _exporting = false;
   // Owned here so "Clear Filters" can wipe the search text, not just the
@@ -68,9 +72,41 @@ class _AccountsListViewState extends State<_AccountsListView> {
       _tier = null;
       _industry = null;
       _ownerId = null;
+      _dateFrom = null;
+      _dateTo = null;
       _selected.clear();
     });
     context.read<AccountsListBloc>().add(const AccountsListCleared());
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateFrom = picked.start;
+      _dateTo = picked.end;
+    });
+    if (!context.mounted) return;
+    context.read<AccountsListBloc>().add(
+      AccountsListFilterChanged(dateFrom: picked.start, dateTo: picked.end),
+    );
+  }
+
+  void _clearDateRange(BuildContext context) {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    context.read<AccountsListBloc>().add(
+      const AccountsListFilterChanged(clearDate: true),
+    );
   }
 
   /// Exports the currently-filtered accounts as an `.xlsx` via
@@ -311,6 +347,22 @@ class _AccountsListViewState extends State<_AccountsListView> {
               bloc.add(AccountsListFilterChanged(industry: v));
             },
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => _pickDateRange(context),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _dateFrom != null && _dateTo != null
+                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (_dateFrom != null && _dateTo != null)
+            IconButton(
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear date range',
+              onPressed: () => _clearDateRange(context),
+            ),
           const SizedBox(width: AppSpacing.sm),
           TextButton.icon(
             onPressed: _clearFilters,
