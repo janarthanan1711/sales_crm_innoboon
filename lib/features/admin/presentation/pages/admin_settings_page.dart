@@ -13,6 +13,7 @@ import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
 import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/usecases/activate_user_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
@@ -118,13 +119,22 @@ class _UsersTabState extends State<_UsersTab> {
   String _search = '';
   int? _roleFilter;
   String? _statusFilter;
-  DateTime? _dateFrom;
-  DateTime? _dateTo;
+  // Seeded from UsersFilterMemory so the range survives navigating away from
+  // Settings and back (see DateRangeFilterMemory) -- this tab's state is torn
+  // down every time you leave the page, same as the other list pages.
+  DateTime? _dateFrom = sl<UsersFilterMemory>().dateFrom;
+  DateTime? _dateTo = sl<UsersFilterMemory>().dateTo;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  void _rememberDateRange() {
+    final memory = sl<UsersFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
   }
 
   Future<void> _load() async {
@@ -166,6 +176,7 @@ class _UsersTabState extends State<_UsersTab> {
         _dateFrom = picked.start;
         _dateTo = picked.end;
       });
+      _rememberDateRange();
       _load();
     }
   }
@@ -243,6 +254,7 @@ class _UsersTabState extends State<_UsersTab> {
                       _dateFrom = null;
                       _dateTo = null;
                     });
+                    _rememberDateRange();
                     _load();
                   },
                   child: const Text('Clear Dates'),

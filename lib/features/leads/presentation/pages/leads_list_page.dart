@@ -20,6 +20,7 @@ import '../../domain/usecases/import_leads_usecase.dart';
 import '../../domain/usecases/download_import_template_usecase.dart';
 import '../../domain/usecases/export_leads_usecase.dart';
 import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
@@ -29,8 +30,19 @@ class LeadsListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Remembered across visits (see DateRangeFilterMemory) -- otherwise the
+    // date range resets every time you navigate away and back, since this
+    // bloc is a fresh instance per visit. Built directly (bypassing the
+    // sl<LeadsListBloc>() factory, which takes no constructor args) so the
+    // remembered range can be threaded in, same as DealsListPage.
+    final memory = sl<LeadsFilterMemory>();
     return BlocProvider(
-      create: (_) => sl<LeadsListBloc>()..add(const LeadsListLoadRequested()),
+      create: (_) => LeadsListBloc(
+        getLeadsUseCase: sl(),
+        setLeadFavouriteUseCase: sl(),
+        dateFrom: memory.dateFrom,
+        dateTo: memory.dateTo,
+      )..add(const LeadsListLoadRequested()),
       child: const _LeadsListView(),
     );
   }
@@ -49,8 +61,10 @@ class _LeadsListViewState extends State<_LeadsListView> {
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
-  DateTime? _dateFrom;
-  DateTime? _dateTo;
+  // Seeded from LeadsFilterMemory so the on-screen fields match the range
+  // the bloc was constructed with (LeadsListPage.build).
+  DateTime? _dateFrom = sl<LeadsFilterMemory>().dateFrom;
+  DateTime? _dateTo = sl<LeadsFilterMemory>().dateTo;
   bool _exporting = false;
 
   @override
@@ -121,6 +135,14 @@ class _LeadsListViewState extends State<_LeadsListView> {
     );
   }
 
+  /// Keeps LeadsFilterMemory in sync with `_dateFrom`/`_dateTo` so the range
+  /// survives navigating away and back (see DateRangeFilterMemory).
+  void _rememberDateRange() {
+    final memory = sl<LeadsFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
+  }
+
   void _clearFilters(BuildContext context) {
     _searchController.clear();
     setState(() {
@@ -130,6 +152,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _dateFrom = null;
       _dateTo = null;
     });
+    _rememberDateRange();
     context.read<LeadsListBloc>().add(const LeadsListCleared());
   }
 
@@ -149,6 +172,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _dateFrom = picked.start;
       _dateTo = picked.end;
     });
+    _rememberDateRange();
     if (!context.mounted) return;
     _applyFilters(context);
   }
@@ -158,6 +182,7 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _dateFrom = null;
       _dateTo = null;
     });
+    _rememberDateRange();
     context.read<LeadsListBloc>().add(
       LeadsListFilterChanged(
         status: _statusFilter,

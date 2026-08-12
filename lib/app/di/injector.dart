@@ -87,6 +87,7 @@ import '../../features/dashboard/domain/repositories/dashboard_repository.dart';
 import '../../features/dashboard/domain/usecases/get_dashboard_usecase.dart';
 import '../../features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import '../../features/dashboard/presentation/dashboard_filter_memory.dart';
+import '../../core/utils/date_range_filter_memory.dart';
 
 // Deals feature
 import '../../features/deals/data/datasources/deal_remote_datasource_impl.dart';
@@ -333,8 +334,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetContactOverviewUseCase(sl()));
   sl.registerLazySingleton(() => GetContactDealsUseCase(sl()));
   sl.registerFactory(
-    () =>
-        ContactsListBloc(getContactsUseCase: sl(), deleteContactUseCase: sl()),
+    () => ContactsListBloc(
+      getContactsUseCase: sl(),
+      deleteContactUseCase: sl(),
+      filterMemory: sl(),
+    ),
   );
   sl.registerFactory(
     () => ContactDetailBloc(
@@ -352,6 +356,11 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => GetDashboardUseCase(sl()));
   sl.registerLazySingleton(() => DashboardFilterMemory());
+  sl.registerLazySingleton(() => LeadsFilterMemory());
+  sl.registerLazySingleton(() => AccountsFilterMemory());
+  sl.registerLazySingleton(() => ContactsFilterMemory());
+  sl.registerLazySingleton(() => DealsFilterMemory());
+  sl.registerLazySingleton(() => UsersFilterMemory());
   sl.registerFactory(
     () => DashboardBloc(getDashboardUseCase: sl(), getUsersUseCase: sl()),
   );

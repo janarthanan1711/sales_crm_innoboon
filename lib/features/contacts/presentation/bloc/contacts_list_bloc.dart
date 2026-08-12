@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import 'contacts_list_event.dart';
 import 'contacts_list_state.dart';
@@ -8,6 +9,12 @@ export 'contacts_list_state.dart';
 class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
   final GetContactsUseCase getContactsUseCase;
   final DeleteContactUseCase deleteContactUseCase;
+
+  // Remembers the date range across visits (see DateRangeFilterMemory) --
+  // this bloc is a fresh instance every time you navigate to Contacts
+  // (GoRouter tears the page down when you leave), so without this the range
+  // reset every time.
+  final ContactsFilterMemory filterMemory;
 
   String? _search;
   int? _ownerFilter;
@@ -22,7 +29,10 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
   ContactsListBloc({
     required this.getContactsUseCase,
     required this.deleteContactUseCase,
-  }) : super(const ContactsListInitial()) {
+    required this.filterMemory,
+  }) : _dateFrom = filterMemory.dateFrom,
+       _dateTo = filterMemory.dateTo,
+       super(const ContactsListInitial()) {
     on<ContactsListLoadRequested>(_onLoad);
     on<ContactsListSearchChanged>(_onSearch);
     on<ContactsListFilterChanged>(_onFilter);
@@ -74,6 +84,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
       if (event.dateFrom != null) _dateFrom = event.dateFrom;
       if (event.dateTo != null) _dateTo = event.dateTo;
     }
+    filterMemory.dateFrom = _dateFrom;
+    filterMemory.dateTo = _dateTo;
     _offset = 0;
     await _load(emit);
   }
@@ -89,6 +101,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     _primaryOnly = false;
     _dateFrom = null;
     _dateTo = null;
+    filterMemory.dateFrom = null;
+    filterMemory.dateTo = null;
     _offset = 0;
     await _load(emit);
   }

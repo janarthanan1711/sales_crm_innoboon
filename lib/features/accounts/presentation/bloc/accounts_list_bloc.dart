@@ -17,8 +17,13 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
   int _limit = 25;
   int _offset = 0;
 
-  AccountsListBloc({required this.getAccountsUseCase})
-    : super(const AccountsListInitial()) {
+  AccountsListBloc({
+    required this.getAccountsUseCase,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) : _dateFrom = dateFrom,
+       _dateTo = dateTo,
+       super(const AccountsListInitial()) {
     on<AccountsListLoadRequested>(_onLoadRequested);
     on<AccountsListSearchChanged>(_onSearchChanged);
     on<AccountsListFilterChanged>(_onFilterChanged);

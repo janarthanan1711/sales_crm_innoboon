@@ -18,6 +18,7 @@ import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/export_deals_usecase.dart';
 import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
 import 'create_deal_page.dart';
@@ -51,6 +52,13 @@ class DealsListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A drill-down range wins outright; otherwise fall back to the last
+    // on-page range the rep picked (see DateRangeFilterMemory) rather than
+    // always starting unfiltered, since this bloc is a fresh instance every
+    // time you navigate to Deals.
+    final memory = sl<DealsFilterMemory>();
+    final effectiveFrom = dateFrom ?? memory.dateFrom;
+    final effectiveTo = dateTo ?? memory.dateTo;
     return BlocProvider(
       create: (_) => DealsListBloc(
         getDealsUseCase: sl(),
@@ -60,24 +68,33 @@ class DealsListPage extends StatelessWidget {
         getUsersUseCase: sl(),
         stageState: stageState,
         dateField: dateField,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
+        dateFrom: effectiveFrom,
+        dateTo: effectiveTo,
       )..add(const DealsListLoadRequested()),
-      // The on-page created-at filter only shows when there's no incoming
+      // The on-page date filter only shows when there's no incoming
       // drill-down range to conflict with.
       child: _DealsListView(
         title: title,
         showDateFilter: dateFrom == null && dateTo == null,
+        initialDateFrom: effectiveFrom,
+        initialDateTo: effectiveTo,
       ),
     );
   }
 }
 
 class _DealsListView extends StatefulWidget {
-  const _DealsListView({this.title, required this.showDateFilter});
+  const _DealsListView({
+    this.title,
+    required this.showDateFilter,
+    this.initialDateFrom,
+    this.initialDateTo,
+  });
 
   final String? title;
   final bool showDateFilter;
+  final DateTime? initialDateFrom;
+  final DateTime? initialDateTo;
 
   @override
   State<_DealsListView> createState() => _DealsListViewState();
@@ -120,6 +137,8 @@ class _DealsListViewState extends State<_DealsListView> {
   @override
   void initState() {
     super.initState();
+    _dateFrom = widget.initialDateFrom;
+    _dateTo = widget.initialDateTo;
     _loadUsers();
     _loadStages();
   }
@@ -596,6 +615,7 @@ class _DealsListViewState extends State<_DealsListView> {
       _dateFrom = picked.start;
       _dateTo = picked.end;
     });
+    _rememberDateRange();
     context.read<DealsListBloc>().add(
       DealsListFilterChanged(
         dateFrom: picked.start,
@@ -610,9 +630,20 @@ class _DealsListViewState extends State<_DealsListView> {
       _dateFrom = null;
       _dateTo = null;
     });
+    _rememberDateRange();
     context.read<DealsListBloc>().add(
       const DealsListFilterChanged(clearDate: true),
     );
+  }
+
+  /// Keeps DealsFilterMemory in sync with `_dateFrom`/`_dateTo` so the range
+  /// survives navigating away and back (see DateRangeFilterMemory). Only
+  /// called from the on-page picker (hidden during a dashboard drill-down),
+  /// so a drill-down's own range never gets remembered as if it were picked.
+  void _rememberDateRange() {
+    final memory = sl<DealsFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
   }
 
   void _onCloseSelected(String v) {
@@ -646,6 +677,7 @@ class _DealsListViewState extends State<_DealsListView> {
       _dateFrom = null;
       _dateTo = null;
     });
+    _rememberDateRange();
     context.read<DealsListBloc>().add(
       DealsListFilterChanged(
         clearOwner: true,

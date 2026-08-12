@@ -17,8 +17,14 @@ class LeadsListBloc extends Bloc<LeadsListEvent, LeadsListState> {
   DateTime? _dateFrom;
   DateTime? _dateTo;
 
-  LeadsListBloc({required this.getLeadsUseCase, required this.setLeadFavouriteUseCase})
-    : super(const LeadsListInitial()) {
+  LeadsListBloc({
+    required this.getLeadsUseCase,
+    required this.setLeadFavouriteUseCase,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) : _dateFrom = dateFrom,
+       _dateTo = dateTo,
+       super(const LeadsListInitial()) {
     on<LeadsListLoadRequested>(_onLoadRequested);
     on<LeadsListSearchChanged>(_onSearchChanged);
     on<LeadsListFilterChanged>(_onFilterChanged);
