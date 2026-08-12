@@ -761,14 +761,41 @@ typedef _FunnelPalette = ({Color background, Color foreground});
 
 /// Tint per funnel step. Cycles if the pipeline has more stages than entries
 /// (stages are admin-configurable, so the count isn't fixed).
-const List<_FunnelPalette> _funnelPalettes = [
-  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
-  (background: Color(0xFFE0E7FF), foreground: Color(0xFF4338CA)), // indigo
-  (background: Color(0xFFFFEDD5), foreground: Color(0xFFC2410C)), // orange
-  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
-  (background: Color(0xFFD1FAE5), foreground: Color(0xFF047857)), // green
-  (background: Color(0xFFFCE7F3), foreground: Color(0xFFBE185D)), // pink
-];
+///
+/// A getter, so switching theme re-reads it. The dark set inverts the
+/// relationship rather than reusing the light one: a 100-level wash behind
+/// 700-level text is unreadable on a dark page, and left as-is the funnel would
+/// have been six glaring pastel bars in the middle of the dashboard. Dark keeps
+/// the same six hues at 950-level backgrounds with 300-level labels.
+List<_FunnelPalette> get _funnelPalettes => AppColors.isDark
+    ? const [
+        (background: Color(0xFF1E3A8A), foreground: Color(0xFFBFDBFE)), // blue
+        (
+          background: Color(0xFF312E81),
+          foreground: Color(0xFFC7D2FE),
+        ), // indigo
+        (
+          background: Color(0xFF7C2D12),
+          foreground: Color(0xFFFED7AA),
+        ), // orange
+        (background: Color(0xFF1E3A8A), foreground: Color(0xFFBFDBFE)), // blue
+        (background: Color(0xFF064E3B), foreground: Color(0xFFA7F3D0)), // green
+        (background: Color(0xFF831843), foreground: Color(0xFFFBCFE8)), // pink
+      ]
+    : const [
+        (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+        (
+          background: Color(0xFFE0E7FF),
+          foreground: Color(0xFF4338CA),
+        ), // indigo
+        (
+          background: Color(0xFFFFEDD5),
+          foreground: Color(0xFFC2410C),
+        ), // orange
+        (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+        (background: Color(0xFFD1FAE5), foreground: Color(0xFF047857)), // green
+        (background: Color(0xFFFCE7F3), foreground: Color(0xFFBE185D)), // pink
+      ];
 
 class _FunnelBar extends StatelessWidget {
   const _FunnelBar({
@@ -1010,7 +1037,10 @@ class _ConversionTrendCard extends StatelessWidget {
 }
 
 // ─── Deal distribution donut ────────────────────────────
-const Map<String, Color> _tierColors = {
+/// A getter rather than a `const`/`final` map. A top-level `final` is
+/// initialised once and cached for the process, which would pin these swatches
+/// to whichever palette was active the first time the donut rendered.
+Map<String, Color> get _tierColors => {
   'diamond': AppColors.tierDiamondText,
   'gold': AppColors.tierGoldText,
   'silver': AppColors.tierSilverText,
@@ -1411,7 +1441,7 @@ class _DropOffRow extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.error,
                     shape: BoxShape.circle,
                   ),

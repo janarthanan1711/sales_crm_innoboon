@@ -137,7 +137,7 @@ class _DealsListViewState extends State<_DealsListView> {
             const SizedBox(height: AppSpacing.lg),
             _buildFilters(context),
             const SizedBox(height: AppSpacing.md),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: AppColors.border),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: BlocConsumer<DealsListBloc, DealsListState>(
@@ -582,7 +582,7 @@ class _ViewToggle extends StatelessWidget {
           boxShadow: active
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: AppColors.shadow,
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),
@@ -631,7 +631,7 @@ class _DealsTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -783,7 +783,7 @@ class _FilterDropdown extends StatelessWidget {
                 children: [
                   Expanded(child: Text(option)),
                   if (option == selected)
-                    const Icon(Icons.check, size: 16, color: AppColors.primary),
+                    Icon(Icons.check, size: 16, color: AppColors.primary),
                 ],
               ),
             ),

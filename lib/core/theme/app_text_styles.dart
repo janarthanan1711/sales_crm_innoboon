@@ -4,18 +4,25 @@ import 'app_colors.dart';
 
 /// SalesHub Design System — Typography
 /// Uses Inter font family via Google Fonts
+///
+/// Every style is a **getter**, not a static field. A static field is
+/// initialised once on first access and cached forever, which would have frozen
+/// each style to whichever [AppColors] palette happened to be active at
+/// startup — text would have kept its light-mode colour after switching to
+/// dark. Re-evaluating per access is cheap: `GoogleFonts.inter` resolves
+/// against an internal cache and only builds a `TextStyle`.
 class AppTextStyles {
   AppTextStyles._();
 
   // ─── Display ───────────────────────────────────────────
-  static TextStyle displayLarge = GoogleFonts.inter(
+  static TextStyle get displayLarge => GoogleFonts.inter(
     fontSize: 32,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.2,
   );
 
-  static TextStyle displayMedium = GoogleFonts.inter(
+  static TextStyle get displayMedium => GoogleFonts.inter(
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -23,28 +30,28 @@ class AppTextStyles {
   );
 
   // ─── Headings ──────────────────────────────────────────
-  static TextStyle h1 = GoogleFonts.inter(
+  static TextStyle get h1 => GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.3,
   );
 
-  static TextStyle h2 = GoogleFonts.inter(
+  static TextStyle get h2 => GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     height: 1.3,
   );
 
-  static TextStyle h3 = GoogleFonts.inter(
+  static TextStyle get h3 => GoogleFonts.inter(
     fontSize: 18,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     height: 1.4,
   );
 
-  static TextStyle h4 = GoogleFonts.inter(
+  static TextStyle get h4 => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -52,21 +59,21 @@ class AppTextStyles {
   );
 
   // ─── Body ──────────────────────────────────────────────
-  static TextStyle bodyLarge = GoogleFonts.inter(
+  static TextStyle get bodyLarge => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
     height: 1.5,
   );
 
-  static TextStyle bodyMedium = GoogleFonts.inter(
+  static TextStyle get bodyMedium => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
     height: 1.5,
   );
 
-  static TextStyle bodySmall = GoogleFonts.inter(
+  static TextStyle get bodySmall => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
@@ -74,21 +81,21 @@ class AppTextStyles {
   );
 
   // ─── Labels ────────────────────────────────────────────
-  static TextStyle labelLarge = GoogleFonts.inter(
+  static TextStyle get labelLarge => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
     height: 1.4,
   );
 
-  static TextStyle labelMedium = GoogleFonts.inter(
+  static TextStyle get labelMedium => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
     height: 1.4,
   );
 
-  static TextStyle labelSmall = GoogleFonts.inter(
+  static TextStyle get labelSmall => GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w500,
     color: AppColors.textMuted,
@@ -97,7 +104,7 @@ class AppTextStyles {
   );
 
   // ─── Table ─────────────────────────────────────────────
-  static TextStyle tableHeader = GoogleFonts.inter(
+  static TextStyle get tableHeader => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
@@ -105,14 +112,14 @@ class AppTextStyles {
     height: 1.4,
   );
 
-  static TextStyle tableCell = GoogleFonts.inter(
+  static TextStyle get tableCell => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
     height: 1.5,
   );
 
-  static TextStyle tableCellLink = GoogleFonts.inter(
+  static TextStyle get tableCellLink => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textLink,
@@ -120,33 +127,24 @@ class AppTextStyles {
   );
 
   // ─── Button ────────────────────────────────────────────
-  static TextStyle buttonLarge = GoogleFonts.inter(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    height: 1.2,
-  );
+  static TextStyle get buttonLarge =>
+      GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, height: 1.2);
 
-  static TextStyle buttonMedium = GoogleFonts.inter(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    height: 1.2,
-  );
+  static TextStyle get buttonMedium =>
+      GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, height: 1.2);
 
-  static TextStyle buttonSmall = GoogleFonts.inter(
-    fontSize: 12,
-    fontWeight: FontWeight.w600,
-    height: 1.2,
-  );
+  static TextStyle get buttonSmall =>
+      GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, height: 1.2);
 
   // ─── Caption / Overline ────────────────────────────────
-  static TextStyle caption = GoogleFonts.inter(
+  static TextStyle get caption => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textMuted,
     height: 1.4,
   );
 
-  static TextStyle overline = GoogleFonts.inter(
+  static TextStyle get overline => GoogleFonts.inter(
     fontSize: 10,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
@@ -155,14 +153,14 @@ class AppTextStyles {
   );
 
   // ─── Navigation ────────────────────────────────────────
-  static TextStyle navItem = GoogleFonts.inter(
+  static TextStyle get navItem => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.navInactive,
     height: 1.4,
   );
 
-  static TextStyle navItemActive = GoogleFonts.inter(
+  static TextStyle get navItemActive => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.navActive,
@@ -170,7 +168,7 @@ class AppTextStyles {
   );
 
   // ─── Badge ─────────────────────────────────────────────
-  static TextStyle badge = GoogleFonts.inter(
+  static TextStyle get badge => GoogleFonts.inter(
     fontSize: 11,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.3,

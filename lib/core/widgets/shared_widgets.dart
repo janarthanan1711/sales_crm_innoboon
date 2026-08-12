@@ -431,10 +431,7 @@ class AppLoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(
-            color: AppColors.primary,
-            strokeWidth: 3,
-          ),
+          CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
           if (message != null) ...[
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -465,11 +462,7 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              size: 64,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline_rounded, size: 64, color: AppColors.error),
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
@@ -521,22 +514,18 @@ class AppSearchField extends StatelessWidget {
         onSubmitted: onSubmitted,
         decoration: InputDecoration(
           hintText: hintText,
-          prefixIcon: const Icon(
-            Icons.search,
-            size: 20,
-            color: AppColors.textMuted,
-          ),
+          prefixIcon: Icon(Icons.search, size: 20, color: AppColors.textMuted),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           filled: true,
           fillColor: AppColors.background,

@@ -82,7 +82,9 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
       case SearchResultType.contact:
       case SearchResultType.unknown:
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Open the related account to view “${r.label}”.')),
+          SnackBar(
+            content: Text('Open the related account to view “${r.label}”.'),
+          ),
         );
         break;
     }
@@ -125,14 +127,16 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
                         setState(() {});
                       },
                     ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               filled: true,
               fillColor: AppColors.background,
@@ -166,20 +170,36 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
                   if (state is SearchLoading) {
                     return const Padding(
                       padding: EdgeInsets.all(AppSpacing.lg),
-                      child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
                     );
                   }
                   if (state is SearchError) {
                     return Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Text(state.message, style: AppTextStyles.bodySmall.copyWith(color: AppColors.error)),
+                      child: Text(
+                        state.message,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.error,
+                        ),
+                      ),
                     );
                   }
                   if (state is SearchLoaded) {
                     if (state.results.isEmpty) {
                       return Padding(
                         padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: Text('No results for “${state.query}”', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        child: Text(
+                          'No results for “${state.query}”',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       );
                     }
                     return SingleChildScrollView(
@@ -187,11 +207,31 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _group(context, 'LEADS', state.ofType(SearchResultType.lead)),
-                          _group(context, 'ACCOUNTS', state.ofType(SearchResultType.account)),
-                          _group(context, 'DEALS', state.ofType(SearchResultType.deal)),
-                          _group(context, 'CONTACTS', state.ofType(SearchResultType.contact)),
-                          _group(context, 'OTHER', state.ofType(SearchResultType.unknown)),
+                          _group(
+                            context,
+                            'LEADS',
+                            state.ofType(SearchResultType.lead),
+                          ),
+                          _group(
+                            context,
+                            'ACCOUNTS',
+                            state.ofType(SearchResultType.account),
+                          ),
+                          _group(
+                            context,
+                            'DEALS',
+                            state.ofType(SearchResultType.deal),
+                          ),
+                          _group(
+                            context,
+                            'CONTACTS',
+                            state.ofType(SearchResultType.contact),
+                          ),
+                          _group(
+                            context,
+                            'OTHER',
+                            state.ofType(SearchResultType.unknown),
+                          ),
                         ],
                       ),
                     );
@@ -212,7 +252,12 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 4),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            4,
+          ),
           child: Row(
             children: [
               Icon(_groupIcon(title), size: 14, color: AppColors.textMuted),
@@ -221,13 +266,18 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
             ],
           ),
         ),
-        ...items.map((r) => InkWell(
-              onTap: () => _openResult(r),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                child: Text(r.label, style: AppTextStyles.bodyMedium),
+        ...items.map(
+          (r) => InkWell(
+            onTap: () => _openResult(r),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
               ),
-            )),
+              child: Text(r.label, style: AppTextStyles.bodyMedium),
+            ),
+          ),
+        ),
         const Divider(height: 1),
       ],
     );

@@ -216,21 +216,21 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       prefixIcon: prefix,
       suffixIcon: suffix,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary),
+        borderSide: BorderSide(color: AppColors.primary),
       ),
     );
   }
@@ -253,11 +253,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                 text: TextSpan(
                   text: label,
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: const Color(0xFF334155),
+                    color: AppColors.fieldLabel,
                   ),
                   children: [
                     if (required)
-                      const TextSpan(
+                      TextSpan(
                         text: ' *',
                         style: TextStyle(color: AppColors.error),
                       ),
@@ -320,14 +320,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close,
-                      color: AppColors.textSecondary,
-                    ),
+                    icon: Icon(Icons.close, color: AppColors.textSecondary),
                   ),
                 ],
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Divider(color: AppColors.border),
               ),
@@ -407,7 +404,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                                   v == null || v.isEmpty ? 'Required' : null,
                               decoration: _inputDecoration(
                                 '0.00',
-                                prefix: const Padding(
+                                prefix: Padding(
                                   padding: EdgeInsets.only(
                                     left: 12,
                                     right: 8,
@@ -459,7 +456,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                               readOnly: true,
                               decoration: _inputDecoration(
                                 'mm/dd/yyyy',
-                                suffix: const Icon(
+                                suffix: Icon(
                                   Icons.calendar_today,
                                   size: 18,
                                   color: AppColors.textMuted,
@@ -516,7 +513,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                                 : null,
                             decoration: _inputDecoration(
                               '',
-                              prefix: const Padding(
+                              prefix: Padding(
                                 padding: EdgeInsets.all(8.0),
                                 child: CircleAvatar(
                                   radius: 12,
@@ -601,7 +598,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.only(top: 16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: AppColors.border)),
                 ),
                 child: Row(
@@ -611,7 +608,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: AppColors.border),
+                        side: BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -626,7 +623,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                     ElevatedButton(
                       onPressed: _saving ? null : _onSave,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F47C6),
+                        backgroundColor: AppColors.primaryButton,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
