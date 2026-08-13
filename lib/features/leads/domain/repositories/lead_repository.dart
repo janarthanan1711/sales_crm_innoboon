@@ -12,6 +12,8 @@ abstract class LeadRepository {
     String? source,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   });
@@ -89,6 +91,8 @@ abstract class LeadRemoteDataSource {
     String? source,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   });

@@ -9,6 +9,8 @@ class GetAccountsParams {
   final String? industry;
   final String? tier;
   final int? ownerId;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
   final int limit;
   final int offset;
 
@@ -17,6 +19,8 @@ class GetAccountsParams {
     this.industry,
     this.tier,
     this.ownerId,
+    this.dateFrom,
+    this.dateTo,
     this.limit = 25,
     this.offset = 0,
   });
@@ -36,6 +40,8 @@ class GetAccountsUseCase
         industry: params.industry,
         tier: params.tier,
         ownerId: params.ownerId,
+        dateFrom: params.dateFrom,
+        dateTo: params.dateTo,
         limit: params.limit,
         offset: params.offset,
       );

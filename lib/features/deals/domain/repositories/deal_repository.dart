@@ -10,8 +10,12 @@ abstract class DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals({
     int? ownerId,
     String? accountId,
-    int? stageId,
+    List<int>? stageId,
     String? search,
+    String? dateField,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? stageState,
   });
   Future<Either<Failure, Deal>> getDealById(String id);
   Future<Either<Failure, Deal>> createDeal({
@@ -72,7 +76,7 @@ abstract class DealRepository {
   /// (`GET /deals?to_export=true`).
   Future<Either<Failure, Uint8List>> exportDeals({
     int? ownerId,
-    int? stageId,
+    List<int>? stageId,
     List<String>? tiers,
     String? search,
   });
@@ -88,8 +92,12 @@ abstract class DealRemoteDataSource {
   Future<List<Deal>> getDeals({
     int? ownerId,
     String? accountId,
-    int? stageId,
+    List<int>? stageId,
     String? search,
+    String? dateField,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? stageState,
   });
   Future<Deal> getDealById(String id);
   Future<Deal> createDeal({
@@ -143,7 +151,7 @@ abstract class DealRemoteDataSource {
 
   Future<Uint8List> exportDeals({
     int? ownerId,
-    int? stageId,
+    List<int>? stageId,
     List<String>? tiers,
     String? search,
   });

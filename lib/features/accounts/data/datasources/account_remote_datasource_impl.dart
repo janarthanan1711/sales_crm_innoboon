@@ -29,6 +29,8 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     String? industry,
     String? tier,
     int? ownerId,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 25,
     int offset = 0,
   }) async {
@@ -41,6 +43,8 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           if (industry != null && industry.isNotEmpty && industry != 'All')
             'industry': industry,
           'owner_id': ?ownerId,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
           'limit': limit,
           'offset': offset,
         },

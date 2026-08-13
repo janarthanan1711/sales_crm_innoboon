@@ -15,7 +15,8 @@ class ChecklistView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ChecklistBloc>()..add(ChecklistLoadForDealRequested(dealId)),
+      create: (_) =>
+          sl<ChecklistBloc>()..add(ChecklistLoadForDealRequested(dealId)),
       child: const _ChecklistContent(),
     );
   }
@@ -32,7 +33,12 @@ class _ChecklistContent extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (state is ChecklistError) {
-          return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+          return Center(
+            child: Text(
+              state.message,
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
         }
         if (state is ChecklistLoaded) {
           if (state.stages.isEmpty) {
@@ -42,7 +48,7 @@ class _ChecklistContent extends StatelessWidget {
               subtitle: 'No pre-sales checklist is attached to this deal.',
             );
           }
-          
+
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: state.stages.length,
@@ -75,9 +81,11 @@ class _StageCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.primaryLight,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.cardRadius)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppSpacing.cardRadius),
+              ),
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -93,7 +101,9 @@ class _StageCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${stage.completedCount} / ${stage.totalCount} Complete',
-                  style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
@@ -113,7 +123,7 @@ class _ChecklistItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
@@ -123,7 +133,9 @@ class _ChecklistItemRow extends StatelessWidget {
             value: item.isCompleted,
             onChanged: (value) {
               if (value != null) {
-                context.read<ChecklistBloc>().add(ChecklistItemToggled(item.id, value));
+                context.read<ChecklistBloc>().add(
+                  ChecklistItemToggled(item.id, value),
+                );
               }
             },
             activeColor: AppColors.success,
@@ -139,25 +151,40 @@ class _ChecklistItemRow extends StatelessWidget {
                       child: Text(
                         item.itemText,
                         style: AppTextStyles.bodyMedium.copyWith(
-                          decoration: item.isCompleted ? TextDecoration.lineThrough : null,
-                          color: item.isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+                          decoration: item.isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: item.isCompleted
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.border,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(item.owningTeam, style: AppTextStyles.caption),
+                      child: Text(
+                        item.owningTeam,
+                        style: AppTextStyles.caption,
+                      ),
                     ),
                   ],
                 ),
                 if (item.notes.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(item.notes, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                  Text(
+                    item.notes,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ],
             ),

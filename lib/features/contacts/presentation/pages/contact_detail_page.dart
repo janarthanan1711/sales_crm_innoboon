@@ -108,7 +108,7 @@ class _ContactDetailView extends StatelessWidget {
             style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 6),
           child: Icon(
             Icons.chevron_right,
@@ -174,7 +174,7 @@ class _HeaderCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.person_outline,
                         size: 14,
                         color: AppColors.textMuted,
@@ -300,7 +300,7 @@ class _MainPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TabBar(
+        TabBar(
           isScrollable: true,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
@@ -368,11 +368,7 @@ class _OverviewTab extends StatelessWidget {
             title: 'Quick Stats',
             child: Row(
               children: [
-                const Icon(
-                  Icons.access_time,
-                  size: 18,
-                  color: AppColors.textMuted,
-                ),
+                Icon(Icons.access_time, size: 18, color: AppColors.textMuted),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   o.lastActivity != null
@@ -508,7 +504,7 @@ class _PrimaryPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star, size: 12, color: AppColors.success),
+          Icon(Icons.star, size: 12, color: AppColors.success),
           const SizedBox(width: 4),
           Text(
             'Primary Contact',

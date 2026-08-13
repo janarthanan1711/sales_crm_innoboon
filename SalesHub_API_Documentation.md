@@ -1257,7 +1257,7 @@ Example Response
 {
   "summary": {
     "leads_generated": { "value": 1248, "change_pct": 12.4 },
-    "qualified_leads": { "value": 842, "change_pct": 8.1 },
+    "leads_to_accounts": { "value": 842, "change_pct": 8.1 },
     "deals_in_pipeline": { "value": 480, "change_pct": 3.2 },
     "deals_closed": { "value": 42, "change_pct": 12.5 },
     "num_accounts": { "value": 96, "change_pct": 5.0 }
@@ -1307,7 +1307,7 @@ Example Response
 
 Per-section notes — **every section is scoped by `period`/`start_date`/`end_date`**, so switching the filter redraws the whole page consistently:
 
-- **summary** — 5 stat tiles (Leads Generated, Qualified Leads, Deals in Pipeline, Deals Closed, Num Accounts), all scoped by `period`. `change_pct` compares the selected period against the immediately preceding period of equal length; `null` if the prior period had zero to compare against. "Deals closed" is **Closed Won only** (Closed Lost deals never count here) and is keyed off `Deal.updated_at`, since no `closed_at` column exists. `deals_in_pipeline` = open (not closed/cold) deals *opened* (`Deal.created_at`) during the period — not a live count of everything currently open regardless of age. `num_accounts` = accounts *created* (`Account.created_at`) during the period.
+- **summary** — 5 stat tiles (Leads Generated, Leads to Accounts, Deals in Pipeline, Deals Closed, Num Accounts), all scoped by `period`. `change_pct` compares the selected period against the immediately preceding period of equal length; `null` if the prior period had zero to compare against. "Deals closed" is **Closed Won only** (Closed Lost deals never count here) and is keyed off `Deal.updated_at`, since no `closed_at` column exists. `deals_in_pipeline` = open (not closed/cold) deals *opened* (`Deal.created_at`) during the period — not a live count of everything currently open regardless of age. `num_accounts` = accounts *created* (`Account.created_at`) during the period.
 - **funnel** — Pipeline Funnel chart, ordered by `DealStage.sort_order` (per-company). Counts deals that **entered** each stage during the period (via `DealStageHistory`), not a live snapshot of current stage occupancy — a deal that moved on to a later stage within the period still counts under every stage it passed through.
 - **deal_distribution** — Deal Distribution donut chart, scoped to deals *created* (`Deal.created_at`) in the period. `tier` enum: `diamond`, `gold`, `silver`, `bronze` (`Deal.tier`, same `LeadTier` enum shared with Lead/Account). Deals with no tier set are excluded.
 - **leaderboard** — ranked by won-deal revenue *closed* (`Deal.updated_at`) in the period, descending. `owner_avatar_url` is the rep's `User.avatar_url` (a relative `/media/...` path, or `null` when they haven't uploaded one) so the row can show their photo without a second call. **No "% of target" figure** — see deferred note above. Only owners with at least one "Closed Won" deal closed in the period appear.

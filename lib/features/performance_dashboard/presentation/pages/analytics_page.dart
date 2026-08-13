@@ -47,8 +47,10 @@ class _AnalyticsView extends StatelessWidget {
                 }
                 if (state is AnalyticsError) {
                   return ErrorState(
-                    message: state.message, 
-                    onRetry: () => context.read<AnalyticsBloc>().add(const AnalyticsLoadRequested())
+                    message: state.message,
+                    onRetry: () => context.read<AnalyticsBloc>().add(
+                      const AnalyticsLoadRequested(),
+                    ),
                   );
                 }
                 if (state is AnalyticsLoaded) {
@@ -72,11 +74,16 @@ class _AnalyticsView extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Track your team\'s sales metrics and conversion rates',
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -86,7 +93,11 @@ class _AnalyticsView extends StatelessWidget {
               children: [
                 Text('Last 6 Months', style: AppTextStyles.labelMedium),
                 const SizedBox(width: AppSpacing.sm),
-                const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: AppColors.textMuted,
+                ),
               ],
             ),
           ),
@@ -103,12 +114,17 @@ class _AnalyticsView extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Track your team\'s sales metrics and conversion rates',
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
@@ -117,7 +133,7 @@ class _AnalyticsView extends StatelessWidget {
             children: [
               Text('Last 6 Months', style: AppTextStyles.labelMedium),
               const SizedBox(width: AppSpacing.sm),
-              const Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+              Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
             ],
           ),
         ),
@@ -147,10 +163,7 @@ class _AnalyticsView extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 7,
-              child: _RevenueChartCard(metrics: metrics),
-            ),
+            Expanded(flex: 7, child: _RevenueChartCard(metrics: metrics)),
             const SizedBox(width: AppSpacing.xl),
             Expanded(
               flex: 3,
@@ -163,10 +176,7 @@ class _AnalyticsView extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 4,
-              child: _FunnelChartCard(funnel: metrics.funnel),
-            ),
+            Expanded(flex: 4, child: _FunnelChartCard(funnel: metrics.funnel)),
             const SizedBox(width: AppSpacing.xl),
             Expanded(
               flex: 6,
@@ -190,30 +200,47 @@ class _RevenueChartCard extends StatelessWidget {
       child: SizedBox(
         height: 300,
         child: Padding(
-          padding: const EdgeInsets.only(right: 16, left: 8, top: 24, bottom: 8),
+          padding: const EdgeInsets.only(
+            right: 16,
+            left: 8,
+            top: 24,
+            bottom: 8,
+          ),
           child: LineChart(
             LineChartData(
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
                 horizontalInterval: 200000,
-                getDrawingHorizontalLine: (value) => FlLine(color: AppColors.border, strokeWidth: 1, dashArray: [5, 5]),
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: AppColors.border,
+                  strokeWidth: 1,
+                  dashArray: [5, 5],
+                ),
               ),
               titlesData: FlTitlesData(
                 show: true,
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 30,
                     interval: 1,
                     getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= 0 && value.toInt() < metrics.revenueHistory.length) {
+                      if (value.toInt() >= 0 &&
+                          value.toInt() < metrics.revenueHistory.length) {
                         final date = metrics.revenueHistory[value.toInt()].date;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(DateFormat('MMM').format(date), style: AppTextStyles.caption),
+                          child: Text(
+                            DateFormat('MMM').format(date),
+                            style: AppTextStyles.caption,
+                          ),
                         );
                       }
                       return const SizedBox.shrink();
@@ -242,7 +269,11 @@ class _RevenueChartCard extends StatelessWidget {
               lineBarsData: [
                 // Target Line
                 LineChartBarData(
-                  spots: metrics.targetHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.amount)).toList(),
+                  spots: metrics.targetHistory
+                      .asMap()
+                      .entries
+                      .map((e) => FlSpot(e.key.toDouble(), e.value.amount))
+                      .toList(),
                   isCurved: true,
                   color: AppColors.textMuted,
                   barWidth: 2,
@@ -252,7 +283,11 @@ class _RevenueChartCard extends StatelessWidget {
                 ),
                 // Revenue Line
                 LineChartBarData(
-                  spots: metrics.revenueHistory.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.amount)).toList(),
+                  spots: metrics.revenueHistory
+                      .asMap()
+                      .entries
+                      .map((e) => FlSpot(e.key.toDouble(), e.value.amount))
+                      .toList(),
                   isCurved: true,
                   color: AppColors.primary,
                   barWidth: 3,
@@ -314,10 +349,13 @@ class _WinRateCard extends StatelessWidget {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('${(winRate * 100).toStringAsFixed(1)}%', style: AppTextStyles.h1),
+                      Text(
+                        '${(winRate * 100).toStringAsFixed(1)}%',
+                        style: AppTextStyles.h1,
+                      ),
                       Text('Won', style: AppTextStyles.caption),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -325,9 +363,14 @@ class _WinRateCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.arrow_upward, size: 16, color: AppColors.success),
+                Icon(Icons.arrow_upward, size: 16, color: AppColors.success),
                 const SizedBox(width: 4),
-                Text('+2.4% from last month', style: AppTextStyles.bodySmall.copyWith(color: AppColors.success)),
+                Text(
+                  '+2.4% from last month',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.success,
+                  ),
+                ),
               ],
             ),
           ],
@@ -355,21 +398,32 @@ class _FunnelChartCard extends StatelessWidget {
               final stage = entry.value;
               final maxCount = funnel.first.count.toDouble();
               final widthFactor = stage.count / maxCount;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: Row(
                   children: [
-                    SizedBox(width: 100, child: Text(stage.stageName, style: AppTextStyles.labelMedium)),
+                    SizedBox(
+                      width: 100,
+                      child: Text(
+                        stage.stageName,
+                        style: AppTextStyles.labelMedium,
+                      ),
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Container(
                           height: 24,
-                          width: MediaQuery.of(context).size.width * 0.2 * widthFactor,
+                          width:
+                              MediaQuery.of(context).size.width *
+                              0.2 *
+                              widthFactor,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 1.0 - (index * 0.2)),
+                            color: AppColors.primary.withValues(
+                              alpha: 1.0 - (index * 0.2),
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -377,8 +431,12 @@ class _FunnelChartCard extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     SizedBox(
-                      width: 60, 
-                      child: Text('${stage.count}', style: AppTextStyles.labelLarge, textAlign: TextAlign.right),
+                      width: 60,
+                      child: Text(
+                        '${stage.count}',
+                        style: AppTextStyles.labelLarge,
+                        textAlign: TextAlign.right,
+                      ),
                     ),
                   ],
                 ),
@@ -404,16 +462,31 @@ class _LeaderboardCard extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              decoration: const BoxDecoration(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 children: [
-                  Expanded(flex: 3, child: Text('REP NAME', style: AppTextStyles.tableHeader)),
-                  Expanded(flex: 2, child: Text('DEALS WON', style: AppTextStyles.tableHeader)),
-                  Expanded(flex: 3, child: Text('REVENUE', style: AppTextStyles.tableHeader)),
-                  Expanded(flex: 2, child: Text('WIN RATE', style: AppTextStyles.tableHeader)),
+                  Expanded(
+                    flex: 3,
+                    child: Text('REP NAME', style: AppTextStyles.tableHeader),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('DEALS WON', style: AppTextStyles.tableHeader),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text('REVENUE', style: AppTextStyles.tableHeader),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('WIN RATE', style: AppTextStyles.tableHeader),
+                  ),
                 ],
               ),
             ),
@@ -424,26 +497,58 @@ class _LeaderboardCard extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final rep = leaderboard[index];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.md,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
-                          flex: 3, 
+                          flex: 3,
                           child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 14,
                                 backgroundColor: AppColors.primaryLight,
-                                child: Text(rep.repName[0], style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+                                child: Text(
+                                  rep.repName[0],
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
-                              Text(rep.repName, style: AppTextStyles.labelLarge),
+                              Text(
+                                rep.repName,
+                                style: AppTextStyles.labelLarge,
+                              ),
                             ],
-                          )
+                          ),
                         ),
-                        Expanded(flex: 2, child: Text('${rep.dealsClosed}', style: AppTextStyles.tableCell)),
-                        Expanded(flex: 3, child: Text(CurrencyFormatter.formatINR(rep.revenueGenerated), style: AppTextStyles.labelMedium.copyWith(color: AppColors.success))),
-                        Expanded(flex: 2, child: Text('${(rep.winRate * 100).toStringAsFixed(1)}%', style: AppTextStyles.tableCell)),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${rep.dealsClosed}',
+                            style: AppTextStyles.tableCell,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            CurrencyFormatter.formatINR(rep.revenueGenerated),
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${(rep.winRate * 100).toStringAsFixed(1)}%',
+                            style: AppTextStyles.tableCell,
+                          ),
+                        ),
                       ],
                     ),
                   );

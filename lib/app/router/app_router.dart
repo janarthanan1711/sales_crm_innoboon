@@ -142,7 +142,8 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.resetPassword,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => ResetPasswordPage(token: state.uri.queryParameters['token']),
+        builder: (context, state) =>
+            ResetPasswordPage(token: state.uri.queryParameters['token']),
       ),
 
       // ─── Main Shell Routes ───────────────────────────
@@ -193,8 +194,25 @@ class AppRouter {
           ),
           GoRoute(
             path: RoutePaths.deals,
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DealsListPage()),
+            // Drill-down from a dashboard tile tap arrives as query params
+            // (e.g. `?stage_state=open` or `?date_field=closed_at&date_from=
+            // ...&date_to=...&title=Deals+Closed`) — absent for the plain
+            // "Deals" nav-bar entry, which falls back to DealsListPage's
+            // defaults.
+            pageBuilder: (context, state) {
+              final q = state.uri.queryParameters;
+              DateTime? parseDate(String? s) =>
+                  s == null ? null : DateTime.tryParse(s);
+              return NoTransitionPage(
+                child: DealsListPage(
+                  title: q['title'],
+                  stageState: q['stage_state'],
+                  dateField: q['date_field'],
+                  dateFrom: parseDate(q['date_from']),
+                  dateTo: parseDate(q['date_to']),
+                ),
+              );
+            },
           ),
 
           GoRoute(

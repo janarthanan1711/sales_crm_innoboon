@@ -19,6 +19,8 @@ class AccountRepositoryImpl implements AccountRepository {
     String? industry,
     String? tier,
     int? ownerId,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 25,
     int offset = 0,
   }) async {
@@ -28,6 +30,8 @@ class AccountRepositoryImpl implements AccountRepository {
         industry: industry,
         tier: tier,
         ownerId: ownerId,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
         limit: limit,
         offset: offset,
       );

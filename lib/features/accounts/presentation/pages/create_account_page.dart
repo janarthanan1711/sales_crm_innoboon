@@ -78,12 +78,15 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   }
 
   String? _validate() {
-    if (_companyController.text.trim().isEmpty) return 'Company name is required.';
-    if (_domainController.text.trim().isEmpty) return 'Company domain is required.';
+    if (_companyController.text.trim().isEmpty)
+      return 'Company name is required.';
+    if (_domainController.text.trim().isEmpty)
+      return 'Company domain is required.';
     if (_industry == null) return 'Please select an industry.';
     if (_tier == null) return 'Please select an account tier.';
     if (_addPrimaryContact) {
-      if (_cFirstName.text.trim().isEmpty) return 'The primary contact needs a first name.';
+      if (_cFirstName.text.trim().isEmpty)
+        return 'The primary contact needs a first name.';
       if (_cEmail.text.trim().isEmpty && _cPhone.text.trim().isEmpty) {
         return 'The primary contact needs an email or phone.';
       }
@@ -95,12 +98,15 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     final messenger = ScaffoldMessenger.of(context);
     final error = _validate();
     if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: AppColors.error));
+      messenger.showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
+      );
       return;
     }
     setState(() => _saving = true);
 
-    String? val(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+    String? val(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
 
     final result = await sl<CreateAccountUseCase>()(
       AccountUpsertParams(
@@ -120,7 +126,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         if (!mounted) return;
         setState(() => _saving = false);
         messenger.showSnackBar(
-          SnackBar(content: Text('Failed to create account: ${f.message}'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Failed to create account: ${f.message}'),
+            backgroundColor: AppColors.error,
+          ),
         );
       },
       (account) async {
@@ -158,7 +167,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
           children: [
             // ── Top bar ──────────────────────────────────
             Padding(
-              padding: EdgeInsets.fromLTRB(horizontal, AppSpacing.lg, horizontal, 0),
+              padding: EdgeInsets.fromLTRB(
+                horizontal,
+                AppSpacing.lg,
+                horizontal,
+                0,
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -169,13 +183,27 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                           children: [
                             InkWell(
                               onTap: () => context.go(RoutePaths.accounts),
-                              child: Text('Accounts', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                              child: Text(
+                                'Accounts',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
                             ),
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.symmetric(horizontal: 6),
-                              child: Icon(Icons.chevron_right, size: 14, color: AppColors.textMuted),
+                              child: Icon(
+                                Icons.chevron_right,
+                                size: 14,
+                                color: AppColors.textMuted,
+                              ),
                             ),
-                            Text('New Account', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                            Text(
+                              'New Account',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -194,7 +222,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             const SizedBox(height: AppSpacing.md),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, AppSpacing.xxl),
+                padding: EdgeInsets.fromLTRB(
+                  horizontal,
+                  0,
+                  horizontal,
+                  AppSpacing.xxl,
+                ),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: ConstrainedBox(
@@ -214,7 +247,9 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                               _FieldLabel('Company Name', required: true),
                               TextField(
                                 controller: _companyController,
-                                decoration: const InputDecoration(hintText: 'e.g. Nexbridge Tech'),
+                                decoration: const InputDecoration(
+                                  hintText: 'e.g. Nexbridge Tech',
+                                ),
                               ),
                               const SizedBox(height: AppSpacing.md),
                               _twoColumn(
@@ -222,11 +257,17 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 left: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _FieldLabel('Company Domain', required: true),
+                                    _FieldLabel(
+                                      'Company Domain',
+                                      required: true,
+                                    ),
                                     TextField(
                                       controller: _domainController,
                                       decoration: const InputDecoration(
-                                        prefixIcon: Icon(Icons.language, size: 18),
+                                        prefixIcon: Icon(
+                                          Icons.language,
+                                          size: 18,
+                                        ),
                                         hintText: 'nexbridge.io',
                                       ),
                                     ),
@@ -238,11 +279,19 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                     _FieldLabel('Industry', required: true),
                                     DropdownButtonFormField<String>(
                                       initialValue: _industry,
-                                      decoration: const InputDecoration(hintText: 'Select industry'),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Select industry',
+                                      ),
                                       items: AppConstants.industries
-                                          .map((i) => DropdownMenuItem(value: i, child: Text(i)))
+                                          .map(
+                                            (i) => DropdownMenuItem(
+                                              value: i,
+                                              child: Text(i),
+                                            ),
+                                          )
                                           .toList(),
-                                      onChanged: (v) => setState(() => _industry = v),
+                                      onChanged: (v) =>
+                                          setState(() => _industry = v),
                                     ),
                                   ],
                                 ),
@@ -252,7 +301,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                               TextField(
                                 controller: _cityController,
                                 decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.location_on_outlined, size: 18),
+                                  prefixIcon: Icon(
+                                    Icons.location_on_outlined,
+                                    size: 18,
+                                  ),
                                   hintText: 'e.g. Coimbatore',
                                 ),
                               ),
@@ -263,7 +315,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 keyboardType: TextInputType.url,
                                 decoration: const InputDecoration(
                                   prefixIcon: Icon(Icons.link, size: 18),
-                                  hintText: 'https://linkedin.com/company/nexbridge',
+                                  hintText:
+                                      'https://linkedin.com/company/nexbridge',
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.md),
@@ -271,7 +324,9 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                               TextField(
                                 controller: _descriptionController,
                                 maxLines: 3,
-                                decoration: const InputDecoration(hintText: 'Enter company overview...'),
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter company overview...',
+                                ),
                               ),
                             ],
                           ),
@@ -287,9 +342,16 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 _FieldLabel('Account Tier', required: true),
                                 DropdownButtonFormField<String>(
                                   initialValue: _tier,
-                                  decoration: const InputDecoration(hintText: 'Select tier'),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Select tier',
+                                  ),
                                   items: leadTierLabels.entries
-                                      .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e.key,
+                                          child: Text(e.value),
+                                        ),
+                                      )
                                       .toList(),
                                   onChanged: (v) => setState(() => _tier = v),
                                 ),
@@ -301,11 +363,19 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 _FieldLabel('Account Owner'),
                                 DropdownButtonFormField<int>(
                                   initialValue: _ownerId,
-                                  decoration: const InputDecoration(hintText: 'Select owner'),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Select owner',
+                                  ),
                                   items: _users
-                                      .map((u) => DropdownMenuItem(value: u.id, child: Text(u.displayName)))
+                                      .map(
+                                        (u) => DropdownMenuItem(
+                                          value: u.id,
+                                          child: Text(u.displayName),
+                                        ),
+                                      )
                                       .toList(),
-                                  onChanged: (v) => setState(() => _ownerId = v),
+                                  onChanged: (v) =>
+                                      setState(() => _ownerId = v),
                                 ),
                               ],
                             ),
@@ -314,7 +384,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                         const SizedBox(height: AppSpacing.lg),
                         _PrimaryContactSection(
                           enabled: _addPrimaryContact,
-                          onToggle: (v) => setState(() => _addPrimaryContact = v),
+                          onToggle: (v) =>
+                              setState(() => _addPrimaryContact = v),
                           firstName: _cFirstName,
                           lastName: _cLastName,
                           jobTitle: _cJobTitle,
@@ -326,14 +397,23 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             OutlinedButton(
-                              onPressed: _saving ? null : () => context.go(RoutePaths.accounts),
+                              onPressed: _saving
+                                  ? null
+                                  : () => context.go(RoutePaths.accounts),
                               child: const Text('Cancel'),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             ElevatedButton.icon(
                               onPressed: _saving ? null : _save,
                               icon: _saving
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
                                   : const Icon(Icons.save_outlined, size: 18),
                               label: const Text('Save Account'),
                             ),
@@ -351,11 +431,19 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     );
   }
 
-  Widget _twoColumn(BuildContext context, {required Widget left, required Widget right}) {
+  Widget _twoColumn(
+    BuildContext context, {
+    required Widget left,
+    required Widget right,
+  }) {
     if (context.isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [left, const SizedBox(height: AppSpacing.md), right],
+        children: [
+          left,
+          const SizedBox(height: AppSpacing.md),
+          right,
+        ],
       );
     }
     return Row(
@@ -380,12 +468,14 @@ class _InfoBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, size: 18, color: AppColors.primary),
+          Icon(Icons.info_outline, size: 18, color: AppColors.primary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               'Ensuring Industry and Tier are selected prevents data gaps in reporting.',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         ],
@@ -407,7 +497,10 @@ class _FieldLabel extends StatelessWidget {
         children: [
           Text(label, style: AppTextStyles.labelMedium),
           if (required)
-            Text(' *', style: AppTextStyles.labelMedium.copyWith(color: AppColors.error)),
+            Text(
+              ' *',
+              style: AppTextStyles.labelMedium.copyWith(color: AppColors.error),
+            ),
         ],
       ),
     );
@@ -446,9 +539,14 @@ class _PrimaryContactSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.person_add_alt_1, size: 18, color: AppColors.primary),
+              Icon(Icons.person_add_alt_1, size: 18, color: AppColors.primary),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(child: Text('Add Primary Contact now?', style: AppTextStyles.labelLarge)),
+              Expanded(
+                child: Text(
+                  'Add Primary Contact now?',
+                  style: AppTextStyles.labelLarge,
+                ),
+              ),
               Switch(value: enabled, onChanged: onToggle),
             ],
           ),
@@ -456,19 +554,44 @@ class _PrimaryContactSection extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                Expanded(child: TextField(controller: firstName, decoration: const InputDecoration(labelText: 'First Name *'))),
+                Expanded(
+                  child: TextField(
+                    controller: firstName,
+                    decoration: const InputDecoration(
+                      labelText: 'First Name *',
+                    ),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: TextField(controller: lastName, decoration: const InputDecoration(labelText: 'Last Name'))),
+                Expanded(
+                  child: TextField(
+                    controller: lastName,
+                    decoration: const InputDecoration(labelText: 'Last Name'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: jobTitle, decoration: const InputDecoration(labelText: 'Job Title')),
+            TextField(
+              controller: jobTitle,
+              decoration: const InputDecoration(labelText: 'Job Title'),
+            ),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                Expanded(child: TextField(controller: email, decoration: const InputDecoration(labelText: 'Email'))),
+                Expanded(
+                  child: TextField(
+                    controller: email,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone'))),
+                Expanded(
+                  child: TextField(
+                    controller: phone,
+                    decoration: const InputDecoration(labelText: 'Phone'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.xs),

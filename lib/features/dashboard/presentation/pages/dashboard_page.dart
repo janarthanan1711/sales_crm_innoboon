@@ -8,6 +8,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../domain/entities/dashboard_data.dart';
@@ -302,14 +303,12 @@ class _PeriodToggle extends StatelessWidget {
   Future<void> _pickRange(BuildContext context) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final picked = await showDialog<DateTimeRange>(
+    final picked = await showCompactDateRangePicker(
       context: context,
-      builder: (_) => _CustomRangeDialog(
-        initialStart: range.start,
-        initialEnd: range.end,
-        firstDate: DateTime(today.year - 5),
-        lastDate: today,
-      ),
+      initialStart: range.start,
+      initialEnd: range.end,
+      firstDate: DateTime(today.year - 5),
+      lastDate: today,
     );
     if (picked == null) return;
     onSelected(DashboardRange.between(picked.start, picked.end));
@@ -364,129 +363,6 @@ class _PeriodToggle extends StatelessWidget {
   }
 }
 
-/// Compact replacement for Flutter's built-in [showDateRangePicker], which
-/// renders as a near-full-screen dialog and, in its manual-entry mode, makes
-/// you type the `/` separators yourself. This picks each bound with
-/// [showDatePicker] instead — the same tap-to-open, read-only field pattern
-/// already used for every other date input in this app (see
-/// create_deal_page's "Expected Close Date") — so there's no typing at all.
-class _CustomRangeDialog extends StatefulWidget {
-  const _CustomRangeDialog({
-    required this.initialStart,
-    required this.initialEnd,
-    required this.firstDate,
-    required this.lastDate,
-  });
-
-  final DateTime? initialStart;
-  final DateTime? initialEnd;
-  final DateTime firstDate;
-  final DateTime lastDate;
-
-  @override
-  State<_CustomRangeDialog> createState() => _CustomRangeDialogState();
-}
-
-class _CustomRangeDialogState extends State<_CustomRangeDialog> {
-  late DateTime? _start = widget.initialStart;
-  late DateTime? _end = widget.initialEnd;
-
-  static final _format = DateFormat('d MMM y');
-
-  Future<void> _pick({required bool isStart}) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: (isStart ? _start : _end) ?? widget.lastDate,
-      firstDate: widget.firstDate,
-      lastDate: widget.lastDate,
-    );
-    if (picked == null) return;
-    setState(() => isStart ? _start = picked : _end = picked);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final canApply = _start != null && _end != null;
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Select Date Range', style: AppTextStyles.h3),
-              const SizedBox(height: AppSpacing.lg),
-              _dateField(
-                label: 'Start Date',
-                value: _start,
-                onTap: () => _pick(isStart: true),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _dateField(
-                label: 'End Date',
-                value: _end,
-                onTap: () => _pick(isStart: false),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  ElevatedButton(
-                    onPressed: canApply
-                        ? () => Navigator.of(
-                            context,
-                          ).pop(DateTimeRange(start: _start!, end: _end!))
-                        : null,
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _dateField({
-    required String label,
-    required DateTime? value,
-    required VoidCallback onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.labelLarge),
-        const SizedBox(height: AppSpacing.sm),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          child: InputDecorator(
-            decoration: const InputDecoration(
-              suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
-            ),
-            child: Text(
-              value != null ? _format.format(value) : 'Select date',
-              style: value != null
-                  ? AppTextStyles.bodyMedium
-                  : AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ─── Summary stat tiles ─────────────────────────────────
 class _SummaryTiles extends StatelessWidget {
   const _SummaryTiles({required this.summary});
@@ -502,11 +378,13 @@ class _SummaryTiles extends StatelessWidget {
         color: AppColors.primary,
       ),
       _StatTile(
-        title: 'Qualified Leads',
+        title: 'Leads to Accounts',
         stat: summary.qualifiedLeads,
         icon: Icons.verified_outlined,
         color: const Color(0xFF7C3AED),
       ),
+      // drill-down disabled per request (2026-08-12) — re-add the
+      // `onTap` (see git history) once the redirect behavior is revisited.
       _StatTile(
         title: 'Deals in Pipeline',
         stat: summary.dealsInPipeline,
@@ -514,7 +392,7 @@ class _SummaryTiles extends StatelessWidget {
         color: const Color(0xFFD97706),
       ),
       _StatTile(
-        title: 'Deals Closed',
+        title: 'Deals Closed (Closed Won)',
         stat: summary.dealsClosed,
         icon: Icons.emoji_events_outlined,
         color: AppColors.success,
@@ -565,11 +443,16 @@ class _StatTile extends StatefulWidget {
     required this.stat,
     required this.icon,
     required this.color,
+    this.onTap,
   });
   final String title;
   final DashboardStat stat;
   final IconData icon;
   final Color color;
+
+  /// Drills into the deals list filtered to match this tile. Null keeps the
+  /// tile inert (e.g. Leads Generated, No. of Accounts have no drill-down).
+  final VoidCallback? onTap;
 
   @override
   State<_StatTile> createState() => _StatTileState();
@@ -580,63 +463,69 @@ class _StatTileState extends State<_StatTile> {
 
   @override
   Widget build(BuildContext context) {
-    // Deliberately restrained: a 2px lift, a tinted border and a soft shadow in
-    // the tile's own accent. No colour flash and no cursor change — these tiles
-    // aren't clickable, so the hover state should read as focus, not affordance.
+    // A 2px lift, a tinted border and a soft shadow in the tile's own accent.
+    // Only tiles with a drill-down (`onTap` set) also get a pointer cursor —
+    // the rest keep the original "focus, not affordance" restraint.
     final raised = _hovered && !_Motion.off(context);
     return MouseRegion(
+      cursor: widget.onTap != null
+          ? SystemMouseCursors.click
+          : MouseCursor.defer,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: _Motion.hover,
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, raised ? -2 : 0, 0),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-          border: Border.all(
-            color: raised
-                ? widget.color.withValues(alpha: 0.45)
-                : AppColors.border,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: _Motion.hover,
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(0, raised ? -2 : 0, 0),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(
+              color: raised
+                  ? widget.color.withValues(alpha: 0.45)
+                  : AppColors.border,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: raised ? 0.12 : 0),
+                blurRadius: raised ? 18 : 0,
+                offset: Offset(0, raised ? 6 : 0),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withValues(alpha: raised ? 0.12 : 0),
-              blurRadius: raised ? 18 : 0,
-              offset: Offset(0, raised ? 6 : 0),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: AppTextStyles.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: widget.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(widget.icon, size: 18, color: widget.color),
                   ),
-                  child: Icon(widget.icon, size: 18, color: widget.color),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _CountUp(value: widget.stat.value, style: AppTextStyles.h1),
-            const SizedBox(height: 6),
-            _ChangeBadge(changePct: widget.stat.changePct),
-          ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _CountUp(value: widget.stat.value, style: AppTextStyles.h1),
+              const SizedBox(height: 6),
+              _ChangeBadge(changePct: widget.stat.changePct),
+            ],
+          ),
         ),
       ),
     );
@@ -761,14 +650,41 @@ typedef _FunnelPalette = ({Color background, Color foreground});
 
 /// Tint per funnel step. Cycles if the pipeline has more stages than entries
 /// (stages are admin-configurable, so the count isn't fixed).
-const List<_FunnelPalette> _funnelPalettes = [
-  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
-  (background: Color(0xFFE0E7FF), foreground: Color(0xFF4338CA)), // indigo
-  (background: Color(0xFFFFEDD5), foreground: Color(0xFFC2410C)), // orange
-  (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
-  (background: Color(0xFFD1FAE5), foreground: Color(0xFF047857)), // green
-  (background: Color(0xFFFCE7F3), foreground: Color(0xFFBE185D)), // pink
-];
+///
+/// A getter, so switching theme re-reads it. The dark set inverts the
+/// relationship rather than reusing the light one: a 100-level wash behind
+/// 700-level text is unreadable on a dark page, and left as-is the funnel would
+/// have been six glaring pastel bars in the middle of the dashboard. Dark keeps
+/// the same six hues at 950-level backgrounds with 300-level labels.
+List<_FunnelPalette> get _funnelPalettes => AppColors.isDark
+    ? const [
+        (background: Color(0xFF1E3A8A), foreground: Color(0xFFBFDBFE)), // blue
+        (
+          background: Color(0xFF312E81),
+          foreground: Color(0xFFC7D2FE),
+        ), // indigo
+        (
+          background: Color(0xFF7C2D12),
+          foreground: Color(0xFFFED7AA),
+        ), // orange
+        (background: Color(0xFF1E3A8A), foreground: Color(0xFFBFDBFE)), // blue
+        (background: Color(0xFF064E3B), foreground: Color(0xFFA7F3D0)), // green
+        (background: Color(0xFF831843), foreground: Color(0xFFFBCFE8)), // pink
+      ]
+    : const [
+        (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+        (
+          background: Color(0xFFE0E7FF),
+          foreground: Color(0xFF4338CA),
+        ), // indigo
+        (
+          background: Color(0xFFFFEDD5),
+          foreground: Color(0xFFC2410C),
+        ), // orange
+        (background: Color(0xFFDBEAFE), foreground: Color(0xFF1D4ED8)), // blue
+        (background: Color(0xFFD1FAE5), foreground: Color(0xFF047857)), // green
+        (background: Color(0xFFFCE7F3), foreground: Color(0xFFBE185D)), // pink
+      ];
 
 class _FunnelBar extends StatelessWidget {
   const _FunnelBar({
@@ -1010,7 +926,10 @@ class _ConversionTrendCard extends StatelessWidget {
 }
 
 // ─── Deal distribution donut ────────────────────────────
-const Map<String, Color> _tierColors = {
+/// A getter rather than a `const`/`final` map. A top-level `final` is
+/// initialised once and cached for the process, which would pin these swatches
+/// to whichever palette was active the first time the donut rendered.
+Map<String, Color> get _tierColors => {
   'diamond': AppColors.tierDiamondText,
   'gold': AppColors.tierGoldText,
   'silver': AppColors.tierSilverText,
@@ -1411,7 +1330,7 @@ class _DropOffRow extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.error,
                     shape: BoxShape.circle,
                   ),

@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
@@ -15,6 +16,7 @@ import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../domain/entities/contact.dart';
 import '../../domain/entities/contact_import_result.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contacts_list_bloc.dart';
 import '../widgets/contact_form_dialog.dart';
@@ -71,6 +73,26 @@ class _ContactsListViewState extends State<_ContactsListView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDateRange(
+    BuildContext context,
+    DateTime? currentFrom,
+    DateTime? currentTo,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: currentFrom,
+      initialEnd: currentTo,
+    );
+    if (picked != null && context.mounted) {
+      context.read<ContactsListBloc>().add(
+        ContactsListFilterChanged(dateFrom: picked.start, dateTo: picked.end),
+      );
+    }
   }
 
   void _clearFilters() {
@@ -276,6 +298,13 @@ class _ContactsListViewState extends State<_ContactsListView> {
         ? loaded.accountFilter
         : null;
     final tierFilter = loaded is ContactsListLoaded ? loaded.tierFilter : null;
+    final dateFromFilter = loaded is ContactsListLoaded
+        ? loaded.dateFromFilter
+        : null;
+    final dateToFilter = loaded is ContactsListLoaded
+        ? loaded.dateToFilter
+        : null;
+    final hasDateRange = dateFromFilter != null && dateToFilter != null;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -335,6 +364,24 @@ class _ContactsListViewState extends State<_ContactsListView> {
             onSelected: (v) =>
                 bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () =>
+                _pickDateRange(context, dateFromFilter, dateToFilter),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              hasDateRange
+                  ? '${DateFormatter.shortDate(dateFromFilter)} – ${DateFormatter.shortDate(dateToFilter)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (hasDateRange)
+            IconButton(
+              onPressed: () =>
+                  bloc.add(const ContactsListFilterChanged(clearDate: true)),
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: 'Clear date range',
+            ),
           const SizedBox(width: AppSpacing.md),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -393,15 +440,12 @@ class _ContactsListViewState extends State<_ContactsListView> {
             ),
             TextButton.icon(
               onPressed: () => _confirmBulkDelete(context),
-              icon: const Icon(
+              icon: Icon(
                 Icons.delete_outline,
                 size: 16,
                 color: AppColors.error,
               ),
-              label: const Text(
-                'Delete',
-                style: TextStyle(color: AppColors.error),
-              ),
+              label: Text('Delete', style: TextStyle(color: AppColors.error)),
             ),
             IconButton(
               onPressed: () => setState(_selected.clear),
@@ -431,7 +475,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -534,10 +578,7 @@ class _ContactsListViewState extends State<_ContactsListView> {
               bloc.add(ContactsListDeleteRequested(ids));
               setState(_selected.clear);
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -689,7 +730,7 @@ class _PrimaryBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star, size: 10, color: AppColors.success),
+          Icon(Icons.star, size: 10, color: AppColors.success),
           const SizedBox(width: 2),
           Text(
             'PRIMARY',
@@ -746,7 +787,7 @@ class _MenuFilter<T> extends StatelessWidget {
               children: [
                 Expanded(child: Text(options[i].value)),
                 if (options[i].key == selected)
-                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  Icon(Icons.check, size: 16, color: AppColors.primary),
               ],
             ),
           ),
@@ -984,7 +1025,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                 child: _pickedFile == null
                     ? Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.upload_file_outlined,
                             size: 28,
                             color: AppColors.textMuted,
@@ -1000,7 +1041,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                       )
                     : Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.description_outlined,
                             color: AppColors.primary,
                           ),
@@ -1049,7 +1090,7 @@ class _ImportContactsDialogState extends State<_ImportContactsDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 18,
                         color: AppColors.primary,
@@ -1148,7 +1189,7 @@ class _ContactImportResultDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_outline,
                   size: 18,
                   color: AppColors.success,
@@ -1163,11 +1204,7 @@ class _ContactImportResultDialog extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 18,
-                  color: AppColors.error,
-                ),
+                Icon(Icons.error_outline, size: 18, color: AppColors.error),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${result.errors.length} row(s) skipped',

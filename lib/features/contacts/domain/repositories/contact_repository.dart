@@ -14,6 +14,8 @@ abstract class ContactRepository {
     String? tier,
     bool? isPrimary,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit,
     int offset,
   });
@@ -79,6 +81,8 @@ abstract class ContactRemoteDataSource {
     String? tier,
     bool? isPrimary,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit,
     int offset,
   });

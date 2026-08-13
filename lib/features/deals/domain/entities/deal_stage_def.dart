@@ -22,3 +22,10 @@ class DealStageDef extends Equatable {
   @override
   List<Object?> get props => [id, companyId, name, sortOrder, isCold];
 }
+
+/// True when moving a deal into [stage] needs a reason. The API requires
+/// `cold_reason` for cold stages *and* Closed Lost specifically
+/// (`ColdReasonRequiredError`, `deal_service.py`) — `DealStage` only exposes
+/// `isCold`, so Closed Lost needs a name check the same way the backend does.
+bool dealStageRequiresReason(DealStageDef stage) =>
+    stage.isCold || stage.name == 'Closed Lost';

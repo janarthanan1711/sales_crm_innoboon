@@ -9,6 +9,8 @@ class GetLeadsParams {
   final String? source;
   final String? status;
   final String? search;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
   final int limit;
   final int offset;
 
@@ -17,6 +19,8 @@ class GetLeadsParams {
     this.source,
     this.status,
     this.search,
+    this.dateFrom,
+    this.dateTo,
     this.limit = 20,
     this.offset = 0,
   });
@@ -36,6 +40,8 @@ class GetLeadsUseCase
       source: params.source,
       status: params.status,
       search: params.search,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
       limit: params.limit,
       offset: params.offset,
     );

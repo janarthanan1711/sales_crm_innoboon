@@ -13,6 +13,8 @@ class GetContactsParams extends Equatable {
   final String? tier;
   final bool? isPrimary;
   final String? search;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
   final int limit;
   final int offset;
 
@@ -22,6 +24,8 @@ class GetContactsParams extends Equatable {
     this.tier,
     this.isPrimary,
     this.search,
+    this.dateFrom,
+    this.dateTo,
     this.limit = 20,
     this.offset = 0,
   });
@@ -33,6 +37,8 @@ class GetContactsParams extends Equatable {
     tier,
     isPrimary,
     search,
+    dateFrom,
+    dateTo,
     limit,
     offset,
   ];
@@ -51,6 +57,8 @@ class GetContactsUseCase {
       tier: params.tier,
       isPrimary: params.isPrimary,
       search: params.search,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
       limit: params.limit,
       offset: params.offset,
     );
