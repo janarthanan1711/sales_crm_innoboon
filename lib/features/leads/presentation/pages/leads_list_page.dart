@@ -19,6 +19,8 @@ import '../../domain/entities/lead_import_result.dart';
 import '../../domain/usecases/import_leads_usecase.dart';
 import '../../domain/usecases/download_import_template_usecase.dart';
 import '../../domain/usecases/export_leads_usecase.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../bloc/leads_list_bloc.dart';
@@ -28,8 +30,19 @@ class LeadsListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Remembered across visits (see DateRangeFilterMemory) -- otherwise the
+    // date range resets every time you navigate away and back, since this
+    // bloc is a fresh instance per visit. Built directly (bypassing the
+    // sl<LeadsListBloc>() factory, which takes no constructor args) so the
+    // remembered range can be threaded in, same as DealsListPage.
+    final memory = sl<LeadsFilterMemory>();
     return BlocProvider(
-      create: (_) => sl<LeadsListBloc>()..add(const LeadsListLoadRequested()),
+      create: (_) => LeadsListBloc(
+        getLeadsUseCase: sl(),
+        setLeadFavouriteUseCase: sl(),
+        dateFrom: memory.dateFrom,
+        dateTo: memory.dateTo,
+      )..add(const LeadsListLoadRequested()),
       child: const _LeadsListView(),
     );
   }
@@ -48,6 +61,10 @@ class _LeadsListViewState extends State<_LeadsListView> {
   String? _statusFilter;
   String? _sourceFilter;
   int? _ownerIdFilter;
+  // Seeded from LeadsFilterMemory so the on-screen fields match the range
+  // the bloc was constructed with (LeadsListPage.build).
+  DateTime? _dateFrom = sl<LeadsFilterMemory>().dateFrom;
+  DateTime? _dateTo = sl<LeadsFilterMemory>().dateTo;
   bool _exporting = false;
 
   @override
@@ -112,8 +129,18 @@ class _LeadsListViewState extends State<_LeadsListView> {
         status: _statusFilter,
         source: _sourceFilter,
         ownerId: _ownerIdFilter,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
       ),
     );
+  }
+
+  /// Keeps LeadsFilterMemory in sync with `_dateFrom`/`_dateTo` so the range
+  /// survives navigating away and back (see DateRangeFilterMemory).
+  void _rememberDateRange() {
+    final memory = sl<LeadsFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
   }
 
   void _clearFilters(BuildContext context) {
@@ -122,8 +149,48 @@ class _LeadsListViewState extends State<_LeadsListView> {
       _statusFilter = null;
       _sourceFilter = null;
       _ownerIdFilter = null;
+      _dateFrom = null;
+      _dateTo = null;
     });
+    _rememberDateRange();
     context.read<LeadsListBloc>().add(const LeadsListCleared());
+  }
+
+  /// Created-at date-range filter — mirrors the Audit Log tab's picker
+  /// (admin_settings_page.dart's `_AuditLogTab`). Both ends are inclusive.
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateFrom = picked.start;
+      _dateTo = picked.end;
+    });
+    _rememberDateRange();
+    if (!context.mounted) return;
+    _applyFilters(context);
+  }
+
+  void _clearDateRange(BuildContext context) {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    _rememberDateRange();
+    context.read<LeadsListBloc>().add(
+      LeadsListFilterChanged(
+        status: _statusFilter,
+        source: _sourceFilter,
+        ownerId: _ownerIdFilter,
+        clearDate: true,
+      ),
+    );
   }
 
   @override
@@ -326,6 +393,23 @@ class _LeadsListViewState extends State<_LeadsListView> {
             },
           ),
           const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => _pickDateRange(context),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _dateFrom != null && _dateTo != null
+                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (_dateFrom != null && _dateTo != null)
+            IconButton(
+              onPressed: () => _clearDateRange(context),
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear date range',
+              visualDensity: VisualDensity.compact,
+            ),
+          const SizedBox(width: AppSpacing.sm),
           TextButton.icon(
             onPressed: () => _clearFilters(context),
             icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
@@ -394,7 +478,7 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -445,7 +529,7 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -638,7 +722,7 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_right,
                         color: AppColors.textMuted,
                       ),
@@ -677,11 +761,7 @@ class _ContactLine extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            size: 14,
-            color: AppColors.error,
-          ),
+          Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.error),
           const SizedBox(width: 4),
           Text(
             missingLabel,
@@ -798,7 +878,7 @@ class _LeadCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.email_outlined,
                     size: 14,
                     color: AppColors.textMuted,
@@ -858,8 +938,7 @@ class _FilterDropdown extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text(option)),
-              if (isSel)
-                const Icon(Icons.check, size: 16, color: AppColors.primary),
+              if (isSel) Icon(Icons.check, size: 16, color: AppColors.primary),
             ],
           ),
         );
@@ -954,7 +1033,7 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
             children: [
               const Expanded(child: Text('All')),
               if (selectedId == null)
-                const Icon(Icons.check, size: 16, color: AppColors.primary),
+                Icon(Icons.check, size: 16, color: AppColors.primary),
             ],
           ),
         ),
@@ -965,7 +1044,7 @@ class _OwnerFilterDropdownState extends State<_OwnerFilterDropdown> {
               children: [
                 Expanded(child: Text(owner.displayName)),
                 if (owner.id == selectedId)
-                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  Icon(Icons.check, size: 16, color: AppColors.primary),
               ],
             ),
           ),
@@ -1149,7 +1228,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                 child: _pickedFile == null
                     ? Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.upload_file_outlined,
                             size: 28,
                             color: AppColors.textMuted,
@@ -1165,7 +1244,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                       )
                     : Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.description_outlined,
                             color: AppColors.primary,
                           ),
@@ -1213,7 +1292,7 @@ class _ImportLeadsDialogState extends State<_ImportLeadsDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 18,
                         color: AppColors.primary,
@@ -1312,7 +1391,7 @@ class _ImportResultDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_outline,
                   size: 18,
                   color: AppColors.success,
@@ -1327,11 +1406,7 @@ class _ImportResultDialog extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 18,
-                  color: AppColors.error,
-                ),
+                Icon(Icons.error_outline, size: 18, color: AppColors.error),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   '${result.errors.length} row(s) skipped',

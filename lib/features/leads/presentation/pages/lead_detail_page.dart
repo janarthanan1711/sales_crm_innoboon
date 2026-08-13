@@ -65,7 +65,7 @@ class _LeadDetailViewState extends State<_LeadDetailView>
         listener: (context, state) {
           if (state is LeadDetailConverted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Lead converted to Account successfully!'),
                 backgroundColor: AppColors.success,
               ),
@@ -74,7 +74,7 @@ class _LeadDetailViewState extends State<_LeadDetailView>
           }
           if (state is LeadDetailDeleted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Lead deleted.'),
                 backgroundColor: AppColors.success,
               ),
@@ -114,7 +114,7 @@ class _LeadDetailViewState extends State<_LeadDetailView>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
           child: TabBar(
@@ -272,7 +272,7 @@ class _Header extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.business,
                             size: 13,
                             color: AppColors.success,
@@ -407,7 +407,7 @@ class _Header extends StatelessWidget {
           onSelected: (value) {
             if (value == 'delete') _confirmDelete(context, lead.id);
           },
-          itemBuilder: (_) => const [
+          itemBuilder: (_) => [
             PopupMenuItem(
               value: 'delete',
               child: Row(
@@ -450,10 +450,7 @@ class _Header extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               context.read<LeadDetailBloc>().add(LeadDetailDeleteRequested(id));
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -588,11 +585,7 @@ class _ContactInfoCard extends StatelessWidget {
           if (lead.domain != null) ...[
             Row(
               children: [
-                const Icon(
-                  Icons.language,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
+                Icon(Icons.language, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: LinkText(
@@ -608,11 +601,7 @@ class _ContactInfoCard extends StatelessWidget {
           if (lead.linkedinUrl != null)
             Row(
               children: [
-                const Icon(
-                  Icons.link,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
+                Icon(Icons.link, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: AppSpacing.xs),
                 // Long profile URLs used to ellipsize into uselessness in this
                 // narrow side panel, so show a compact label (scheme/`www.`
@@ -1136,11 +1125,7 @@ class _ActivityCenterState extends State<_ActivityCenter> {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.assignment_outlined,
-            size: 44,
-            color: AppColors.textMuted,
-          ),
+          Icon(Icons.assignment_outlined, size: 44, color: AppColors.textMuted),
           const SizedBox(height: AppSpacing.md),
           Text('No activities logged yet', style: AppTextStyles.h4),
           const SizedBox(height: AppSpacing.sm),
@@ -1364,7 +1349,7 @@ class _ActivityRow extends StatelessWidget {
                 InkWell(
                   onTap: () => _showEditDialog(context),
                   borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.edit_outlined,
@@ -1376,7 +1361,7 @@ class _ActivityRow extends StatelessWidget {
                 InkWell(
                   onTap: () => _confirmDelete(context),
                   borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.delete_outline,
@@ -1412,10 +1397,7 @@ class _ActivityRow extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               bloc.add(LeadDetailActivityDeleteRequested(leadId, activity.id));
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

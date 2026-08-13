@@ -76,7 +76,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_accountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Select an associated account.'),
           backgroundColor: AppColors.error,
         ),

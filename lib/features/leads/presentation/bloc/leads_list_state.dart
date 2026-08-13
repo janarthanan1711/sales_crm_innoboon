@@ -22,6 +22,8 @@ class LeadsListLoaded extends LeadsListState {
   final String? statusFilter;
   final String? sourceFilter;
   final int? ownerIdFilter;
+  final DateTime? dateFromFilter;
+  final DateTime? dateToFilter;
 
   const LeadsListLoaded({
     required this.leads,
@@ -30,6 +32,8 @@ class LeadsListLoaded extends LeadsListState {
     this.statusFilter,
     this.sourceFilter,
     this.ownerIdFilter,
+    this.dateFromFilter,
+    this.dateToFilter,
   });
 
   @override
@@ -40,6 +44,8 @@ class LeadsListLoaded extends LeadsListState {
     statusFilter,
     sourceFilter,
     ownerIdFilter,
+    dateFromFilter,
+    dateToFilter,
   ];
 }
 

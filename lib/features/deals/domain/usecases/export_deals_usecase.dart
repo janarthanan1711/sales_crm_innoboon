@@ -5,7 +5,7 @@ import '../repositories/deal_repository.dart';
 
 class ExportDealsParams {
   final int? ownerId;
-  final int? stageId;
+  final List<int>? stageId;
 
   /// Empty or null = no tier filter. `tier` is repeatable on the API, so the
   /// UI's multi-select tier checkboxes map straight through.

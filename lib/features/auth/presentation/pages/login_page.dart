@@ -61,11 +61,13 @@ class _WebLoginLayout extends StatelessWidget {
         Expanded(
           flex: 1,
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFFF0F4FF), Color(0xFFE0EAFC)],
+                colors: AppColors.isDark
+                    ? const [Color(0xFF0B1220), Color(0xFF15233F)]
+                    : const [Color(0xFFF0F4FF), Color(0xFFE0EAFC)],
               ),
             ),
             child: Padding(
@@ -116,7 +118,7 @@ class _WebLoginLayout extends StatelessWidget {
                   Text(
                     'Accelerate your sales\nmomentum.',
                     style: AppTextStyles.displayMedium.copyWith(
-                      color: const Color(0xFF0F172A),
+                      color: AppColors.textStrong,
                       fontWeight: FontWeight.w800,
                       fontSize: 48,
                     ),
@@ -125,7 +127,7 @@ class _WebLoginLayout extends StatelessWidget {
                   Text(
                     'The precision tool for high-velocity sales teams. Sign in to\naccess your dashboard, manage leads, and close deals\nfaster.',
                     style: AppTextStyles.bodyLarge.copyWith(
-                      color: const Color(0xFF475569),
+                      color: AppColors.textBody,
                       height: 1.6,
                     ),
                   ),
@@ -137,20 +139,25 @@ class _WebLoginLayout extends StatelessWidget {
                       width: double.infinity,
                       height: 240,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        image: const DecorationImage(
-                          image: NetworkImage(
+                        color: AppColors.surface.withValues(alpha: 0.5),
+                        image: DecorationImage(
+                          image: const NetworkImage(
                             'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80',
                           ),
                           fit: BoxFit.cover,
-                          colorFilter: ColorFilter.mode(
-                            Colors.white54,
-                            BlendMode.lighten,
-                          ),
+                          colorFilter: AppColors.isDark
+                              ? const ColorFilter.mode(
+                                  Colors.black54,
+                                  BlendMode.darken,
+                                )
+                              : const ColorFilter.mode(
+                                  Colors.white54,
+                                  BlendMode.lighten,
+                                ),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: AppColors.shadow,
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -168,7 +175,7 @@ class _WebLoginLayout extends StatelessWidget {
         Expanded(
           flex: 1,
           child: Container(
-            color: Colors.white,
+            color: AppColors.surface,
             child: Stack(
               children: [
                 Center(
@@ -188,7 +195,7 @@ class _WebLoginLayout extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '© 2024 SalesHub Inc.',
+                        '© 2026 SalesHub Inc.',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -303,7 +310,7 @@ class _LoginFormState extends State<_LoginForm> {
             'Sign in to your account',
             style: AppTextStyles.h1.copyWith(
               fontSize: 28,
-              color: const Color(0xFF1E293B),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -320,7 +327,7 @@ class _LoginFormState extends State<_LoginForm> {
             'Email Address',
             style: AppTextStyles.labelLarge.copyWith(
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF334155),
+              color: AppColors.fieldLabel,
             ),
           ),
           const SizedBox(height: 8),
@@ -330,8 +337,8 @@ class _LoginFormState extends State<_LoginForm> {
             validator: Validators.email,
             decoration: InputDecoration(
               hintText: 'you@company.com',
-              hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(
+              hintStyle: TextStyle(color: AppColors.textMuted),
+              prefixIcon: Icon(
                 Icons.mail_outline,
                 size: 20,
                 color: AppColors.textMuted,
@@ -342,15 +349,15 @@ class _LoginFormState extends State<_LoginForm> {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary),
+                borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
           ),
@@ -361,7 +368,7 @@ class _LoginFormState extends State<_LoginForm> {
             'Password',
             style: AppTextStyles.labelLarge.copyWith(
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF334155),
+              color: AppColors.fieldLabel,
             ),
           ),
           const SizedBox(height: 8),
@@ -372,8 +379,8 @@ class _LoginFormState extends State<_LoginForm> {
             onFieldSubmitted: (_) => _onSubmit(),
             decoration: InputDecoration(
               hintText: '••••••••',
-              hintStyle: const TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(
+              hintStyle: TextStyle(color: AppColors.textMuted),
+              prefixIcon: Icon(
                 Icons.lock_outline,
                 size: 20,
                 color: AppColors.textMuted,
@@ -396,15 +403,15 @@ class _LoginFormState extends State<_LoginForm> {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary),
+                borderSide: BorderSide(color: AppColors.primary),
               ),
             ),
           ),
@@ -425,14 +432,14 @@ class _LoginFormState extends State<_LoginForm> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: AppColors.border),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Remember me',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF475569),
+                      color: AppColors.textBody,
                     ),
                   ),
                 ],
@@ -465,7 +472,7 @@ class _LoginFormState extends State<_LoginForm> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _onSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F47C6),
+                    backgroundColor: AppColors.primaryButton,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

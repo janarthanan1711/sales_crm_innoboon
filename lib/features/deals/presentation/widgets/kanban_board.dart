@@ -39,6 +39,7 @@ Future<_MoveResult?> _showMoveDialog(
 ) async {
   final noteController = TextEditingController();
   final coldController = TextEditingController();
+  final needsReason = dealStageRequiresReason(target);
   final result = await showDialog<Object>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -46,16 +47,16 @@ Future<_MoveResult?> _showMoveDialog(
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (target.isCold)
+          if (needsReason)
             TextField(
               controller: coldController,
-              decoration: const InputDecoration(
-                labelText: 'Cold reason *',
-                helperText: 'Required when moving to a cold stage',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Reason *',
+                helperText: 'Required when moving to ${target.name}',
+                border: const OutlineInputBorder(),
               ),
             ),
-          if (target.isCold) const SizedBox(height: AppSpacing.md),
+          if (needsReason) const SizedBox(height: AppSpacing.md),
           TextField(
             controller: noteController,
             maxLines: 3,
@@ -73,7 +74,7 @@ Future<_MoveResult?> _showMoveDialog(
         ),
         ElevatedButton(
           onPressed: () {
-            if (target.isCold && coldController.text.trim().isEmpty) return;
+            if (needsReason && coldController.text.trim().isEmpty) return;
             Navigator.of(dialogContext).pop(
               _MoveResult(
                 note: noteController.text.trim().isEmpty
@@ -295,7 +296,7 @@ class _KanbanColumn extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: AppColors.border)),
                 ),
                 child: Text(
@@ -376,7 +377,7 @@ class _DealCardState extends State<_DealCard> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.shadow,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -469,11 +470,7 @@ class _DealCardState extends State<_DealCard> {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(
-                Icons.person_outline,
-                size: 13,
-                color: AppColors.textMuted,
-              ),
+              Icon(Icons.person_outline, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -535,7 +532,7 @@ class _DealCardState extends State<_DealCard> {
         padding: EdgeInsets.zero,
         iconSize: 18,
         tooltip: 'Options',
-        icon: const Icon(Icons.more_horiz, color: AppColors.textMuted),
+        icon: Icon(Icons.more_horiz, color: AppColors.textMuted),
         onSelected: (v) {
           if (v == 'view') _openDetail();
           if (v == 'edit') _edit();

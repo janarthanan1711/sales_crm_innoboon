@@ -23,6 +23,8 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
     String? source,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -34,6 +36,8 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
           if (source != null) 'source': source,
           if (status != null) 'status': status,
           if (search != null && search.isNotEmpty) 'search': search,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
           'limit': limit,
           'offset': offset,
         },

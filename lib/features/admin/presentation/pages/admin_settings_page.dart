@@ -12,6 +12,8 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../users/domain/usecases/create_user_usecase.dart';
 import '../../../users/domain/usecases/delete_user_usecase.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/usecases/activate_user_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
@@ -117,11 +119,22 @@ class _UsersTabState extends State<_UsersTab> {
   String _search = '';
   int? _roleFilter;
   String? _statusFilter;
+  // Seeded from UsersFilterMemory so the range survives navigating away from
+  // Settings and back (see DateRangeFilterMemory) -- this tab's state is torn
+  // down every time you leave the page, same as the other list pages.
+  DateTime? _dateFrom = sl<UsersFilterMemory>().dateFrom;
+  DateTime? _dateTo = sl<UsersFilterMemory>().dateTo;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  void _rememberDateRange() {
+    final memory = sl<UsersFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
   }
 
   Future<void> _load() async {
@@ -131,6 +144,8 @@ class _UsersTabState extends State<_UsersTab> {
       roleId: _roleFilter,
       status: _statusFilter,
       search: _search.isEmpty ? null : _search,
+      dateFrom: _dateFrom,
+      dateTo: _dateTo,
     );
     if (!mounted) return;
     rolesResult.fold((_) {}, (r) => _roles = r);
@@ -146,6 +161,27 @@ class _UsersTabState extends State<_UsersTab> {
       }),
     );
   }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked != null) {
+      setState(() {
+        _dateFrom = picked.start;
+        _dateTo = picked.end;
+      });
+      _rememberDateRange();
+      _load();
+    }
+  }
+
+  bool get _hasDateRange => _dateFrom != null && _dateTo != null;
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +238,27 @@ class _UsersTabState extends State<_UsersTab> {
                   _load();
                 },
               ),
+              OutlinedButton.icon(
+                onPressed: _pickDateRange,
+                icon: const Icon(Icons.date_range, size: 18),
+                label: Text(
+                  _hasDateRange
+                      ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                      : 'Date Range',
+                ),
+              ),
+              if (_hasDateRange)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _dateFrom = null;
+                      _dateTo = null;
+                    });
+                    _rememberDateRange();
+                    _load();
+                  },
+                  child: const Text('Clear Dates'),
+                ),
               ElevatedButton.icon(
                 onPressed: () => _showInviteDialog(context),
                 icon: const Icon(Icons.add, size: 18),
@@ -286,7 +343,7 @@ class _UsersTabState extends State<_UsersTab> {
                 (_) {
                   Navigator.pop(dialogContext);
                   messenger.showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text('Invitation sent.'),
                       backgroundColor: AppColors.success,
                     ),
@@ -352,7 +409,7 @@ class _UsersTabState extends State<_UsersTab> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline,
                               size: 16,
                               color: AppColors.error,
@@ -424,7 +481,7 @@ class _UsersTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -557,7 +614,7 @@ class _UserRow extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text(
+                          child: Text(
                             'Deactivate',
                             style: TextStyle(color: AppColors.error),
                           ),
@@ -714,7 +771,7 @@ class _RolesTabState extends State<_RolesTab> {
                                   _showRoleDialog(context, role: role),
                             ),
                             IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.delete_outline,
                                 size: 18,
                                 color: AppColors.error,
@@ -759,10 +816,7 @@ class _RolesTabState extends State<_RolesTab> {
                 (_) => _load(),
               );
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -987,13 +1041,12 @@ class _AuditLogTabState extends State<_AuditLogTab> {
 
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
+    final picked = await showCompactDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: _dateFrom != null && _dateTo != null
-          ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
-          : null,
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
     );
     if (picked != null) {
       _applyFilter(() {
@@ -1147,7 +1200,7 @@ class _AuditTable extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.md,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(

@@ -40,7 +40,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_newController.text != _confirmController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Passwords do not match.'),
           backgroundColor: AppColors.error,
         ),
@@ -50,7 +50,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     final result = await sl<ResetPasswordUseCase>()(
-      ResetPasswordParams(token: widget.token!, newPassword: _newController.text),
+      ResetPasswordParams(
+        token: widget.token!,
+        newPassword: _newController.text,
+      ),
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -92,7 +95,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Choose a new password for your account.',
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.xxxl),
           Text('New Password', style: AppTextStyles.labelLarge),
@@ -104,7 +109,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.lock_outline, size: 20),
               suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
@@ -116,7 +125,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             controller: _confirmController,
             obscureText: _obscure,
             validator: Validators.password,
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.lock_outline, size: 20)),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.lock_outline, size: 20),
+            ),
           ),
           const SizedBox(height: AppSpacing.xxl),
           SizedBox(
@@ -127,7 +138,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Reset Password'),
             ),
@@ -140,13 +154,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   Widget _buildSuccessView() {
     return Column(
       children: [
-        const Icon(Icons.check_circle_outline, size: 72, color: AppColors.success),
+        Icon(Icons.check_circle_outline, size: 72, color: AppColors.success),
         const SizedBox(height: AppSpacing.xxl),
         Text('Password reset', style: AppTextStyles.h1),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Your password has been updated. Sign in with your new password.',
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xxxl),
@@ -165,13 +181,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   Widget _buildInvalidLinkView() {
     return Column(
       children: [
-        const Icon(Icons.error_outline, size: 72, color: AppColors.error),
+        Icon(Icons.error_outline, size: 72, color: AppColors.error),
         const SizedBox(height: AppSpacing.xxl),
         Text('Invalid reset link', style: AppTextStyles.h1),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'This password reset link is missing its token. Request a new one.',
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xxxl),

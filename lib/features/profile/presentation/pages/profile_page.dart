@@ -421,7 +421,7 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
       ),
       (user) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Profile updated.'),
             backgroundColor: AppColors.success,
           ),
@@ -542,7 +542,7 @@ class _PasswordFormState extends State<_PasswordForm> {
   Future<void> _save() async {
     if (_newController.text != _confirmController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('New password and confirmation do not match.'),
           backgroundColor: AppColors.error,
         ),
@@ -551,7 +551,7 @@ class _PasswordFormState extends State<_PasswordForm> {
     }
     if (_currentController.text.isEmpty || _newController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Please fill in all password fields.'),
           backgroundColor: AppColors.error,
         ),

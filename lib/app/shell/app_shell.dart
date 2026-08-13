@@ -6,6 +6,7 @@ import '../../core/auth/permissions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/theme_toggle.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/utils/media_url.dart';
 import '../../core/constants/app_constants.dart';
@@ -205,7 +206,7 @@ class _MobileShell extends StatelessWidget {
       bottomNavigationBar: navItems.length < 2
           ? null
           : Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: AppColors.border, width: 1),
                 ),
@@ -312,7 +313,7 @@ class _WebSidebar extends StatelessWidget {
 
     return Container(
       width: AppSpacing.sidebarWidth,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.sidebarBackground,
         border: Border(right: BorderSide(color: AppColors.border, width: 1)),
       ),
@@ -521,7 +522,7 @@ class _DesktopTopBar extends StatelessWidget {
     return Container(
       height: AppSpacing.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
@@ -532,6 +533,8 @@ class _DesktopTopBar extends StatelessWidget {
           const Spacer(),
 
           // Action buttons
+          const ThemeToggle(),
+          const SizedBox(width: AppSpacing.md),
           const NotificationBell(),
           if (showSettingsAction) const _SettingsAction(),
           const SizedBox(width: AppSpacing.sm),
@@ -564,7 +567,7 @@ class _MobileTopBar extends StatelessWidget {
       child: Container(
         height: AppSpacing.topBarHeight,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
         ),
@@ -585,8 +588,18 @@ class _MobileTopBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(AppConstants.appName, style: AppTextStyles.h4),
+            // Flexible so the app name yields rather than overflowing the row
+            // now that the theme switch shares this space on narrow phones.
+            Flexible(
+              child: Text(
+                AppConstants.appName,
+                style: AppTextStyles.h4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             const Spacer(),
+            const ThemeToggle(compact: true),
+            const SizedBox(width: AppSpacing.xs),
             const NotificationBell(),
             const _SettingsAction(),
             const _UserProfileDropdown(radius: 16),
@@ -758,7 +771,7 @@ class _UserProfileDropdown extends StatelessWidget {
           ),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'profile',
           child: Row(
             children: [
@@ -767,8 +780,8 @@ class _UserProfileDropdown extends StatelessWidget {
                 size: 18,
                 color: AppColors.textSecondary,
               ),
-              SizedBox(width: 8),
-              Text('View Profile'),
+              const SizedBox(width: 8),
+              const Text('View Profile'),
             ],
           ),
         ),
@@ -776,7 +789,7 @@ class _UserProfileDropdown extends StatelessWidget {
         // needs the surrounding context (preview, validation, save state) that
         // a header menu can't give it.
         if (avatarUrl != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'remove_photo',
             child: Row(
               children: [
@@ -790,7 +803,7 @@ class _UserProfileDropdown extends StatelessWidget {
               ],
             ),
           ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'logout',
           child: Row(
             children: [

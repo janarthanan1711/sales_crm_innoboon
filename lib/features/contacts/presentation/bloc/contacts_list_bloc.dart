@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import 'contacts_list_event.dart';
 import 'contacts_list_state.dart';
@@ -9,18 +10,29 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
   final GetContactsUseCase getContactsUseCase;
   final DeleteContactUseCase deleteContactUseCase;
 
+  // Remembers the date range across visits (see DateRangeFilterMemory) --
+  // this bloc is a fresh instance every time you navigate to Contacts
+  // (GoRouter tears the page down when you leave), so without this the range
+  // reset every time.
+  final ContactsFilterMemory filterMemory;
+
   String? _search;
   int? _ownerFilter;
   int? _accountFilter;
   String? _tierFilter;
   bool _primaryOnly = false;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   int _limit = 10;
   int _offset = 0;
 
   ContactsListBloc({
     required this.getContactsUseCase,
     required this.deleteContactUseCase,
-  }) : super(const ContactsListInitial()) {
+    required this.filterMemory,
+  }) : _dateFrom = filterMemory.dateFrom,
+       _dateTo = filterMemory.dateTo,
+       super(const ContactsListInitial()) {
     on<ContactsListLoadRequested>(_onLoad);
     on<ContactsListSearchChanged>(_onSearch);
     on<ContactsListFilterChanged>(_onFilter);
@@ -65,6 +77,15 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
       _tierFilter = event.tier == 'all' ? null : event.tier;
     }
     if (event.isPrimary != null) _primaryOnly = event.isPrimary!;
+    if (event.clearDate) {
+      _dateFrom = null;
+      _dateTo = null;
+    } else {
+      if (event.dateFrom != null) _dateFrom = event.dateFrom;
+      if (event.dateTo != null) _dateTo = event.dateTo;
+    }
+    filterMemory.dateFrom = _dateFrom;
+    filterMemory.dateTo = _dateTo;
     _offset = 0;
     await _load(emit);
   }
@@ -78,6 +99,10 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
     _accountFilter = null;
     _tierFilter = null;
     _primaryOnly = false;
+    _dateFrom = null;
+    _dateTo = null;
+    filterMemory.dateFrom = null;
+    filterMemory.dateTo = null;
     _offset = 0;
     await _load(emit);
   }
@@ -131,6 +156,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
         tier: _tierFilter,
         isPrimary: _primaryOnly ? true : null,
         search: _search,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
         limit: _limit,
         offset: _offset,
       ),
@@ -149,6 +176,8 @@ class ContactsListBloc extends Bloc<ContactsListEvent, ContactsListState> {
           accountFilter: _accountFilter,
           tierFilter: _tierFilter,
           primaryOnly: _primaryOnly,
+          dateFromFilter: _dateFrom,
+          dateToFilter: _dateTo,
           actionError: actionError,
         ),
       ),

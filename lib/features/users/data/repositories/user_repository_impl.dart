@@ -16,6 +16,8 @@ class UserRepositoryImpl implements UserRepository {
     bool? isActive,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
   }) async {
     try {
       final users = await remoteDataSource.getUsers(
@@ -23,6 +25,8 @@ class UserRepositoryImpl implements UserRepository {
         isActive: isActive,
         status: status,
         search: search,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
       );
       return Right(users);
     } on ServerException catch (e) {

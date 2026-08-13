@@ -12,11 +12,18 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
   String? _industryFilter;
   String? _tierFilter;
   int? _ownerFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
   int _limit = 25;
   int _offset = 0;
 
-  AccountsListBloc({required this.getAccountsUseCase})
-    : super(const AccountsListInitial()) {
+  AccountsListBloc({
+    required this.getAccountsUseCase,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) : _dateFrom = dateFrom,
+       _dateTo = dateTo,
+       super(const AccountsListInitial()) {
     on<AccountsListLoadRequested>(_onLoadRequested);
     on<AccountsListSearchChanged>(_onSearchChanged);
     on<AccountsListFilterChanged>(_onFilterChanged);
@@ -53,6 +60,13 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
     } else if (event.ownerId is int) {
       _ownerFilter = event.ownerId as int;
     }
+    if (event.clearDate) {
+      _dateFrom = null;
+      _dateTo = null;
+    } else {
+      if (event.dateFrom != null) _dateFrom = event.dateFrom;
+      if (event.dateTo != null) _dateTo = event.dateTo;
+    }
     _offset = 0;
     await _loadAccounts(emit);
   }
@@ -65,6 +79,8 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
     _industryFilter = null;
     _tierFilter = null;
     _ownerFilter = null;
+    _dateFrom = null;
+    _dateTo = null;
     _offset = 0;
     await _loadAccounts(emit);
   }
@@ -93,6 +109,8 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
         industry: _industryFilter,
         tier: _tierFilter,
         ownerId: _ownerFilter,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
         limit: _limit,
         offset: _offset,
       ),
@@ -110,6 +128,8 @@ class AccountsListBloc extends Bloc<AccountsListEvent, AccountsListState> {
           industryFilter: _industryFilter,
           tierFilter: _tierFilter,
           ownerFilter: _ownerFilter,
+          dateFromFilter: _dateFrom,
+          dateToFilter: _dateTo,
         ),
       ),
     );

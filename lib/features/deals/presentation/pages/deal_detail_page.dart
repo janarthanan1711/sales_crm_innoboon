@@ -55,7 +55,7 @@ class _DealDetailView extends StatelessWidget {
         listener: (context, state) {
           if (state is DealDetailDeleted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Deal deleted.'),
                 backgroundColor: AppColors.success,
               ),
@@ -90,7 +90,7 @@ class _DealDetailView extends StatelessWidget {
           _buildHeader(context, state),
           Material(
             color: AppColors.cardBackground,
-            child: const TabBar(
+            child: TabBar(
               isScrollable: true,
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondary,
@@ -129,7 +129,7 @@ class _DealDetailView extends StatelessWidget {
         .fold<int?>(null, (_, v) => v);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xxl),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
@@ -394,7 +394,7 @@ class _DealDetailView extends StatelessWidget {
       onSelected: (value) {
         if (value == 'delete') _confirmDeleteDeal(context, deal);
       },
-      itemBuilder: (_) => const [
+      itemBuilder: (_) => [
         PopupMenuItem(
           value: 'delete',
           child: Row(
@@ -428,10 +428,7 @@ class _DealDetailView extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               bloc.add(DealDetailDeleteRequested(deal.id));
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -794,7 +791,7 @@ class _DealActivityRow extends StatelessWidget {
               if (canManage) ...[
                 InkWell(
                   onTap: () => _showEditDialog(context),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.edit_outlined,
@@ -805,7 +802,7 @@ class _DealActivityRow extends StatelessWidget {
                 ),
                 InkWell(
                   onTap: () => _confirmDelete(context),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.delete_outline,
@@ -829,11 +826,7 @@ class _DealActivityRow extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              const Icon(
-                Icons.person_outline,
-                size: 14,
-                color: AppColors.textMuted,
-              ),
+              Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
@@ -868,10 +861,7 @@ class _DealActivityRow extends StatelessWidget {
                 DealDetailActivityDeleteRequested(dealId, '${activity.id}'),
               );
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -1147,7 +1137,7 @@ class _StageMoveContent extends StatelessWidget {
                 if (hasActor)
                   TextSpan(
                     text: actor,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
@@ -1161,7 +1151,7 @@ class _StageMoveContent extends StatelessWidget {
                         ),
                         TextSpan(
                           text: fromName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
@@ -1169,7 +1159,7 @@ class _StageMoveContent extends StatelessWidget {
                         const TextSpan(text: ' to '),
                         TextSpan(
                           text: toName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
@@ -1183,7 +1173,7 @@ class _StageMoveContent extends StatelessWidget {
                         ),
                         TextSpan(
                           text: toName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
@@ -1492,7 +1482,7 @@ class _DealContactRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.mail_outline,
                         size: 14,
                         color: AppColors.textMuted,
@@ -1513,7 +1503,7 @@ class _DealContactRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.phone_outlined,
                         size: 14,
                         color: AppColors.textMuted,
@@ -1631,7 +1621,7 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
     final Uint8List? bytes = f.bytes;
     if (bytes == null) {
       messenger.showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Could not read the selected file.'),
           backgroundColor: AppColors.error,
         ),
@@ -1782,7 +1772,7 @@ class _DealDocumentsTabState extends State<_DealDocumentsTab> {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl * 1.5),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.insert_drive_file_outlined,
                   size: 40,
                   color: AppColors.textMuted,

@@ -84,7 +84,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
         listener: (context, state) {
           if (state is AccountDetailDeleted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text('Account deleted.'),
                 backgroundColor: AppColors.success,
               ),
@@ -114,7 +114,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
         // ── Header Card ──────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(AppSpacing.xxl),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.cardBackground,
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
@@ -165,7 +165,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                                   ),
                                   const SizedBox(width: AppSpacing.md),
                                 ],
-                                const Icon(
+                                Icon(
                                   Icons.person_outline,
                                   size: 14,
                                   color: AppColors.textMuted,
@@ -220,7 +220,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                         if (value == 'delete')
                           _confirmDeleteAccount(context, account);
                       },
-                      itemBuilder: (_) => const [
+                      itemBuilder: (_) => [
                         PopupMenuItem(
                           value: 'delete',
                           child: Row(
@@ -357,10 +357,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
               Navigator.of(dialogContext).pop();
               bloc.add(AccountDetailDeleteRequested(account.id));
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -837,7 +834,7 @@ class _ContactsTab extends StatelessWidget {
                           horizontal: AppSpacing.lg,
                           vertical: AppSpacing.md,
                         ),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(color: AppColors.border),
                           ),
@@ -1040,7 +1037,7 @@ class _ContactsTab extends StatelessWidget {
                     final messenger = ScaffoldMessenger.of(context);
                     if (!isEdit && firstNameController.text.trim().isEmpty) {
                       messenger.showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('First name is required.'),
                           backgroundColor: AppColors.error,
                         ),
@@ -1050,7 +1047,7 @@ class _ContactsTab extends StatelessWidget {
                     if (emailController.text.trim().isEmpty &&
                         phoneController.text.trim().isEmpty) {
                       messenger.showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text('Enter an email or a phone number.'),
                           backgroundColor: AppColors.error,
                         ),
@@ -1357,7 +1354,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
     final Uint8List? bytes = f.bytes;
     if (bytes == null) {
       messenger.showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Could not read the selected file.'),
           backgroundColor: AppColors.error,
         ),
@@ -1527,7 +1524,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
                           horizontal: AppSpacing.lg,
                           vertical: AppSpacing.md,
                         ),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(color: AppColors.border),
                           ),
@@ -1714,7 +1711,7 @@ class _DocumentRow extends StatelessWidget {
                 ),
                 if (canManage)
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
                       size: 18,
                       color: AppColors.error,
@@ -1860,11 +1857,7 @@ class _AccountDealCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Icon(
-                    Icons.ac_unit,
-                    size: 13,
-                    color: AppColors.textMuted,
-                  ),
+                  Icon(Icons.ac_unit, size: 13, color: AppColors.textMuted),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -2504,7 +2497,7 @@ class _AccountActivityRow extends StatelessWidget {
                             child: PopupMenuButton<String>(
                               tooltip: 'Actions',
                               padding: EdgeInsets.zero,
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.more_horiz,
                                 size: 18,
                                 color: AppColors.textMuted,
@@ -2513,7 +2506,7 @@ class _AccountActivityRow extends StatelessWidget {
                                 if (v == 'edit') onEdit();
                                 if (v == 'delete') onDelete();
                               },
-                              itemBuilder: (_) => const [
+                              itemBuilder: (_) => [
                                 PopupMenuItem(
                                   value: 'edit',
                                   child: Row(
@@ -2553,7 +2546,7 @@ class _AccountActivityRow extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.person_outline,
                           size: 14,
                           color: AppColors.textMuted,

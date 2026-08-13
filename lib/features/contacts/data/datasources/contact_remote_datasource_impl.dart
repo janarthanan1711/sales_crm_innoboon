@@ -21,6 +21,8 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     String? tier,
     bool? isPrimary,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -33,6 +35,8 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
           'tier': ?tier,
           'is_primary': ?isPrimary,
           if (search != null && search.isNotEmpty) 'search': search,
+          if (dateFrom != null) 'date_from': _formatDate(dateFrom),
+          if (dateTo != null) 'date_to': _formatDate(dateTo),
           'limit': limit,
           'offset': offset,
         },
@@ -197,6 +201,11 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     } on DioException catch (e) {
       throw _normalize(e);
     }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 
   Exception _normalize(DioException e) {

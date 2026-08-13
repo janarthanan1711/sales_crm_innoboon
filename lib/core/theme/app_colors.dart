@@ -1,83 +1,123 @@
 import 'package:flutter/material.dart';
+import 'app_palette.dart';
 
 /// SalesHub Design System — Color Tokens
 /// Extracted from Figma "Sales Prospecting & CRM Platform"
+///
+/// These were `static const` until dark mode landed. They're now getters over
+/// the active [AppPalette], which is what lets ~900 existing call sites pick up
+/// dark mode without being touched. The trade-off is that they can no longer
+/// appear inside `const` expressions — a widget that used to be
+/// `const BoxDecoration(color: AppColors.border)` simply drops its `const`.
+///
+/// [applyBrightness] is called from the app root on every build, so the palette
+/// is always in step with the `MaterialApp` theme that's about to be painted.
 class AppColors {
   AppColors._();
 
+  static AppPalette _palette = AppPalette.light;
+
+  /// Swaps the token set. Call this *before* building the widget tree for a
+  /// given brightness — the app root does it inline for exactly that reason.
+  static void applyBrightness(Brightness brightness) {
+    _palette = brightness == Brightness.dark
+        ? AppPalette.dark
+        : AppPalette.light;
+  }
+
+  /// For the handful of places that genuinely need to branch — chart tooltips,
+  /// image overlays, anything painting its own contrast.
+  static bool get isDark => _palette.isDark;
+
+  static AppPalette get palette => _palette;
+
   // ─── Primary ───────────────────────────────────────────
-  static const Color primary = Color(0xFF2563EB);
-  static const Color primaryLight = Color(0xFFEFF6FF);
-  static const Color primaryDark = Color(0xFF1D4ED8);
-  static const Color primaryHover = Color(0xFF3B82F6);
+  static Color get primary => _palette.primary;
+  static Color get primaryLight => _palette.primaryLight;
+  static Color get primaryDark => _palette.primaryDark;
+  static Color get primaryHover => _palette.primaryHover;
 
   // ─── Surface & Background ─────────────────────────────
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color background = Color(0xFFF8FAFC);
-  static const Color scaffoldBackground = Color(0xFFF8FAFC);
-  static const Color cardBackground = Color(0xFFFFFFFF);
-  static const Color sidebarBackground = Color(0xFFFFFFFF);
+  static Color get surface => _palette.surface;
+  static Color get background => _palette.background;
+  static Color get scaffoldBackground => _palette.scaffoldBackground;
+  static Color get cardBackground => _palette.cardBackground;
+  static Color get sidebarBackground => _palette.sidebarBackground;
 
   // ─── Text ──────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textMuted = Color(0xFF94A3B8);
-  static const Color textOnPrimary = Color(0xFFFFFFFF);
-  static const Color textLink = Color(0xFF2563EB);
+  static Color get textPrimary => _palette.textPrimary;
+  static Color get textSecondary => _palette.textSecondary;
+  static Color get textMuted => _palette.textMuted;
+  static Color get textOnPrimary => _palette.textOnPrimary;
+  static Color get textLink => _palette.textLink;
+
+  /// Three one-off shades that several pages hard-coded instead of using the
+  /// tokens above (a near-black hero heading, a slate-600 body, a slate-700
+  /// field label), plus the deeper blue those pages used on their primary
+  /// button. Promoted to tokens so they can go dark — their light values are
+  /// exactly what those pages had, so nothing shifts in light mode.
+  static Color get textStrong => _palette.textStrong;
+  static Color get textBody => _palette.textBody;
+  static Color get fieldLabel => _palette.fieldLabel;
+  static Color get primaryButton => _palette.primaryButton;
 
   // ─── Borders & Dividers ────────────────────────────────
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color borderLight = Color(0xFFF1F5F9);
-  static const Color divider = Color(0xFFE2E8F0);
+  static Color get border => _palette.border;
+  static Color get borderLight => _palette.borderLight;
+  static Color get divider => _palette.divider;
 
   // ─── Semantic ──────────────────────────────────────────
-  static const Color success = Color(0xFF16A34A);
-  static const Color successLight = Color(0xFFF0FDF4);
-  static const Color warning = Color(0xFFEA580C);
-  static const Color warningLight = Color(0xFFFFF7ED);
-  static const Color error = Color(0xFFDC2626);
-  static const Color errorLight = Color(0xFFFEF2F2);
-  static const Color info = Color(0xFF0EA5E9);
-  static const Color infoLight = Color(0xFFF0F9FF);
+  static Color get success => _palette.success;
+  static Color get successLight => _palette.successLight;
+  static Color get warning => _palette.warning;
+  static Color get warningLight => _palette.warningLight;
+  static Color get error => _palette.error;
+  static Color get errorLight => _palette.errorLight;
+  static Color get info => _palette.info;
+  static Color get infoLight => _palette.infoLight;
 
   // ─── Tier Badge Colors ─────────────────────────────────
-  static const Color tierStrategicBg = Color(0xFFEFF6FF);
-  static const Color tierStrategicText = Color(0xFF2563EB);
-  static const Color tierDiamondBg = Color(0xFFF5F3FF);
-  static const Color tierDiamondText = Color(0xFF7C3AED);
-  static const Color tierGoldBg = Color(0xFFFFFBEB);
-  static const Color tierGoldText = Color(0xFFD97706);
-  static const Color tierSilverBg = Color(0xFFF3F4F6);
-  static const Color tierSilverText = Color(0xFF6B7280);
-  static const Color tierBronzeBg = Color(0xFFFEF3C7);
-  static const Color tierBronzeText = Color(0xFF92400E);
+  static Color get tierStrategicBg => _palette.tierStrategicBg;
+  static Color get tierStrategicText => _palette.tierStrategicText;
+  static Color get tierDiamondBg => _palette.tierDiamondBg;
+  static Color get tierDiamondText => _palette.tierDiamondText;
+  static Color get tierGoldBg => _palette.tierGoldBg;
+  static Color get tierGoldText => _palette.tierGoldText;
+  static Color get tierSilverBg => _palette.tierSilverBg;
+  static Color get tierSilverText => _palette.tierSilverText;
+  static Color get tierBronzeBg => _palette.tierBronzeBg;
+  static Color get tierBronzeText => _palette.tierBronzeText;
 
   // ─── Stage Colors ──────────────────────────────────────
-  static const Color stageReceived = Color(0xFF64748B);
-  static const Color stageQualified = Color(0xFF2563EB);
-  static const Color stageEvaluation = Color(0xFF7C3AED);
-  static const Color stageProposal = Color(0xFF2563EB);
-  static const Color stageContract = Color(0xFF0EA5E9);
-  static const Color stageWon = Color(0xFF16A34A);
-  static const Color stageLost = Color(0xFFDC2626);
-  static const Color stageCold = Color(0xFF94A3B8);
+  static Color get stageReceived => _palette.stageReceived;
+  static Color get stageQualified => _palette.stageQualified;
+  static Color get stageEvaluation => _palette.stageEvaluation;
+  static Color get stageProposal => _palette.stageProposal;
+  static Color get stageContract => _palette.stageContract;
+  static Color get stageWon => _palette.stageWon;
+  static Color get stageLost => _palette.stageLost;
+  static Color get stageCold => _palette.stageCold;
 
   // ─── Deal Stage Badge Colors ───────────────────────────
-  static const Color discoveryBg = Color(0xFFEFF6FF);
-  static const Color discoveryText = Color(0xFF2563EB);
-  static const Color proposalBg = Color(0xFFEFF6FF);
-  static const Color proposalText = Color(0xFF2563EB);
-  static const Color negotiationBg = Color(0xFFFFF7ED);
-  static const Color negotiationText = Color(0xFFEA580C);
+  static Color get discoveryBg => _palette.discoveryBg;
+  static Color get discoveryText => _palette.discoveryText;
+  static Color get proposalBg => _palette.proposalBg;
+  static Color get proposalText => _palette.proposalText;
+  static Color get negotiationBg => _palette.negotiationBg;
+  static Color get negotiationText => _palette.negotiationText;
 
   // ─── Navigation ────────────────────────────────────────
-  static const Color navActive = Color(0xFF2563EB);
-  static const Color navActiveBg = Color(0xFFEFF6FF);
-  static const Color navInactive = Color(0xFF64748B);
-  static const Color navHover = Color(0xFFF8FAFC);
+  static Color get navActive => _palette.navActive;
+  static Color get navActiveBg => _palette.navActiveBg;
+  static Color get navInactive => _palette.navInactive;
+  static Color get navHover => _palette.navHover;
 
   // ─── Misc ──────────────────────────────────────────────
-  static const Color shadow = Color(0x0A000000);
-  static const Color overlay = Color(0x33000000);
-  static const Color avatarBg = Color(0xFFE2E8F0);
+  static Color get shadow => _palette.shadow;
+  static Color get overlay => _palette.overlay;
+  static Color get avatarBg => _palette.avatarBg;
+
+  /// White in both modes — for text/icons sitting on a filled brand-coloured
+  /// surface, where the background doesn't change with the theme.
+  static const Color onAccent = Color(0xFFFFFFFF);
 }

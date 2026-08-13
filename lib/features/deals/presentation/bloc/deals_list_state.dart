@@ -20,7 +20,12 @@ class DealsListLoaded extends DealsListState {
   final List<Deal> deals;
   final List<DealStageDef> stages;
   final int? ownerIdFilter;
-  final int? stageIdFilter;
+  final List<int>? stageIdFilter;
+
+  // On-page `created_at` range filter (separate from the constructor-only
+  // dashboard drill-down range).
+  final DateTime? dateFromFilter;
+  final DateTime? dateToFilter;
 
   /// One-shot error surfaced after a failed stage update (e.g. a kanban
   /// drag) — read once via `BlocListener`, not persisted.
@@ -31,6 +36,8 @@ class DealsListLoaded extends DealsListState {
     this.stages = const [],
     this.ownerIdFilter,
     this.stageIdFilter,
+    this.dateFromFilter,
+    this.dateToFilter,
     this.actionError,
   });
 
@@ -40,6 +47,8 @@ class DealsListLoaded extends DealsListState {
     stages,
     ownerIdFilter,
     stageIdFilter,
+    dateFromFilter,
+    dateToFilter,
     actionError,
   ];
 }

@@ -17,6 +17,8 @@ class ContactRepositoryImpl implements ContactRepository {
     String? tier,
     bool? isPrimary,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -28,6 +30,8 @@ class ContactRepositoryImpl implements ContactRepository {
           tier: tier,
           isPrimary: isPrimary,
           search: search,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
           limit: limit,
           offset: offset,
         ),

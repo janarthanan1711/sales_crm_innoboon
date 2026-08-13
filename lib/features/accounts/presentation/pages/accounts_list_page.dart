@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -13,6 +14,8 @@ import '../../../../app/router/route_paths.dart';
 import '../../domain/usecases/export_accounts_usecase.dart';
 import '../../../leads/domain/entities/lead_enums.dart';
 import '../../../users/domain/entities/owner_user.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
+import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/account.dart';
 import '../bloc/accounts_list_bloc.dart';
@@ -22,8 +25,18 @@ class AccountsListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Remembered across visits (see DateRangeFilterMemory) -- otherwise the
+    // date range resets every time you navigate away and back, since this
+    // bloc is a fresh instance per visit. Built directly (bypassing the
+    // sl<AccountsListBloc>() factory, which takes no constructor args) so the
+    // remembered range can be threaded in.
+    final memory = sl<AccountsFilterMemory>();
     return BlocProvider(
-      create: (_) => sl<AccountsListBloc>()..add(const AccountsListLoadRequested()),
+      create: (_) => AccountsListBloc(
+        getAccountsUseCase: sl(),
+        dateFrom: memory.dateFrom,
+        dateTo: memory.dateTo,
+      )..add(const AccountsListLoadRequested()),
       child: const _AccountsListView(),
     );
   }
@@ -43,6 +56,10 @@ class _AccountsListViewState extends State<_AccountsListView> {
   // the dropdown chrome can reflect the active choice.
   String? _tier;
   String? _industry;
+  // Seeded from AccountsFilterMemory so the on-screen fields match the range
+  // the bloc was constructed with (AccountsListPage.build).
+  DateTime? _dateFrom = sl<AccountsFilterMemory>().dateFrom;
+  DateTime? _dateTo = sl<AccountsFilterMemory>().dateTo;
   final Set<String> _selected = {};
   bool _exporting = false;
   // Owned here so "Clear Filters" can wipe the search text, not just the
@@ -61,15 +78,58 @@ class _AccountsListViewState extends State<_AccountsListView> {
     super.dispose();
   }
 
+  /// Keeps AccountsFilterMemory in sync with `_dateFrom`/`_dateTo` so the
+  /// range survives navigating away and back (see DateRangeFilterMemory).
+  void _rememberDateRange() {
+    final memory = sl<AccountsFilterMemory>();
+    memory.dateFrom = _dateFrom;
+    memory.dateTo = _dateTo;
+  }
+
   void _clearFilters() {
     _searchController.clear();
     setState(() {
       _tier = null;
       _industry = null;
       _ownerId = null;
+      _dateFrom = null;
+      _dateTo = null;
       _selected.clear();
     });
+    _rememberDateRange();
     context.read<AccountsListBloc>().add(const AccountsListCleared());
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showCompactDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialStart: _dateFrom,
+      initialEnd: _dateTo,
+    );
+    if (picked == null) return;
+    setState(() {
+      _dateFrom = picked.start;
+      _dateTo = picked.end;
+    });
+    _rememberDateRange();
+    if (!context.mounted) return;
+    context.read<AccountsListBloc>().add(
+      AccountsListFilterChanged(dateFrom: picked.start, dateTo: picked.end),
+    );
+  }
+
+  void _clearDateRange(BuildContext context) {
+    setState(() {
+      _dateFrom = null;
+      _dateTo = null;
+    });
+    _rememberDateRange();
+    context.read<AccountsListBloc>().add(
+      const AccountsListFilterChanged(clearDate: true),
+    );
   }
 
   /// Exports the currently-filtered accounts as an `.xlsx` via
@@ -152,12 +212,16 @@ class _AccountsListViewState extends State<_AccountsListView> {
               child: BlocBuilder<AccountsListBloc, AccountsListState>(
                 builder: (context, state) {
                   if (state is AccountsListLoading) {
-                    return const AppLoadingIndicator(message: 'Loading accounts...');
+                    return const AppLoadingIndicator(
+                      message: 'Loading accounts...',
+                    );
                   }
                   if (state is AccountsListError) {
                     return ErrorState(
                       message: state.message,
-                      onRetry: () => context.read<AccountsListBloc>().add(const AccountsListLoadRequested()),
+                      onRetry: () => context.read<AccountsListBloc>().add(
+                        const AccountsListLoadRequested(),
+                      ),
                     );
                   }
                   if (state is AccountsListLoaded) {
@@ -175,13 +239,19 @@ class _AccountsListViewState extends State<_AccountsListView> {
                             accounts: state.accounts,
                             selected: _selected,
                             onToggle: (id) => setState(() {
-                              _selected.contains(id) ? _selected.remove(id) : _selected.add(id);
+                              _selected.contains(id)
+                                  ? _selected.remove(id)
+                                  : _selected.add(id);
                             }),
                             onToggleAll: (checked) => setState(() {
                               if (checked) {
-                                _selected.addAll(state.accounts.map((a) => a.id));
+                                _selected.addAll(
+                                  state.accounts.map((a) => a.id),
+                                );
                               } else {
-                                _selected.removeAll(state.accounts.map((a) => a.id));
+                                _selected.removeAll(
+                                  state.accounts.map((a) => a.id),
+                                );
                               }
                             }),
                           ),
@@ -208,7 +278,9 @@ class _AccountsListViewState extends State<_AccountsListView> {
         const SizedBox(height: 4),
         Text(
           'Manage your customer accounts and relationships',
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       ],
     );
@@ -268,7 +340,9 @@ class _AccountsListViewState extends State<_AccountsListView> {
               setState(() => _tier = v == 'All' ? null : v);
               bloc.add(
                 AccountsListFilterChanged(
-                  tier: v == 'All' ? 'All' : wireValueForLabel(leadTierLabels, v),
+                  tier: v == 'All'
+                      ? 'All'
+                      : wireValueForLabel(leadTierLabels, v),
                 ),
               );
             },
@@ -279,9 +353,11 @@ class _AccountsListViewState extends State<_AccountsListView> {
             selectedId: _ownerId,
             onSelected: (id) {
               setState(() => _ownerId = id);
-              bloc.add(AccountsListFilterChanged(
-                ownerId: id ?? AccountsListFilterChanged.clearOwner,
-              ));
+              bloc.add(
+                AccountsListFilterChanged(
+                  ownerId: id ?? AccountsListFilterChanged.clearOwner,
+                ),
+              );
             },
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -294,6 +370,22 @@ class _AccountsListViewState extends State<_AccountsListView> {
               bloc.add(AccountsListFilterChanged(industry: v));
             },
           ),
+          const SizedBox(width: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => _pickDateRange(context),
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _dateFrom != null && _dateTo != null
+                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                  : 'Date Range',
+            ),
+          ),
+          if (_dateFrom != null && _dateTo != null)
+            IconButton(
+              icon: const Icon(Icons.close, size: 16),
+              tooltip: 'Clear date range',
+              onPressed: () => _clearDateRange(context),
+            ),
           const SizedBox(width: AppSpacing.sm),
           TextButton.icon(
             onPressed: _clearFilters,
@@ -320,7 +412,8 @@ class _AccountsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allSelected = accounts.isNotEmpty && accounts.every((a) => selected.contains(a.id));
+    final allSelected =
+        accounts.isNotEmpty && accounts.every((a) => selected.contains(a.id));
     final table = Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
@@ -330,8 +423,11 @@ class _AccountsTable extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-            decoration: const BoxDecoration(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
@@ -375,10 +471,7 @@ class _AccountsTable extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 900),
-          child: SizedBox(
-            width: 900,
-            child: table,
-          ),
+          child: SizedBox(width: 900, child: table),
         ),
       );
     }
@@ -386,12 +479,19 @@ class _AccountsTable extends StatelessWidget {
   }
 
   Widget _header(String label, {int flex = 1}) {
-    return Expanded(flex: flex, child: Text(label, style: AppTextStyles.tableHeader));
+    return Expanded(
+      flex: flex,
+      child: Text(label, style: AppTextStyles.tableHeader),
+    );
   }
 }
 
 class _AccountRow extends StatefulWidget {
-  const _AccountRow({required this.account, required this.selected, required this.onToggle});
+  const _AccountRow({
+    required this.account,
+    required this.selected,
+    required this.onToggle,
+  });
   final Account account;
   final bool selected;
   final VoidCallback onToggle;
@@ -412,7 +512,10 @@ class _AccountRowState extends State<_AccountRow> {
       child: InkWell(
         onTap: () => context.go('/accounts/${account.id}'),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           color: _isHovered ? AppColors.navHover : Colors.transparent,
           child: Row(
             children: [
@@ -430,7 +533,11 @@ class _AccountRowState extends State<_AccountRow> {
                     InitialsAvatar(name: account.companyName, size: 32),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: Text(account.companyName, style: AppTextStyles.tableCellLink, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        account.companyName,
+                        style: AppTextStyles.tableCellLink,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -439,11 +546,19 @@ class _AccountRowState extends State<_AccountRow> {
                 flex: 2,
                 child: Text(
                   account.domain ?? '—',
-                  style: AppTextStyles.tableCell.copyWith(color: AppColors.primary),
+                  style: AppTextStyles.tableCell.copyWith(
+                    color: AppColors.primary,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Expanded(flex: 2, child: Text(account.industry ?? '—', style: AppTextStyles.tableCell)),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  account.industry ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
               Expanded(
                 flex: 2,
                 child: Align(
@@ -454,8 +569,20 @@ class _AccountRowState extends State<_AccountRow> {
                 ),
               ),
               Expanded(flex: 2, child: OwnerChip(name: account.primaryOwner)),
-              Expanded(flex: 1, child: Text('${account.contactCount}', style: AppTextStyles.tableCell)),
-              Expanded(flex: 1, child: Text('${account.dealCount}', style: AppTextStyles.tableCell)),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  '${account.contactCount}',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  '${account.dealCount}',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
             ],
           ),
         ),
@@ -474,10 +601,18 @@ class _PaginationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bloc = context.read<AccountsListBloc>();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: [
-          Text('Rows per page:', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text(
+            'Rows per page:',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
           DropdownButton<int>(
             value: _rowsPerPageOptions.contains(state.limit) ? state.limit : 25,
@@ -492,19 +627,25 @@ class _PaginationBar extends StatelessWidget {
           const Spacer(),
           Text(
             '${state.pageStart}–${state.pageEnd} of ${state.total}',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           IconButton(
             icon: const Icon(Icons.chevron_left, size: 20),
             onPressed: state.hasPrev
-                ? () => bloc.add(AccountsListPageChanged(state.offset - state.limit))
+                ? () => bloc.add(
+                    AccountsListPageChanged(state.offset - state.limit),
+                  )
                 : null,
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right, size: 20),
             onPressed: state.hasNext
-                ? () => bloc.add(AccountsListPageChanged(state.offset + state.limit))
+                ? () => bloc.add(
+                    AccountsListPageChanged(state.offset + state.limit),
+                  )
                 : null,
           ),
         ],
@@ -532,12 +673,16 @@ class _FilterDropdown extends StatelessWidget {
     return PopupMenuButton<String>(
       onSelected: onSelected,
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
       itemBuilder: (context) => options
-          .map((option) => PopupMenuItem(
-                value: option,
-                child: _MenuRow(text: option, checked: option == selected),
-              ))
+          .map(
+            (option) => PopupMenuItem(
+              value: option,
+              child: _MenuRow(text: option, checked: option == selected),
+            ),
+          )
           .toList(),
       child: _FilterChrome(label: selected ?? label, active: selected != null),
     );
@@ -545,7 +690,11 @@ class _FilterDropdown extends StatelessWidget {
 }
 
 class _OwnerFilterDropdown extends StatelessWidget {
-  const _OwnerFilterDropdown({required this.users, required this.selectedId, required this.onSelected});
+  const _OwnerFilterDropdown({
+    required this.users,
+    required this.selectedId,
+    required this.onSelected,
+  });
   final List<OwnerUser> users;
   final int? selectedId;
   final ValueChanged<int?> onSelected;
@@ -561,16 +710,20 @@ class _OwnerFilterDropdown extends StatelessWidget {
     return PopupMenuButton<int>(
       onSelected: (v) => onSelected(v == -1 ? null : v),
       offset: const Offset(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.cardRadius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
       itemBuilder: (context) => [
         PopupMenuItem<int>(
           value: -1,
           child: _MenuRow(text: 'All Owners', checked: selectedId == null),
         ),
-        ...users.map((u) => PopupMenuItem<int>(
-              value: u.id,
-              child: _MenuRow(text: u.displayName, checked: u.id == selectedId),
-            )),
+        ...users.map(
+          (u) => PopupMenuItem<int>(
+            value: u.id,
+            child: _MenuRow(text: u.displayName, checked: u.id == selectedId),
+          ),
+        ),
       ],
       child: _FilterChrome(label: selectedName, active: active),
     );
@@ -588,7 +741,7 @@ class _MenuRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: Text(text)),
-        if (checked) const Icon(Icons.check, size: 16, color: AppColors.primary),
+        if (checked) Icon(Icons.check, size: 16, color: AppColors.primary),
       ],
     );
   }
@@ -602,10 +755,15 @@ class _FilterChrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: active ? AppColors.primaryLight : null,
-        border: Border.all(color: active ? AppColors.primary : AppColors.border),
+        border: Border.all(
+          color: active ? AppColors.primary : AppColors.border,
+        ),
         borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
       ),
       child: Row(

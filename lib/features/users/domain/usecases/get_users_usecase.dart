@@ -16,12 +16,16 @@ class GetUsersUseCase {
     bool? isActive,
     String? status,
     String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
   }) {
     return repository.getUsers(
       roleId: roleId,
       isActive: isActive,
       status: status,
       search: search,
+      dateFrom: dateFrom,
+      dateTo: dateTo,
     );
   }
 }
