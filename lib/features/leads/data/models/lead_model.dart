@@ -67,6 +67,8 @@ class LeadModel extends Lead {
           ?.map(
             (c) => LeadContact(
               id: c['id'] as int,
+              firstName: c['first_name'] as String?,
+              lastName: c['last_name'] as String?,
               email: c['email'] as String?,
               phone: c['phone'] as String?,
             ),
@@ -82,9 +84,8 @@ class LeadModel extends Lead {
 
   /// Request body for `POST /leads`. `id` is included only for updates
   /// (server: present -> partial update, absent -> create). `contacts` is
-  /// intentionally never sent — the server ignores it on update anyway
-  /// (see `lead_service.update_lead`'s `exclude={"id", "contacts"}`) and the
-  /// app doesn't yet collect extra contacts through the form.
+  /// only honored by the server on create — `lead_service.update_lead`
+  /// excludes it, so edits to additional contacts don't currently persist.
   static Map<String, dynamic> toUpsertJson(
     LeadUpsertParams params, {
     int? id,
@@ -111,6 +112,10 @@ class LeadModel extends Lead {
         'contacts': params.additionalContacts!
             .where((c) => !c.isEmpty)
             .map((c) => {
+                  if (c.firstName != null && c.firstName!.isNotEmpty)
+                    'first_name': c.firstName,
+                  if (c.lastName != null && c.lastName!.isNotEmpty)
+                    'last_name': c.lastName,
                   if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
                   if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
                 })

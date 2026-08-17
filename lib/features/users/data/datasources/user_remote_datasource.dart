@@ -21,8 +21,10 @@ abstract class UserRemoteDataSource {
     required String lastName,
     required int roleId,
   });
-  Future<void> deleteUser(int id);
+  Future<void> deleteUser(int id, {bool permanent = false});
   Future<void> activateUser(int id);
+  Future<OwnerUser> reinviteUser(int id);
+  Future<OwnerUser> updateUserRole(int id, int roleId);
 }
 
 /// Real API implementation — calls `GET /users`, `POST /users`,
@@ -86,9 +88,12 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   }
 
   @override
-  Future<void> deleteUser(int id) async {
+  Future<void> deleteUser(int id, {bool permanent = false}) async {
     try {
-      await dioClient.delete(ApiEndpoints.userById('$id'));
+      await dioClient.delete(
+        ApiEndpoints.userById('$id'),
+        queryParameters: permanent ? {'permanent': true} : null,
+      );
     } on DioException catch (e) {
       throw _normalize(e);
     }
@@ -98,6 +103,29 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   Future<void> activateUser(int id) async {
     try {
       await dioClient.post('${ApiEndpoints.userById('$id')}/activate');
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<OwnerUser> reinviteUser(int id) async {
+    try {
+      final response = await dioClient.post('${ApiEndpoints.userById('$id')}/reinvite');
+      return OwnerUserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<OwnerUser> updateUserRole(int id, int roleId) async {
+    try {
+      final response = await dioClient.patch(
+        '${ApiEndpoints.userById('$id')}/role',
+        data: {'role_id': roleId},
+      );
+      return OwnerUserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _normalize(e);
     }

@@ -56,6 +56,8 @@ import '../../features/users/domain/usecases/get_users_usecase.dart';
 import '../../features/users/domain/usecases/create_user_usecase.dart';
 import '../../features/users/domain/usecases/delete_user_usecase.dart';
 import '../../features/users/domain/usecases/activate_user_usecase.dart';
+import '../../features/users/domain/usecases/reinvite_user_usecase.dart';
+import '../../features/users/domain/usecases/update_user_role_usecase.dart';
 
 // Accounts feature
 import '../../features/accounts/data/datasources/account_remote_datasource_impl.dart';
@@ -282,6 +284,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => CreateUserUseCase(sl()));
   sl.registerLazySingleton(() => DeleteUserUseCase(sl()));
   sl.registerLazySingleton(() => ActivateUserUseCase(sl()));
+  sl.registerLazySingleton(() => ReinviteUserUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateUserRoleUseCase(sl()));
 
   // ─── Accounts Feature ───────────────────────────────
   sl.registerLazySingleton<AccountRemoteDataSource>(

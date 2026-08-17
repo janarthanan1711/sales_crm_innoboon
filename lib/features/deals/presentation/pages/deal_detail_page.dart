@@ -758,7 +758,11 @@ class _DealActivityRow extends StatelessWidget {
         (title != null && title.isNotEmpty && activity.note.isNotEmpty)
         ? activity.note
         : null;
-    final byline = activity.updatedAt != null
+    // `updatedAt` is DB-server-defaulted on every row at creation (see
+    // Base.updated_at), so it's never actually null -- `updatedBy` is the
+    // field that only gets set on a real edit (mirrors the Accounts byline
+    // at account_detail_page.dart).
+    final byline = activity.updatedBy != null
         ? 'Edited${activity.updatedByName != null ? ' by ${activity.updatedByName}' : ''}'
         : (activity.createdByName ?? 'User ${activity.createdBy}');
 

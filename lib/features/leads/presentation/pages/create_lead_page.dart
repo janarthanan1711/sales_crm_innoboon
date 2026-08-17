@@ -61,7 +61,9 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   bool _loadingUsers = true;
   int? _selectedOwnerId;
 
-  final List<_ContactDraftControllers> _additionalContactControllers = [];
+  /// Empty means the "Add additional Contact?" toggle is off. One or more
+  /// entries means it's on -- multiple contacts can be added, not just one.
+  final List<_ContactDraftControllers> _additionalContacts = [];
   List<LeadActivity> _activities = [];
 
   bool get isEdit => widget.lead != null;
@@ -92,9 +94,10 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       if (l.contacts != null) {
         // The backend returns the lead's own primary email/phone as a contact
         // row too. That's already shown in the Primary Email / Phone fields
-        // above, so skip the first entry that just mirrors it — otherwise the
-        // Additional Contacts section shows a phantom duplicate of the primary
-        // email on every edit.
+        // above, so skip the entry that just mirrors it — otherwise the
+        // additional-contact list shows a phantom duplicate of the primary
+        // email on every edit. Every other non-primary contact is loaded
+        // back in -- there can be more than one.
         final primaryEmail = l.email.trim().toLowerCase();
         final primaryPhone = (l.phone ?? '').trim();
         var skippedPrimary = false;
@@ -111,8 +114,10 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             continue;
           }
 
-          _additionalContactControllers.add(
+          _additionalContacts.add(
             _ContactDraftControllers(
+              firstName: contact.firstName,
+              lastName: contact.lastName,
               email: contact.email,
               phone: contact.phone,
             ),
@@ -147,7 +152,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     _emailController.dispose();
     _phoneController.dispose();
     _followUpNoteController.dispose();
-    for (final c in _additionalContactControllers) {
+    for (final c in _additionalContacts) {
       c.dispose();
     }
     super.dispose();
@@ -199,9 +204,15 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       followUpNote: _followUpNoteController.text.trim().isEmpty
           ? null
           : _followUpNoteController.text.trim(),
-      additionalContacts: _additionalContactControllers
+      additionalContacts: _additionalContacts
           .map(
             (c) => LeadContactDraft(
+              firstName: c.firstName.text.trim().isEmpty
+                  ? null
+                  : c.firstName.text.trim(),
+              lastName: c.lastName.text.trim().isEmpty
+                  ? null
+                  : c.lastName.text.trim(),
               email: c.email.text.trim().isEmpty ? null : c.email.text.trim(),
               phone: c.phone.text.trim().isEmpty ? null : c.phone.text.trim(),
             ),
@@ -490,84 +501,136 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     );
   }
 
-  Widget _buildAdditionalContacts() {
+  // Toggle reveals the section; once on, any number of contacts can be
+  // added via "Add another contact" below -- not just one.
+  Widget _buildAdditionalContacts(bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _additionalContactControllers.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: _buildResponsiveRow(
-                    _buildField(
-                      'Additional Email',
-                      false,
-                      TextFormField(
-                        controller: _additionalContactControllers[i].email,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? null : Validators.email(v),
-                        decoration: _inputDecoration(
-                          'alternate@acme.com',
-                          prefix: Icon(
-                            Icons.mail_outline,
-                            size: 18,
-                            color: AppColors.textMuted,
+        Row(
+          children: [
+            Icon(Icons.person_add_alt_1, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Add additional Contact?',
+                style: AppTextStyles.labelLarge,
+              ),
+            ),
+            Switch(
+              value: _additionalContacts.isNotEmpty,
+              onChanged: (v) => setState(() {
+                if (v) {
+                  _additionalContacts.add(_ContactDraftControllers());
+                } else {
+                  for (final c in _additionalContacts) {
+                    c.dispose();
+                  }
+                  _additionalContacts.clear();
+                }
+              }),
+            ),
+          ],
+        ),
+        for (int i = 0; i < _additionalContacts.length; i++) ...[
+          if (i > 0) ...[
+            const SizedBox(height: 16),
+            Divider(height: 1, color: AppColors.border),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildResponsiveRow(
+                      _buildField(
+                        'First Name',
+                        false,
+                        TextFormField(
+                          controller: _additionalContacts[i].firstName,
+                          decoration: _inputDecoration('Jane'),
+                        ),
+                      ),
+                      _buildField(
+                        'Last Name',
+                        false,
+                        TextFormField(
+                          controller: _additionalContacts[i].lastName,
+                          decoration: _inputDecoration('Doe'),
+                        ),
+                      ),
+                      isMobile,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildResponsiveRow(
+                      _buildField(
+                        'Email',
+                        false,
+                        TextFormField(
+                          controller: _additionalContacts[i].email,
+                          validator: (v) => v == null || v.isEmpty
+                              ? null
+                              : Validators.email(v),
+                          decoration: _inputDecoration(
+                            'alternate@acme.com',
+                            prefix: Icon(
+                              Icons.mail_outline,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    _buildField(
-                      'Contact Phone',
-                      false,
-                      TextFormField(
-                        controller: _additionalContactControllers[i].phone,
-                        keyboardType: TextInputType.phone,
-                        decoration: _inputDecoration(
-                          '+1 (555) 000-0000',
-                          prefix: Icon(
-                            Icons.phone_outlined,
-                            size: 18,
-                            color: AppColors.textMuted,
+                      _buildField(
+                        'Phone',
+                        false,
+                        TextFormField(
+                          controller: _additionalContacts[i].phone,
+                          keyboardType: TextInputType.phone,
+                          decoration: _inputDecoration(
+                            '+1 (555) 000-0000',
+                            prefix: Icon(
+                              Icons.phone_outlined,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ),
                       ),
+                      isMobile,
                     ),
-                    // Always stack email+phone vertically inside the narrow
-                    // contact row so the remove button keeps its space.
-                    true,
-                  ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      final c = _additionalContactControllers.removeAt(i);
-                      c.dispose();
-                    });
-                  },
-                  icon: Icon(Icons.close, color: AppColors.textMuted),
-                  tooltip: 'Remove contact',
-                ),
-              ],
+              ),
+              IconButton(
+                onPressed: () => setState(() {
+                  final c = _additionalContacts.removeAt(i);
+                  c.dispose();
+                }),
+                icon: Icon(Icons.close, color: AppColors.textMuted),
+                tooltip: 'Remove contact',
+              ),
+            ],
+          ),
+        ],
+        if (_additionalContacts.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => setState(
+              () => _additionalContacts.add(_ContactDraftControllers()),
+            ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add another contact'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: EdgeInsets.zero,
+              alignment: Alignment.centerLeft,
             ),
           ),
-        const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: () {
-            setState(() {
-              _additionalContactControllers.add(_ContactDraftControllers());
-            });
-          },
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Add another contact'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            padding: EdgeInsets.zero,
-            alignment: Alignment.centerLeft,
-          ),
-        ),
+        ],
       ],
     );
   }
@@ -649,8 +712,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
               ),
             ),
           ),
-        ]),
-        _buildCard('Contact Details', Icons.contact_mail_outlined, [
+          const SizedBox(height: 16),
           _buildResponsiveRow(
             _buildField(
               'Primary Email',
@@ -685,7 +747,9 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
             ),
             isMobile,
           ),
-          _buildAdditionalContacts(),
+        ]),
+        _buildCard('Contact Details', Icons.contact_mail_outlined, [
+          _buildAdditionalContacts(isMobile),
         ]),
         if (isEdit) _buildActivityLog(),
       ],
@@ -990,12 +1054,7 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       children: [
         TextButton(
           onPressed: _submitting ? null : () => _safePop(),
-          child: Text(
-            'Cancel',
-            style: AppTextStyles.buttonMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
+          child: const Text('Cancel'),
         ),
         const SizedBox(width: 16),
         // Create only. An existing lead is converted from its own detail page,
@@ -1182,17 +1241,27 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
   }
 }
 
-/// Holds the email + phone controllers for one additional-contact row on the
-/// lead form.
+/// Holds the name + email + phone controllers for one additional-contact row
+/// on the lead form.
 class _ContactDraftControllers {
-  _ContactDraftControllers({String? email, String? phone})
-    : email = TextEditingController(text: email),
-      phone = TextEditingController(text: phone);
+  _ContactDraftControllers({
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? phone,
+  }) : firstName = TextEditingController(text: firstName),
+       lastName = TextEditingController(text: lastName),
+       email = TextEditingController(text: email),
+       phone = TextEditingController(text: phone);
 
+  final TextEditingController firstName;
+  final TextEditingController lastName;
   final TextEditingController email;
   final TextEditingController phone;
 
   void dispose() {
+    firstName.dispose();
+    lastName.dispose();
     email.dispose();
     phone.dispose();
   }

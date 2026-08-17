@@ -396,7 +396,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            OutlinedButton(
+                            TextButton(
                               onPressed: _saving
                                   ? null
                                   : () => context.go(RoutePaths.accounts),

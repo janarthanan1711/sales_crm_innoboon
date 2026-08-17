@@ -59,6 +59,12 @@ class DealsListPage extends StatelessWidget {
     final memory = sl<DealsFilterMemory>();
     final effectiveFrom = dateFrom ?? memory.dateFrom;
     final effectiveTo = dateTo ?? memory.dateTo;
+    // A remembered on-page range always applied as `closed_at` (see the
+    // bloc's `_dateField` doc) -- the constructor's `dateField` only carries
+    // a drill-down's explicit value, so a range restored from memory alone
+    // needs the same default or `date_field` silently drops on nav-back.
+    final effectiveDateField =
+        dateField ?? (effectiveFrom != null || effectiveTo != null ? 'closed_at' : null);
     return BlocProvider(
       create: (_) => DealsListBloc(
         getDealsUseCase: sl(),
@@ -67,7 +73,7 @@ class DealsListPage extends StatelessWidget {
         getAccountsUseCase: sl(),
         getUsersUseCase: sl(),
         stageState: stageState,
-        dateField: dateField,
+        dateField: effectiveDateField,
         dateFrom: effectiveFrom,
         dateTo: effectiveTo,
       )..add(const DealsListLoadRequested()),
