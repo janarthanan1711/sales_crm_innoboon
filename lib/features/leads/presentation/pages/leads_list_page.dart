@@ -707,7 +707,9 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                   children: [
                     IconButton(
                       icon: Icon(
-                        lead.isFavourite ? Icons.star : Icons.star_border,
+                        lead.isFavourite
+                            ? Icons.push_pin
+                            : Icons.push_pin_outlined,
                         size: 18,
                         color: lead.isFavourite
                             ? AppColors.warning

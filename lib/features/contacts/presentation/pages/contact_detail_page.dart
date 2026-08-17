@@ -60,40 +60,34 @@ class _ContactDetailView extends StatelessWidget {
       createdAt: state.overview.createdAt,
       createdByName: state.overview.createdByName,
     );
-    return DefaultTabController(
-      // Overview / Deals. "Notes" and "Activity" were both removed — neither
-      // has a backing resource on the API (no contact notes, no contact
-      // activity timeline), so both were placeholders.
-      length: 2,
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(context.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _breadcrumb(context, c),
-            const SizedBox(height: AppSpacing.md),
-            _HeaderCard(contact: c),
-            const SizedBox(height: AppSpacing.lg),
-            ResponsiveBuilder(
-              mobile: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  infoCard,
-                  const SizedBox(height: AppSpacing.lg),
-                  _MainPanel(state: state),
-                ],
-              ),
-              web: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(width: 320, child: infoCard),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(child: _MainPanel(state: state)),
-                ],
-              ),
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(context.pagePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _breadcrumb(context, c),
+          const SizedBox(height: AppSpacing.md),
+          _HeaderCard(contact: c),
+          const SizedBox(height: AppSpacing.lg),
+          ResponsiveBuilder(
+            mobile: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                infoCard,
+                const SizedBox(height: AppSpacing.lg),
+                _MainPanel(state: state),
+              ],
             ),
-          ],
-        ),
+            web: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 320, child: infoCard),
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(child: _MainPanel(state: state)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -291,6 +285,8 @@ class _ContactInfoCard extends StatelessWidget {
   }
 }
 
+// Deals is the only remaining sub-section (Overview was removed), so this no
+// longer needs a TabBar/TabController — just render it directly.
 class _MainPanel extends StatelessWidget {
   const _MainPanel({required this.state});
   final ContactDetailLoaded state;
@@ -300,106 +296,12 @@ class _MainPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TabBar(
-          isScrollable: true,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          tabAlignment: TabAlignment.start,
-          tabs: [
-            Tab(text: 'Overview'),
-            Tab(text: 'Deals'),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        // Height-bounded so the nested tab views can lay out inside the outer
-        // scroll view.
-        SizedBox(
-          height: 460,
-          child: TabBarView(
-            children: [
-              _OverviewTab(state: state),
-              _DealsTab(deals: state.deals),
-            ],
-          ),
-        ),
+        Text('Deals', style: AppTextStyles.h3),
+        const SizedBox(height: AppSpacing.md),
+        // Height-bounded: _DealsTab is a ListView, which needs a bounded
+        // height to lay out inside the outer scroll view.
+        SizedBox(height: 460, child: _DealsTab(deals: state.deals)),
       ],
-    );
-  }
-}
-
-class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.state});
-  final ContactDetailLoaded state;
-
-  @override
-  Widget build(BuildContext context) {
-    final o = state.overview;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionCard(
-            title: 'About This Contact',
-            child: Text(
-              (o.about != null && o.about!.isNotEmpty)
-                  ? o.about!
-                  : 'No description added yet.',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: (o.about != null && o.about!.isNotEmpty)
-                    ? AppColors.textPrimary
-                    : AppColors.textMuted,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          SectionCard(
-            title: 'Related Records',
-            child: Row(
-              children: [
-                _stat('${o.dealCount}', 'Deals'),
-                _stat(o.taskCount?.toString() ?? '—', 'Tasks'),
-                _stat(o.logCount?.toString() ?? '—', 'Logs'),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          SectionCard(
-            title: 'Quick Stats',
-            child: Row(
-              children: [
-                Icon(Icons.access_time, size: 18, color: AppColors.textMuted),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  o.lastActivity != null
-                      ? 'Last activity ${DateFormatter.relativeTime(o.lastActivity!)}'
-                      : 'No recent activity recorded',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _stat(String value, String label) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: AppTextStyles.h2),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

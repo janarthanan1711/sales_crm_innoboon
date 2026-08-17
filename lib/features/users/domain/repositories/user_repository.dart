@@ -18,6 +18,8 @@ abstract class UserRepository {
     required String lastName,
     required int roleId,
   });
-  Future<Either<Failure, void>> deleteUser(int id);
+  Future<Either<Failure, void>> deleteUser(int id, {bool permanent = false});
   Future<Either<Failure, void>> activateUser(int id);
+  Future<Either<Failure, OwnerUser>> reinviteUser(int id);
+  Future<Either<Failure, OwnerUser>> updateUserRole(int id, int roleId);
 }

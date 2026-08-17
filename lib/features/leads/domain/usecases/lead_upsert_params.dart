@@ -40,12 +40,21 @@ class LeadUpsertParams {
   });
 }
 
-/// A single extra contact entered on the lead create/edit form. Both fields
-/// are optional individually but a draft should carry at least one.
+/// A single extra contact entered on the lead create/edit form. Name is
+/// optional (falls back to the lead's own name on conversion, same as
+/// Account's nameless-extra-contact convention); a draft should carry at
+/// least an email or phone.
 class LeadContactDraft {
+  final String? firstName;
+  final String? lastName;
   final String? email;
   final String? phone;
-  const LeadContactDraft({this.email, this.phone});
+  const LeadContactDraft({
+    this.firstName,
+    this.lastName,
+    this.email,
+    this.phone,
+  });
 
   bool get isEmpty =>
       (email == null || email!.isEmpty) && (phone == null || phone!.isEmpty);

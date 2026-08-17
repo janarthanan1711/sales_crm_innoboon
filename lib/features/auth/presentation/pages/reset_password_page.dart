@@ -26,6 +26,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscure = true;
+  bool _obscureConfirm = true;
   bool _saving = false;
   bool _done = false;
 
@@ -123,10 +124,19 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           const SizedBox(height: AppSpacing.sm),
           TextFormField(
             controller: _confirmController,
-            obscureText: _obscure,
+            obscureText: _obscureConfirm,
             validator: Validators.password,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.lock_outline, size: 20),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirm
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),

@@ -402,6 +402,15 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
   }
 
   Future<void> _save() async {
+    if (_firstNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('First name is required.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     final result = await sl<UpdateCurrentUserUseCase>()(
       UpdateCurrentUserParams(
@@ -441,7 +450,7 @@ class _ProfileInfoFormState extends State<_ProfileInfoForm> {
             Expanded(
               child: TextField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
+                decoration: const InputDecoration(labelText: 'First Name *'),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -501,6 +510,7 @@ class _PasswordFormState extends State<_PasswordForm> {
   final _confirmController = TextEditingController();
   bool _obscureCurrent = true;
   bool _obscureNew = true;
+  bool _obscureConfirm = true;
   bool _saving = false;
 
   double get _strength {
@@ -603,6 +613,9 @@ class _PasswordFormState extends State<_PasswordForm> {
   /// Turns a raw backend/exception string into a short, user-facing message.
   String _cleanPasswordError(String raw) {
     final m = raw.toLowerCase();
+    if (m.contains('must be different')) {
+      return 'New password must be different from your current password.';
+    }
     if (m.contains('current password') ||
         m.contains('incorrect') ||
         m.contains('wrong')) {
@@ -671,8 +684,19 @@ class _PasswordFormState extends State<_PasswordForm> {
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _confirmController,
-          obscureText: _obscureNew,
-          decoration: const InputDecoration(labelText: 'Confirm New Password'),
+          obscureText: _obscureConfirm,
+          decoration: InputDecoration(
+            labelText: 'Confirm New Password',
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirm
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         ElevatedButton(
