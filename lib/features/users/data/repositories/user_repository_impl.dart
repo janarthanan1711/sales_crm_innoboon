@@ -63,9 +63,9 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteUser(int id) async {
+  Future<Either<Failure, void>> deleteUser(int id, {bool permanent = false}) async {
     try {
-      await remoteDataSource.deleteUser(id);
+      await remoteDataSource.deleteUser(id, permanent: permanent);
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
@@ -79,6 +79,30 @@ class UserRepositoryImpl implements UserRepository {
     try {
       await remoteDataSource.activateUser(id);
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, OwnerUser>> reinviteUser(int id) async {
+    try {
+      final user = await remoteDataSource.reinviteUser(id);
+      return Right(user);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, OwnerUser>> updateUserRole(int id, int roleId) async {
+    try {
+      final user = await remoteDataSource.updateUserRole(id, roleId);
+      return Right(user);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     } catch (e) {

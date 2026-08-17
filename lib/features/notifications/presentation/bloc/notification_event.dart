@@ -44,6 +44,13 @@ class NotificationsBulkMarkReadRequested extends NotificationEvent {
   List<Object?> get props => [ids];
 }
 
+class NotificationsBulkMarkUnreadRequested extends NotificationEvent {
+  final List<int> ids;
+  const NotificationsBulkMarkUnreadRequested(this.ids);
+  @override
+  List<Object?> get props => [ids];
+}
+
 class NotificationsBulkDeleteRequested extends NotificationEvent {
   final List<int> ids;
   const NotificationsBulkDeleteRequested(this.ids);

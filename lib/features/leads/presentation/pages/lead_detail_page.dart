@@ -639,7 +639,7 @@ class _ContactInfoCard extends StatelessWidget {
           _label('Created'),
           Text(
             lead.createdAt != null
-                ? '${DateFormatter.relativeTime(lead.createdAt!)} by System'
+                ? '${DateFormatter.relativeTime(lead.createdAt!)} by ${lead.ownerName ?? 'Unassigned'}'
                 : 'Unknown',
             style: AppTextStyles.bodyMedium,
           ),
@@ -1315,7 +1315,11 @@ class _ActivityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final canManage = context.can(Perms.leadsManage);
     final who = activity.createdByName ?? 'User ${activity.createdBy}';
-    final meta = activity.updatedAt != null
+    // `updatedAt` is DB-server-defaulted on every row at creation (see
+    // Base.updated_at), so it's never actually null -- `updatedBy` is the
+    // field that only gets set on a real edit (mirrors the Accounts byline
+    // at account_detail_page.dart).
+    final meta = activity.updatedBy != null
         ? '${DateFormatter.dateTime(activity.createdAt)}, Edited ${DateFormatter.displayDate(activity.updatedAt!)} by ${activity.updatedByName ?? who}'
         : '${DateFormatter.dateTime(activity.createdAt)} by $who';
 

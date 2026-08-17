@@ -115,37 +115,39 @@ class LeaderboardEntry extends Equatable {
 class DropOffReason extends Equatable {
   final String reason;
   final String stageLost;
-  final int count;
+  final String accountName;
+  final String tier;
   final double lostValue;
-  final double? changePct;
 
   const DropOffReason({
     required this.reason,
     required this.stageLost,
-    required this.count,
+    required this.accountName,
+    required this.tier,
     required this.lostValue,
-    this.changePct,
   });
 
   @override
-  List<Object?> get props => [reason, stageLost, count, lostValue, changePct];
+  List<Object?> get props => [reason, stageLost, accountName, tier, lostValue];
 }
 
-/// One point of the Conversion Trend series (raw per-stage transition count
-/// bucketed by period). [period] is the bucket's start date.
+/// One point of the Conversion Trend series -- the Leads -> Account
+/// conversion rate for a period bucket. [period] is the bucket's start date.
 class ConversionTrendEntry extends Equatable {
   final DateTime period;
-  final String stageName;
-  final int count;
+  final int leadsCreated;
+  final int leadsConverted;
+  final double conversionRate;
 
   const ConversionTrendEntry({
     required this.period,
-    required this.stageName,
-    required this.count,
+    required this.leadsCreated,
+    required this.leadsConverted,
+    required this.conversionRate,
   });
 
   @override
-  List<Object?> get props => [period, stageName, count];
+  List<Object?> get props => [period, leadsCreated, leadsConverted, conversionRate];
 }
 
 /// One item of the merged Activity Feed across deal/lead/account logs.
@@ -156,6 +158,9 @@ class DashboardActivity extends Equatable {
   final String? note;
   final String? createdByName;
   final DateTime createdAt;
+  // "edited" entries reuse createdByName/createdAt for whoever made the edit
+  // and when, so an edit sorts into the feed by its edit time.
+  final String action; // created | edited
 
   const DashboardActivity({
     required this.entityType,
@@ -164,6 +169,7 @@ class DashboardActivity extends Equatable {
     this.note,
     this.createdByName,
     required this.createdAt,
+    this.action = 'created',
   });
 
   @override
@@ -174,6 +180,7 @@ class DashboardActivity extends Equatable {
     note,
     createdByName,
     createdAt,
+    action,
   ];
 }
 

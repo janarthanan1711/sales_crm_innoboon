@@ -5,13 +5,21 @@ import 'package:equatable/equatable.dart';
 /// `LeadDetailRead.contacts`.
 class LeadContact extends Equatable {
   final int id;
+  final String? firstName;
+  final String? lastName;
   final String? email;
   final String? phone;
 
-  const LeadContact({required this.id, this.email, this.phone});
+  const LeadContact({
+    required this.id,
+    this.firstName,
+    this.lastName,
+    this.email,
+    this.phone,
+  });
 
   @override
-  List<Object?> get props => [id, email, phone];
+  List<Object?> get props => [id, firstName, lastName, email, phone];
 }
 
 /// One entry in a lead's activity log. Detail-view only — comes back from

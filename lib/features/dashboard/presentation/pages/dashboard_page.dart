@@ -159,8 +159,6 @@ class _DashboardView extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, DashboardData data) {
-    // Conversion trend: sum transitions per period across all stages so the
-    // chart reflects whatever the API returns, not just "Closed Won".
     final trend = _aggregateTrend(data.conversionTrend);
     final dealTotal = data.dealDistribution.fold<int>(0, (a, e) => a + e.count);
 
@@ -232,17 +230,15 @@ class _DashboardView extends StatelessWidget {
     );
   }
 
-  /// Collapses the raw per-stage trend series into one point per period
-  /// (total transitions), sorted chronologically.
-  List<({DateTime period, int count})> _aggregateTrend(
+  /// The API already returns one entry per period bucket -- just project out
+  /// the rate and keep it chronological.
+  List<({DateTime period, double rate})> _aggregateTrend(
     List<ConversionTrendEntry> entries,
   ) {
-    final byPeriod = <DateTime, int>{};
-    for (final e in entries) {
-      byPeriod[e.period] = (byPeriod[e.period] ?? 0) + e.count;
-    }
     final points =
-        byPeriod.entries.map((e) => (period: e.key, count: e.value)).toList()
+        entries
+            .map((e) => (period: e.period, rate: e.conversionRate))
+            .toList()
           ..sort((a, b) => a.period.compareTo(b.period));
     return points;
   }
@@ -759,7 +755,7 @@ class _FunnelBar extends StatelessWidget {
 // ─── Conversion trend (transitions per period) ──────────
 class _ConversionTrendCard extends StatelessWidget {
   const _ConversionTrendCard({required this.points});
-  final List<({DateTime period, int count})> points;
+  final List<({DateTime period, double rate})> points;
 
   @override
   Widget build(BuildContext context) {
@@ -770,7 +766,7 @@ class _ConversionTrendCard extends StatelessWidget {
           Text('Conversion Trend', style: AppTextStyles.h3),
           SizedBox(width: 5),
           Text(
-            'Stage transitions',
+            'Leads to Account %',
             style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
           ),
         ],
@@ -806,8 +802,21 @@ class _ConversionTrendCard extends StatelessWidget {
   /// heights, driving the entrance. Axis bounds and labels stay fixed at their
   /// final values so nothing reflows while the line grows.
   LineChartData _chartData(double t) {
-    final maxY = points.map((e) => e.count).fold(0, (a, b) => a > b ? a : b);
-    final niceMax = (maxY <= 5 ? 5 : ((maxY / 5).ceil() * 5)).toDouble();
+    final maxY = points.map((e) => e.rate).fold(0.0, (a, b) => a > b ? a : b);
+    // Round up to a clean multiple of 5 for readable gridlines. Floored at 5
+    // only to keep the axis from collapsing to zero height when every bucket
+    // is 0% -- otherwise scales to whatever the data actually is. Not capped
+    // at 100: a bucket's converted count isn't bounded by its own created
+    // count (a lead created in an earlier bucket can convert in a later
+    // one -- see get_conversion_trend), so the backend can legitimately
+    // return a rate over 100%. Clamping here would silently cut that off
+    // instead of showing it.
+    final niceMax = maxY <= 5 ? 5.0 : (maxY / 5).ceil() * 5.0;
+    // Gridlines/labels stop at niceMax, but the chart's actual plotted
+    // ceiling needs headroom above it -- a bucket hitting exactly niceMax
+    // otherwise sits right at the topmost pixel row, with its dot marker's
+    // own radius poking out above the card's edge with nowhere to go.
+    final axisMax = niceMax + niceMax / 5 * 0.2;
     // A single period would give minX == maxX (divide-by-zero on intervals);
     // pad the axis to 1 so a lone point still renders as a dot.
     final maxX = points.length <= 1 ? 1.0 : points.length.toDouble() - 1;
@@ -854,8 +863,28 @@ class _ConversionTrendCard extends StatelessWidget {
             showTitles: true,
             reservedSize: 32,
             interval: niceMax / 5,
-            getTitlesWidget: (value, meta) =>
-                Text(value.toInt().toString(), style: AppTextStyles.caption),
+            getTitlesWidget: (value, meta) {
+              // fl_chart also renders a title at the axis's exact top bound
+              // (`meta.max`, i.e. axisMax) in addition to the regular
+              // interval ticks. Since axisMax is niceMax plus a bit of
+              // headroom (see axisMax above), that boundary value doesn't
+              // land on a clean interval multiple -- it rendered as a second,
+              // nearly-overlapping label right next to the true top
+              // gridline's ("104%" on top of "100%"). Only draw a label when
+              // it actually falls on an interval multiple. Tolerance is a
+              // fraction of the interval itself, not a fixed number, so this
+              // scales correctly whatever niceMax turns out to be -- the
+              // injected boundary tick is always exactly 0.2*interval away
+              // from the true top gridline by construction (see axisMax
+              // above), so anything under that gap is a real gridline and
+              // anything at/beyond it is the injected one.
+              final interval = niceMax / 5;
+              final nearestTick = (value / interval).round() * interval;
+              if ((value - nearestTick).abs() > interval * 0.15) {
+                return const SizedBox.shrink();
+              }
+              return Text('${value.toInt()}%', style: AppTextStyles.caption);
+            },
           ),
         ),
       ),
@@ -875,9 +904,9 @@ class _ConversionTrendCard extends StatelessWidget {
                 ? DateFormat('MMM d').format(points[i].period.toLocal())
                 : '';
             return LineTooltipItem(
-              // Read the count off the data, not off `spot.y` — mid-entrance
+              // Read the rate off the data, not off `spot.y` — mid-entrance
               // the plotted y is a fraction of the real value.
-              '${inRange ? points[i].count : spot.y.toInt()}',
+              '${(inRange ? points[i].rate : spot.y).toStringAsFixed(1)}%',
               const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -902,15 +931,23 @@ class _ConversionTrendCard extends StatelessWidget {
       minX: 0,
       maxX: maxX,
       minY: 0,
-      maxY: niceMax,
+      maxY: axisMax,
+      // Belt-and-braces: nothing should ever paint outside the chart's own
+      // frame regardless of what the line does.
+      clipData: const FlClipData.all(),
       lineBarsData: [
         LineChartBarData(
           spots: points
               .asMap()
               .entries
-              .map((e) => FlSpot(e.key.toDouble(), e.value.count * t))
+              .map((e) => FlSpot(e.key.toDouble(), e.value.rate * t))
               .toList(),
-          isCurved: points.length > 1,
+          // Not curved: cubic smoothing between two points can bulge past
+          // either one's actual value -- for a percentage series that means
+          // visibly overshooting past 100%, which clipData alone doesn't fix
+          // (it only stops paint escaping the *widget*, not the axis max).
+          // Straight segments can't overshoot past their own endpoints.
+          isCurved: false,
           color: AppColors.primary,
           barWidth: 3,
           isStrokeCapRound: true,
@@ -1170,7 +1207,7 @@ class _ActivityRow extends StatelessWidget {
                       TextSpan(text: who, style: AppTextStyles.labelLarge),
                       TextSpan(
                         text:
-                            ' · ${_titleCase(activity.type.replaceAll('_', ' '))} on ${activity.entityType}',
+                            ' · ${activity.action == 'edited' ? 'Edited a ' : ''}${_titleCase(activity.type.replaceAll('_', ' '))} on ${activity.entityType}',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -1247,7 +1284,7 @@ class _DropOffCardState extends State<_DropOffCard> {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Drop-off Reasons (Lost Deals)',
+      title: 'Drop-off Reasons (Lost & Cold Deals)',
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Lay the table out at the card's own width when there's room.
@@ -1276,9 +1313,9 @@ class _DropOffCardState extends State<_DropOffCard> {
             children: [
               _h('Reason Category', flex: 4),
               _h('Stage Lost', flex: 3),
-              _h('Count', flex: 2),
+              _h('Account', flex: 3),
+              _h('Tier', flex: 2),
               _h('Impact (₹)', flex: 3),
-              _h('Trend', flex: 2),
             ],
           ),
         ),
@@ -1351,8 +1388,26 @@ class _DropOffRow extends StatelessWidget {
             child: Text(reason.stageLost, style: AppTextStyles.tableCell),
           ),
           Expanded(
+            flex: 3,
+            child: Text(
+              reason.accountName,
+              style: AppTextStyles.tableCell,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
             flex: 2,
-            child: Text('${reason.count}', style: AppTextStyles.tableCell),
+            // TierBadge sizes itself tightly to its text (Row +
+            // MainAxisSize.min), but Expanded hands it a tight width
+            // constraint equal to the whole column -- Container has no
+            // choice but to stretch its background to fill that, unlike
+            // every other TierBadge call site, which sits in a Row/Wrap
+            // instead. Align lets the column keep its width for layout
+            // while the badge itself stays content-sized.
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TierBadge(tier: reason.tier),
+            ),
           ),
           Expanded(
             flex: 3,
@@ -1361,39 +1416,8 @@ class _DropOffRow extends StatelessWidget {
               style: AppTextStyles.tableCell,
             ),
           ),
-          Expanded(flex: 2, child: _TrendCell(changePct: reason.changePct)),
         ],
       ),
-    );
-  }
-}
-
-class _TrendCell extends StatelessWidget {
-  const _TrendCell({required this.changePct});
-  final double? changePct;
-
-  @override
-  Widget build(BuildContext context) {
-    if (changePct == null || changePct == 0) {
-      return Text(
-        '— 0%',
-        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
-      );
-    }
-    // A rising loss count is bad (red); a falling one is good (green).
-    final up = changePct! > 0;
-    final color = up ? AppColors.error : AppColors.success;
-    final pct = changePct!.abs().toStringAsFixed(changePct! % 1 == 0 ? 0 : 1);
-    return Row(
-      children: [
-        Icon(
-          up ? Icons.arrow_upward : Icons.arrow_downward,
-          size: 14,
-          color: color,
-        ),
-        const SizedBox(width: 2),
-        Text('$pct%', style: AppTextStyles.bodySmall.copyWith(color: color)),
-      ],
     );
   }
 }

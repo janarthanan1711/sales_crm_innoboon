@@ -191,19 +191,64 @@ class _NotificationsViewState extends State<_NotificationsView> {
                         if (_selectedIds.isNotEmpty)
                           _BulkActionBar(
                             count: _selectedIds.length,
-                            onMarkRead: () {
+                            // Switches to "Mark Unread" (instead of a disabled
+                            // "Mark Read") once every selected notification is
+                            // already read, so the button always has something
+                            // useful to do with the current selection.
+                            markUnread:
+                                state.notifications
+                                    .where((n) => _selectedIds.contains(n.id))
+                                    .isNotEmpty &&
+                                state.notifications
+                                    .where((n) => _selectedIds.contains(n.id))
+                                    .every((n) => n.isRead),
+                            onMark: (markUnread) {
                               context.read<NotificationBloc>().add(
-                                NotificationsBulkMarkReadRequested(
-                                  _selectedIds.toList(),
-                                ),
+                                markUnread
+                                    ? NotificationsBulkMarkUnreadRequested(
+                                        _selectedIds.toList(),
+                                      )
+                                    : NotificationsBulkMarkReadRequested(
+                                        _selectedIds.toList(),
+                                      ),
                               );
                               setState(_selectedIds.clear);
                             },
-                            onDelete: () {
-                              context.read<NotificationBloc>().add(
-                                NotificationsBulkDeleteRequested(
-                                  _selectedIds.toList(),
+                            onDelete: () async {
+                              final ids = _selectedIds.toList();
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: Text(
+                                    'Delete ${ids.length} notification${ids.length == 1 ? '' : 's'}?',
+                                  ),
+                                  content: const Text(
+                                    'This cannot be undone.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, true),
+                                      child: Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: AppColors.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              );
+                              if (confirmed != true || !context.mounted) {
+                                return;
+                              }
+                              context.read<NotificationBloc>().add(
+                                NotificationsBulkDeleteRequested(ids),
                               );
                               setState(_selectedIds.clear);
                             },
@@ -297,12 +342,17 @@ class _TypeFilterDropdown extends StatelessWidget {
 class _BulkActionBar extends StatelessWidget {
   const _BulkActionBar({
     required this.count,
-    required this.onMarkRead,
+    required this.markUnread,
+    required this.onMark,
     required this.onDelete,
     required this.onClear,
   });
   final int count;
-  final VoidCallback onMarkRead;
+  // True once every selected notification is already read, so the button
+  // switches to "Mark Unread" instead of offering a "Mark Read" that would
+  // have nothing left to do.
+  final bool markUnread;
+  final ValueChanged<bool> onMark;
   final VoidCallback onDelete;
   final VoidCallback onClear;
 
@@ -335,15 +385,17 @@ class _BulkActionBar extends StatelessWidget {
           ),
           const Spacer(),
           TextButton.icon(
-            onPressed: onMarkRead,
-            icon: const Icon(
-              Icons.mark_email_read_outlined,
+            onPressed: () => onMark(markUnread),
+            icon: Icon(
+              markUnread
+                  ? Icons.mark_email_unread_outlined
+                  : Icons.mark_email_read_outlined,
               size: 16,
               color: Colors.white,
             ),
-            label: const Text(
-              'Mark Read',
-              style: TextStyle(color: Colors.white),
+            label: Text(
+              markUnread ? 'Mark Unread' : 'Mark Read',
+              style: const TextStyle(color: Colors.white),
             ),
           ),
           TextButton.icon(

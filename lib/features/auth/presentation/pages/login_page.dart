@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -191,22 +192,11 @@ class _WebLoginLayout extends StatelessWidget {
                   bottom: 32,
                   left: 48,
                   right: 48,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '© 2026 SalesHub Inc.',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        'v2.4.1',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '© 2026 SalesHub Inc.',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -274,12 +264,32 @@ class _LoginForm extends StatefulWidget {
 }
 
 class _LoginFormState extends State<_LoginForm> {
+  static const _rememberedEmailKey = 'remembered_email';
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController(
     text: 'test.user@innoboon.com',
   );
   final _passwordController = TextEditingController(text: 'Test@1234');
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remembered = prefs.getString(_rememberedEmailKey);
+    if (remembered != null && mounted) {
+      setState(() {
+        _emailController.text = remembered;
+        _rememberMe = true;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -288,8 +298,15 @@ class _LoginFormState extends State<_LoginForm> {
     super.dispose();
   }
 
-  void _onSubmit() {
+  void _onSubmit() async {
     if (_formKey.currentState?.validate() ?? false) {
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString(_rememberedEmailKey, _emailController.text.trim());
+      } else {
+        await prefs.remove(_rememberedEmailKey);
+      }
+      if (!mounted) return;
       context.read<AuthBloc>().add(
         AuthLoginRequested(
           email: _emailController.text.trim(),
@@ -427,8 +444,9 @@ class _LoginFormState extends State<_LoginForm> {
                     height: 24,
                     width: 24,
                     child: Checkbox(
-                      value: false,
-                      onChanged: (val) {},
+                      value: _rememberMe,
+                      onChanged: (val) =>
+                          setState(() => _rememberMe = val ?? false),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),

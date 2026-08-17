@@ -100,9 +100,9 @@ DropOffReason _dropOffFromJson(Map<String, dynamic> json) {
   return DropOffReason(
     reason: json['reason'] as String? ?? 'Unknown',
     stageLost: json['stage_lost'] as String? ?? 'Unknown',
-    count: (json['count'] as num?)?.toInt() ?? 0,
+    accountName: json['account_name'] as String? ?? 'Unknown',
+    tier: json['tier'] as String? ?? 'Unassigned',
     lostValue: (json['lost_value'] as num?)?.toDouble() ?? 0,
-    changePct: (json['change_pct'] as num?)?.toDouble(),
   );
 }
 
@@ -111,8 +111,9 @@ ConversionTrendEntry _conversionFromJson(Map<String, dynamic> json) {
     period:
         DateTime.tryParse(json['period'] as String? ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0),
-    stageName: json['stage_name'] as String? ?? '',
-    count: (json['count'] as num?)?.toInt() ?? 0,
+    leadsCreated: (json['leads_created'] as num?)?.toInt() ?? 0,
+    leadsConverted: (json['leads_converted'] as num?)?.toInt() ?? 0,
+    conversionRate: (json['conversion_rate'] as num?)?.toDouble() ?? 0,
   );
 }
 
@@ -126,5 +127,6 @@ DashboardActivity _activityFromJson(Map<String, dynamic> json) {
     createdAt:
         DateTime.tryParse(json['created_at'] as String? ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0),
+    action: json['action'] as String? ?? 'created',
   );
 }

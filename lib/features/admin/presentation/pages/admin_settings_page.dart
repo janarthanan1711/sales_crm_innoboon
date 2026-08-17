@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -15,6 +17,8 @@ import '../../../users/domain/usecases/delete_user_usecase.dart';
 import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../../core/utils/date_range_filter_memory.dart';
 import '../../../users/domain/usecases/activate_user_usecase.dart';
+import '../../../users/domain/usecases/reinvite_user_usecase.dart';
+import '../../../users/domain/usecases/update_user_role_usecase.dart';
 import '../../../audit_log/domain/entities/audit_log_entry.dart';
 import '../../../audit_log/domain/usecases/get_audit_log_usecase.dart';
 
@@ -248,7 +252,9 @@ class _UsersTabState extends State<_UsersTab> {
                 ),
               ),
               if (_hasDateRange)
-                TextButton(
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  tooltip: 'Clear date range',
                   onPressed: () {
                     setState(() {
                       _dateFrom = null;
@@ -257,7 +263,6 @@ class _UsersTabState extends State<_UsersTab> {
                     _rememberDateRange();
                     _load();
                   },
-                  child: const Text('Clear Dates'),
                 ),
               ElevatedButton.icon(
                 onPressed: () => _showInviteDialog(context),
@@ -277,7 +282,7 @@ class _UsersTabState extends State<_UsersTab> {
                     icon: Icons.people_outline,
                     title: 'No users found',
                   )
-                : _UsersTable(users: _users, onChanged: _load),
+                : _UsersTable(users: _users, roles: _roles, onChanged: _load),
           ),
         ],
       ),
@@ -462,8 +467,9 @@ class _UsersTabState extends State<_UsersTab> {
 }
 
 class _UsersTable extends StatelessWidget {
-  const _UsersTable({required this.users, required this.onChanged});
+  const _UsersTable({required this.users, required this.roles, required this.onChanged});
   final List<OwnerUser> users;
+  final List<Role> roles;
   final VoidCallback onChanged;
 
   @override
@@ -500,7 +506,7 @@ class _UsersTable extends StatelessWidget {
               itemCount: users.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) =>
-                  _UserRow(user: users[index], onChanged: onChanged),
+                  _UserRow(user: users[index], roles: roles, onChanged: onChanged),
             ),
           ),
         ],
@@ -515,8 +521,9 @@ class _UsersTable extends StatelessWidget {
 }
 
 class _UserRow extends StatelessWidget {
-  const _UserRow({required this.user, required this.onChanged});
+  const _UserRow({required this.user, required this.roles, required this.onChanged});
   final OwnerUser user;
+  final List<Role> roles;
   final VoidCallback onChanged;
 
   @override
@@ -596,72 +603,230 @@ class _UserRow extends StatelessWidget {
           ),
           Expanded(
             flex: 1,
-            child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 18),
-              onSelected: (value) async {
-                if (value == 'deactivate') {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Deactivate user?'),
-                      content: Text(
-                        '${user.displayName} will lose access immediately.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: Text(
-                            'Deactivate',
-                            style: TextStyle(color: AppColors.error),
+            child: Builder(
+              builder: (context) {
+                final currentUserId =
+                    (context.read<AuthBloc>().state as AuthAuthenticated?)?.user.id;
+                final isSelf = currentUserId == user.id;
+                return PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 18),
+                  onSelected: (value) async {
+                    switch (value) {
+                      case 'deactivate':
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Deactivate user?'),
+                            content: Text(
+                              '${user.displayName} will lose access immediately.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, true),
+                                child: Text(
+                                  'Deactivate',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed != true) return;
-                  final result = await sl<DeleteUserUseCase>()(user.id);
-                  result.fold(
-                    (f) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to deactivate: ${f.message}'),
-                        backgroundColor: AppColors.error,
+                        );
+                        if (confirmed != true) return;
+                        final result = await sl<DeleteUserUseCase>()(user.id);
+                        if (!context.mounted) return;
+                        result.fold(
+                          (f) => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to deactivate: ${f.message}'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          ),
+                          (_) => onChanged(),
+                        );
+                      case 'activate':
+                        final result = await sl<ActivateUserUseCase>()(user.id);
+                        if (!context.mounted) return;
+                        result.fold(
+                          (f) => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to activate: ${f.message}'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          ),
+                          (_) => onChanged(),
+                        );
+                      case 'reinvite':
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Re-invite user?'),
+                            content: Text(
+                              'A new password will be generated and emailed to ${user.email}.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, true),
+                                child: const Text('Re-invite'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
+                        final result = await sl<ReinviteUserUseCase>()(user.id);
+                        if (!context.mounted) return;
+                        result.fold(
+                          (f) => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to re-invite: ${f.message}'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          ),
+                          (_) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Invitation resent to ${user.email}.')),
+                            );
+                            onChanged();
+                          },
+                        );
+                      case 'change_role':
+                        await _showChangeRoleDialog(context, user: user, roles: roles);
+                        onChanged();
+                      case 'delete':
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Delete user?'),
+                            content: Text(
+                              '${user.displayName} will be permanently removed from the '
+                              'user list. This cannot be undone.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext, true),
+                                child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
+                        final result = await sl<DeleteUserUseCase>()(user.id, permanent: true);
+                        if (!context.mounted) return;
+                        result.fold(
+                          (f) => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to delete: ${f.message}'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          ),
+                          (_) => onChanged(),
+                        );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (user.status == 'deactivated') ...[
+                      const PopupMenuItem(value: 'activate', child: Text('Activate')),
+                      const PopupMenuItem(value: 'reinvite', child: Text('Re-invite')),
+                    ] else if (user.status == 'invited') ...[
+                      // An invited user has never logged in -- there's
+                      // nothing to "deactivate" yet, same reasoning as why
+                      // an active user doesn't get a "Re-invite" option.
+                      const PopupMenuItem(value: 'reinvite', child: Text('Re-invite')),
+                    ] else ...[
+                      const PopupMenuItem(value: 'deactivate', child: Text('Deactivate')),
+                    ],
+                    if (!isSelf)
+                      const PopupMenuItem(value: 'change_role', child: Text('Change Role')),
+                    if (!isSelf)
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete', style: TextStyle(color: AppColors.error)),
                       ),
-                    ),
-                    (_) => onChanged(),
-                  );
-                } else if (value == 'activate') {
-                  final result = await sl<ActivateUserUseCase>()(user.id);
-                  result.fold(
-                    (f) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to activate: ${f.message}'),
-                        backgroundColor: AppColors.error,
-                      ),
-                    ),
-                    (_) => onChanged(),
-                  );
-                }
+                  ],
+                );
               },
-              itemBuilder: (context) => [
-                if (user.status == 'deactivated')
-                  const PopupMenuItem(
-                    value: 'activate',
-                    child: Text('Activate'),
-                  )
-                else
-                  const PopupMenuItem(
-                    value: 'deactivate',
-                    child: Text('Deactivate'),
-                  ),
-              ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Row "Change Role" action: a dropdown of the org's roles, defaulting to
+/// the user's current one, saved via PATCH /users/{id}/role.
+Future<void> _showChangeRoleDialog(
+  BuildContext context, {
+  required OwnerUser user,
+  required List<Role> roles,
+}) async {
+  int selectedRoleId = user.role.id;
+  String? error;
+
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) => AlertDialog(
+        title: Text('Change role for ${user.displayName}'),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<int>(
+                value: selectedRoleId,
+                items: roles
+                    .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name)))
+                    .toList(),
+                onChanged: (v) => setState(() => selectedRoleId = v ?? selectedRoleId),
+                decoration: const InputDecoration(labelText: 'Role'),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(error!, style: TextStyle(color: AppColors.error)),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (selectedRoleId == user.role.id) {
+                Navigator.pop(dialogContext, false);
+                return;
+              }
+              final result = await sl<UpdateUserRoleUseCase>()(user.id, selectedRoleId);
+              result.fold(
+                (f) => setState(() => error = f.message),
+                (_) => Navigator.pop(dialogContext, true),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (saved == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Role updated for ${user.displayName}.')),
     );
   }
 }

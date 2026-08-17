@@ -33,6 +33,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<NotificationMarkedUnread>(_onMarkedUnread);
     on<NotificationMarkedAllRead>(_onMarkedAllRead);
     on<NotificationsBulkMarkReadRequested>(_onBulkMarkedRead);
+    on<NotificationsBulkMarkUnreadRequested>(_onBulkMarkedUnread);
     on<NotificationsBulkDeleteRequested>(_onBulkDeleted);
   }
 
@@ -80,6 +81,13 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
   Future<void> _onBulkMarkedRead(NotificationsBulkMarkReadRequested event, Emitter<NotificationState> emit) async {
     await markManyNotificationsReadUseCase(event.ids);
+    await _reload(emit);
+  }
+
+  // No bulk-unread endpoint exists on the backend -- reuse the single-item
+  // unread usecase per id, same as the per-row toggle already does.
+  Future<void> _onBulkMarkedUnread(NotificationsBulkMarkUnreadRequested event, Emitter<NotificationState> emit) async {
+    await Future.wait(event.ids.map(markNotificationUnreadUseCase.call));
     await _reload(emit);
   }
 

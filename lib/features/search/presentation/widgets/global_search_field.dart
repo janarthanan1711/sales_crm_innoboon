@@ -80,6 +80,8 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
         context.go('/deals/${r.id}');
         break;
       case SearchResultType.contact:
+        context.go('/contacts/${r.id}');
+        break;
       case SearchResultType.unknown:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
