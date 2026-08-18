@@ -467,7 +467,7 @@ class _GroupedNotificationList extends StatelessWidget {
     final diff = today.difference(day).inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    if (diff <= 7) return 'Earlier This Week';
+    if (diff <= 7) return 'Earlier Weekly';
     return 'Older';
   }
 
@@ -477,7 +477,7 @@ class _GroupedNotificationList extends StatelessWidget {
     for (final n in notifications) {
       groups.putIfAbsent(_groupLabel(n.createdAt), () => []).add(n);
     }
-    const order = ['Today', 'Yesterday', 'Earlier This Week', 'Older'];
+    const order = ['Today', 'Yesterday', 'Earlier Weekly', 'Older'];
     final orderedKeys = order.where(groups.containsKey).toList();
 
     return ListView(
