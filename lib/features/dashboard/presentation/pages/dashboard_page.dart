@@ -39,8 +39,8 @@ class DashboardPage extends StatelessWidget {
 /// dropped — a single day is now a custom range with equal bounds, which the
 /// third (custom) segment handles.
 const List<(String, String)> _kPeriods = [
-  ('This Week', DashboardRange.thisWeek),
-  ('This Month', DashboardRange.thisMonth),
+  ('Weekly', DashboardRange.thisWeek),
+  ('Monthly', DashboardRange.thisMonth),
 ];
 
 class _DashboardView extends StatelessWidget {
@@ -245,7 +245,7 @@ class _DashboardView extends StatelessWidget {
 }
 
 // ─── Period toggle ──────────────────────────────────────
-/// This Week / This Month / Custom range. The custom segment opens a date-range
+/// Weekly / Monthly / Custom range. The custom segment opens a date-range
 /// picker and, once set, labels itself with the chosen dates.
 class _PeriodToggle extends StatelessWidget {
   const _PeriodToggle({required this.range, required this.onSelected});
@@ -387,6 +387,12 @@ class _SummaryTiles extends StatelessWidget {
         icon: Icons.trending_up,
         color: const Color(0xFFD97706),
       ),
+      // Same disabled-drill-down note as above. If this tile's `onTap` comes
+      // back, its URL must pass the Closed Won stage's `stage_id` explicitly
+      // (`?date_field=closed_at&stage_id=<won id>&...`) -- `date_field=closed_at`
+      // with no stage_id is no longer inferred as Closed-Won-only backend-side
+      // (see deal_service._deal_filters's removed `not stage_id` branch); it
+      // now means "every stage", same as the plain on-page Deals date filter.
       _StatTile(
         title: 'Deals Closed (Closed Won)',
         stat: summary.dealsClosed,
