@@ -162,14 +162,17 @@ class _DashboardView extends StatelessWidget {
     final trend = _aggregateTrend(data.conversionTrend);
     final dealTotal = data.dealDistribution.fold<int>(0, (a, e) => a + e.count);
 
-    // Half-width section cards — only the ones that actually have data.
+    // Every section is rendered, data or not. These used to be dropped from
+    // the list when their query came back empty, which is what made a quiet
+    // date range look broken: the grid lost a column mid-row, the surviving
+    // card stretched to fill it, and everything below jumped up. Each card now
+    // carries its own zero state at the same size as its real body, so the
+    // page keeps one shape whatever the range returns.
     final halfCards = <Widget>[
-      if (data.funnel.isNotEmpty) _FunnelCard(stages: data.funnel),
-      if (trend.isNotEmpty) _ConversionTrendCard(points: trend),
-      if (dealTotal > 0)
-        _DealDistributionCard(entries: data.dealDistribution, total: dealTotal),
-      if (data.leaderboard.isNotEmpty)
-        _LeaderboardCard(entries: data.leaderboard),
+      _FunnelCard(stages: data.funnel),
+      _ConversionTrendCard(points: trend),
+      _DealDistributionCard(entries: data.dealDistribution, total: dealTotal),
+      _LeaderboardCard(entries: data.leaderboard),
     ];
 
     // Entrance order runs down the page. The tiles own indices 0-4; the cards
@@ -179,27 +182,21 @@ class _DashboardView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SummaryTiles(summary: data.summary),
-        if (halfCards.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _halfGrid(context, [
-            for (var i = 0; i < halfCards.length; i++)
-              _FadeSlideIn(index: 3 + i, child: halfCards[i]),
-          ]),
-        ],
-        if (data.activityFeed.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _FadeSlideIn(
-            index: 3 + halfCards.length,
-            child: _ActivityFeedCard(entries: data.activityFeed),
-          ),
-        ],
-        if (data.dropOffReasons.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _FadeSlideIn(
-            index: 4 + halfCards.length,
-            child: _DropOffCard(entries: data.dropOffReasons),
-          ),
-        ],
+        const SizedBox(height: AppSpacing.xl),
+        _halfGrid(context, [
+          for (var i = 0; i < halfCards.length; i++)
+            _FadeSlideIn(index: 3 + i, child: halfCards[i]),
+        ]),
+        const SizedBox(height: AppSpacing.xl),
+        _FadeSlideIn(
+          index: 3 + halfCards.length,
+          child: _ActivityFeedCard(entries: data.activityFeed),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _FadeSlideIn(
+          index: 4 + halfCards.length,
+          child: _DropOffCard(entries: data.dropOffReasons),
+        ),
       ],
     );
   }
@@ -236,11 +233,170 @@ class _DashboardView extends StatelessWidget {
     List<ConversionTrendEntry> entries,
   ) {
     final points =
-        entries
-            .map((e) => (period: e.period, rate: e.conversionRate))
-            .toList()
+        entries.map((e) => (period: e.period, rate: e.conversionRate)).toList()
           ..sort((a, b) => a.period.compareTo(b.period));
     return points;
+  }
+}
+
+// ─── Shared card sizing & empty state ───────────────────
+
+/// One body height for all four half-width cards, so a row of them is the same
+/// height whether it holds a seven-stage funnel or an empty donut. Sized to fit
+/// a standard pipeline's funnel without scrolling; a longer one (stages are
+/// admin-configurable) scrolls inside its card rather than pushing the row
+/// taller than the card beside it.
+double _halfCardBody(BuildContext context) => context.isMobile ? 340 : 420;
+
+/// Viewport for the activity feed. The feed is unbounded server-side, so it
+/// gets a flat height rather than a row count like the drop-off table.
+double _feedBody(BuildContext context) => context.isMobile ? 260 : 320;
+
+/// Fixed-height scroll viewport for a card body.
+///
+/// The controller can't be left implicit. Every one of these sits inside the
+/// page's own [SingleChildScrollView], and a [Scrollbar] that resolves a
+/// controller from the tree would attach to the *page's* scroll position and
+/// drive the wrong list. The thumb is kept visible so a row clipped at the fold
+/// reads as "more below" rather than as the end of the data — Flutter skips
+/// painting it entirely when the content fits, so short lists stay clean.
+class _ScrollPane extends StatefulWidget {
+  const _ScrollPane({required this.height, required this.builder});
+
+  final double height;
+
+  /// Handed the pane's controller — attach it to the scroll view you return.
+  final Widget Function(ScrollController controller) builder;
+
+  @override
+  State<_ScrollPane> createState() => _ScrollPaneState();
+}
+
+class _ScrollPaneState extends State<_ScrollPane> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: widget.height,
+      child: Scrollbar(
+        controller: _controller,
+        thumbVisibility: true,
+        child: widget.builder(_controller),
+      ),
+    );
+  }
+}
+
+/// In-card "no data" panel, sized to stand in for the card's real body.
+///
+/// Picking a single quiet day used to make whole cards vanish. An empty period
+/// is a result, not a missing section, so the card stays put and reports the
+/// zero it measured: a recessed well the same height as the chart or list it
+/// replaces, so nothing around it moves.
+class _CardEmpty extends StatelessWidget {
+  const _CardEmpty({
+    required this.icon,
+    required this.accent,
+    required this.unit,
+    required this.height,
+  });
+
+  final IconData icon;
+
+  /// The card's own hue, so each empty state still reads as that card.
+  final Color accent;
+
+  /// What the zero is counting — renders as "0 deals".
+  final String unit;
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        // A step lighter than the card in light mode and a step darker in dark,
+        // which reads as an empty well either way.
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _badge(context),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'No data found',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              // The count carries the point — the section ran and came back
+              // with nothing, rather than never having loaded.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '0 $unit',
+                  style: AppTextStyles.labelMedium.copyWith(color: accent),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Try a wider date range.',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Pops in slightly behind the card's own entrance, so the eye lands on the
+  /// icon rather than on the whole panel arriving at once.
+  Widget _badge(BuildContext context) {
+    final badge = Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 24, color: accent),
+    );
+    if (_Motion.off(context)) return badge;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.8, end: 1),
+      duration: _Motion.entrance,
+      curve: Curves.easeOutBack,
+      child: badge,
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
+    );
   }
 }
 
@@ -509,6 +665,7 @@ class _StatTileState extends State<_StatTile> {
                       style: AppTextStyles.labelMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -543,49 +700,59 @@ class _ChangeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (changePct == null) {
-      return Text(
-        'Current snapshot',
-        style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+      return _strip(
+        Text(
+          'Current snapshot',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        ),
       );
     }
     final up = changePct! >= 0;
     final color = up ? AppColors.success : AppColors.error;
     final pct = changePct!.abs().toStringAsFixed(changePct! % 1 == 0 ? 0 : 1);
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
+    return _strip(
+      Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  up ? Icons.trending_up : Icons.trending_down,
+                  size: 12,
+                  color: color,
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '${up ? '+' : '-'}$pct%',
+                  style: AppTextStyles.overline.copyWith(color: color),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                up ? Icons.trending_up : Icons.trending_down,
-                size: 12,
-                color: color,
-              ),
-              const SizedBox(width: 2),
-              Text(
-                '${up ? '+' : '-'}$pct%',
-                style: AppTextStyles.overline.copyWith(color: color),
-              ),
-            ],
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'vs prev. period',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            'vs prev. period',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
+  /// Fixed-minimum strip both variants sit in, left-aligned.
+  Widget _strip(Widget child) => ConstrainedBox(
+    constraints: const BoxConstraints(minHeight: 24),
+    child: Align(alignment: Alignment.centerLeft, child: child),
+  );
 }
 
 // ─── Pipeline funnel ────────────────────────────────────
@@ -600,22 +767,39 @@ class _FunnelCard extends StatelessWidget {
     final ordered = _byCount(stages);
     return SectionCard(
       title: 'Pipeline Funnel',
-      child: Column(
-        // Each bar is narrower than the one above it, so they have to be
-        // centered for the stack to read as a funnel.
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          for (var i = 0; i < ordered.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.sm),
-            _FunnelBar(
-              stage: ordered[i],
-              palette: _funnelPalettes[i % _funnelPalettes.length],
-              widthFactor: _taper(i, ordered.length),
-              index: i,
+      child: ordered.isEmpty
+          ? _CardEmpty(
+              icon: Icons.filter_alt_outlined,
+              accent: AppColors.primary,
+              unit: 'stages',
+              height: _halfCardBody(context),
+            )
+          : _ScrollPane(
+              height: _halfCardBody(context),
+              builder: (controller) => SingleChildScrollView(
+                controller: controller,
+                // Symmetric so the taper stays centred in the card: insetting
+                // only the right edge to clear the thumb would shift the whole
+                // funnel left of centre on the usual no-scroll case.
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Column(
+                  // Each bar is narrower than the one above it, so they have to
+                  // be centered for the stack to read as a funnel.
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < ordered.length; i++) ...[
+                      if (i > 0) const SizedBox(height: AppSpacing.sm),
+                      _FunnelBar(
+                        stage: ordered[i],
+                        palette: _funnelPalettes[i % _funnelPalettes.length],
+                        widthFactor: _taper(i, ordered.length),
+                        index: i,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -777,30 +961,37 @@ class _ConversionTrendCard extends StatelessWidget {
           ),
         ],
       ),
-      child: SizedBox(
-        height: 368,
-        child: Padding(
-          // Extra right room so the last x-axis label (centered on the
-          // right-most point) doesn't spill past the card edge.
-          padding: const EdgeInsets.only(
-            top: AppSpacing.md,
-            left: 4,
-            right: 24,
-          ),
-          child: _Motion.off(context)
-              ? LineChart(_chartData(1))
-              : TweenAnimationBuilder<double>(
-                  // The series rises out of the baseline. fl_chart's own
-                  // implicit tween is zeroed out underneath so it doesn't lag
-                  // a frame behind this one and smear the curve.
-                  tween: Tween(begin: 0, end: 1),
-                  duration: _Motion.draw,
-                  curve: Curves.easeOutCubic,
-                  builder: (context, t, _) =>
-                      LineChart(_chartData(t), duration: Duration.zero),
+      child: points.isEmpty
+          ? _CardEmpty(
+              icon: Icons.show_chart,
+              accent: AppColors.primary,
+              unit: 'conversions',
+              height: _halfCardBody(context),
+            )
+          : SizedBox(
+              height: _halfCardBody(context),
+              child: Padding(
+                // Extra right room so the last x-axis label (centered on the
+                // right-most point) doesn't spill past the card edge.
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.md,
+                  left: 4,
+                  right: 24,
                 ),
-        ),
-      ),
+                child: _Motion.off(context)
+                    ? LineChart(_chartData(1))
+                    : TweenAnimationBuilder<double>(
+                        // The series rises out of the baseline. fl_chart's own
+                        // implicit tween is zeroed out underneath so it doesn't lag
+                        // a frame behind this one and smear the curve.
+                        tween: Tween(begin: 0, end: 1),
+                        duration: _Motion.draw,
+                        curve: Curves.easeOutCubic,
+                        builder: (context, t, _) =>
+                            LineChart(_chartData(t), duration: Duration.zero),
+                      ),
+              ),
+            ),
     );
   }
 
@@ -984,89 +1175,168 @@ class _DealDistributionCard extends StatelessWidget {
   final List<DealDistributionEntry> entries;
   final int total;
 
-  /// [t] grows the ring's thickness from nothing to its full 22px.
-  PieChartData _donutData(double t) => PieChartData(
-    sectionsSpace: 2,
-    centerSpaceRadius: 55,
-    sections: entries.map((e) {
-      final color = _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
-      return PieChartSectionData(
-        color: color,
-        value: e.count.toDouble(),
-        title: '',
-        radius: 22 * t,
-      );
-    }).toList(),
-  );
+  /// Outer radius of the ring for a box of [side] logical pixels.
+  ///
+  /// Was a hard-coded 66 + 26, which meant one 184px dial whatever it was
+  /// drawn into: lost in the middle of a desktop card, and cramped on a phone.
+  /// Now it takes 88% of the space it's handed, so the ring grows with the card
+  /// on every platform. Floored so it stays a legible ring on a small phone,
+  /// and capped so a very wide card doesn't hand it the whole body — past
+  /// roughly this size the donut stops reading as a chart and starts reading as
+  /// a decoration.
+  static double _outerRadius(double side) =>
+      (side / 2 * 0.88).clamp(70.0, 155.0);
+
+  /// Ring thickness for a given [outer] radius. A constant fraction, so the
+  /// hole/ring proportion looks the same at every size, bounded either side to
+  /// stay a ring rather than a hairline or a near-solid pie.
+  static double _thickness(double outer) => (outer * 0.3).clamp(20.0, 46.0);
+
+  /// [t] grows the ring's thickness from nothing to its full depth.
+  PieChartData _donutData(double t, double outer) {
+    final thickness = _thickness(outer);
+    return PieChartData(
+      sectionsSpace: 2,
+      centerSpaceRadius: outer - thickness,
+      sections: entries.map((e) {
+        final color = _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
+        return PieChartSectionData(
+          color: color,
+          value: e.count.toDouble(),
+          title: '',
+          radius: thickness * t,
+        );
+      }).toList(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Deal Distribution',
-      child: SizedBox(
-        height: 240,
-        child: Row(
-          children: [
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (_Motion.off(context))
-                    PieChart(_donutData(1))
-                  else
-                    TweenAnimationBuilder<double>(
-                      // The ring thickens out of the centre hole. Scaling the
-                      // radius rather than the values keeps every slice's share
-                      // correct from the first frame — only the depth grows.
-                      tween: Tween(begin: 0, end: 1),
-                      duration: _Motion.draw,
-                      curve: Curves.easeOutCubic,
-                      builder: (context, t, _) =>
-                          PieChart(_donutData(t), duration: Duration.zero),
-                    ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+      child: total == 0
+          ? _CardEmpty(
+              icon: Icons.donut_large_outlined,
+              accent: AppColors.info,
+              unit: 'deals',
+              height: _halfCardBody(context),
+            )
+          : SizedBox(
+              height: _halfCardBody(context),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Side by side needs room for the ring *and* a column of tier
+                  // labels. Below this the ring gets squeezed down to a dial to
+                  // make space for the legend, so stack them instead and let the
+                  // ring have the full width — which is the layout a phone
+                  // and a narrow tablet column both end up on.
+                  if (constraints.maxWidth < 400) {
+                    return Column(
+                      children: [
+                        Expanded(child: _donut(context)),
+                        const SizedBox(height: AppSpacing.sm),
+                        _legend(stacked: true),
+                      ],
+                    );
+                  }
+                  return Row(
                     children: [
-                      _CountUp(value: total, style: AppTextStyles.h1),
-                      Text('Total Deals', style: AppTextStyles.caption),
+                      Expanded(child: _donut(context)),
+                      const SizedBox(width: AppSpacing.md),
+                      _legend(stacked: false),
                     ],
+                  );
+                },
+              ),
+            ),
+    );
+  }
+
+  /// The ring plus its centre total, sized to whatever box it lands in.
+  Widget _donut(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Square by the smaller side: a wide, short box would otherwise scale
+        // the ring off the top and bottom of the card.
+        final side = constraints.maxHeight < constraints.maxWidth
+            ? constraints.maxHeight
+            : constraints.maxWidth;
+        final outer = _outerRadius(side);
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            if (_Motion.off(context))
+              PieChart(_donutData(1, outer))
+            else
+              TweenAnimationBuilder<double>(
+                // The ring thickens out of the centre hole. Scaling the radius
+                // rather than the values keeps every slice's share correct from
+                // the first frame — only the depth grows.
+                tween: Tween(begin: 0, end: 1),
+                duration: _Motion.draw,
+                curve: Curves.easeOutCubic,
+                builder: (context, t, _) =>
+                    PieChart(_donutData(t, outer), duration: Duration.zero),
+              ),
+            // Constrained to the hole, so a five-figure total wraps inside the
+            // ring instead of printing over it.
+            SizedBox(
+              width: (outer - _thickness(outer)) * 1.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CountUp(value: total, style: AppTextStyles.h1),
+                  Text(
+                    'Total Deals',
+                    style: AppTextStyles.caption,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: entries.map((e) {
-                final color =
-                    _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${_titleCase(e.tier)} (${e.count})',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Tier swatches. A column beside the ring when there's width for one, a
+  /// centred wrap underneath it when there isn't.
+  Widget _legend({required bool stacked}) {
+    final items = entries.map((e) {
+      final color = _tierColors[e.tier.toLowerCase()] ?? AppColors.textMuted;
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: stacked ? 0 : 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${_titleCase(e.tier)} (${e.count})',
+              style: AppTextStyles.bodySmall,
             ),
           ],
         ),
-      ),
+      );
+    }).toList();
+
+    if (stacked) {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: AppSpacing.md,
+        runSpacing: AppSpacing.sm,
+        children: items,
+      );
+    }
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items,
     );
   }
 }
@@ -1080,50 +1350,68 @@ class _LeaderboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Sales Leaderboard',
-      child: Column(
-        children: [
-          for (var i = 0; i < entries.length; i++)
-            Padding(
-              padding: EdgeInsets.only(
-                bottom: i == entries.length - 1 ? 0 : AppSpacing.md,
-              ),
-              child: Row(
-                children: [
-                  UserAvatar(
-                    name: entries[i].ownerName,
-                    avatarUrl: resolveMediaUrl(
-                      entries[i].avatarUrl,
-                      bustCache: true,
-                    ),
-                    size: 36,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entries[i].ownerName,
-                          style: AppTextStyles.labelLarge,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '${entries[i].dealsClosed} deals closed',
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    CurrencyFormatter.formatCompact(entries[i].revenue),
-                    style: AppTextStyles.labelLarge.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
+      child: entries.isEmpty
+          ? _CardEmpty(
+              icon: Icons.leaderboard_outlined,
+              accent: AppColors.warning,
+              unit: 'closed deals',
+              height: _halfCardBody(context),
+            )
+          : _ScrollPane(
+              height: _halfCardBody(context),
+              builder: (controller) => ListView.builder(
+                controller: controller,
+                // Room for the thumb so it doesn't sit over the revenue figure.
+                padding: const EdgeInsets.only(right: AppSpacing.md),
+                itemCount: entries.length,
+                itemBuilder: (context, i) => _LeaderboardRow(
+                  entry: entries[i],
+                  last: i == entries.length - 1,
+                ),
               ),
             ),
+    );
+  }
+}
+
+class _LeaderboardRow extends StatelessWidget {
+  const _LeaderboardRow({required this.entry, required this.last});
+  final LeaderboardEntry entry;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: last ? 0 : AppSpacing.md),
+      child: Row(
+        children: [
+          UserAvatar(
+            name: entry.ownerName,
+            avatarUrl: resolveMediaUrl(entry.avatarUrl, bustCache: true),
+            size: 36,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.ownerName,
+                  style: AppTextStyles.labelLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${entry.dealsClosed} deals closed',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            CurrencyFormatter.formatCompact(entry.revenue),
+            style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary),
+          ),
         ],
       ),
     );
@@ -1131,51 +1419,34 @@ class _LeaderboardCard extends StatelessWidget {
 }
 
 // ─── Activity feed ──────────────────────────────────────
-class _ActivityFeedCard extends StatefulWidget {
+class _ActivityFeedCard extends StatelessWidget {
   const _ActivityFeedCard({required this.entries});
   final List<DashboardActivity> entries;
-
-  @override
-  State<_ActivityFeedCard> createState() => _ActivityFeedCardState();
-}
-
-class _ActivityFeedCardState extends State<_ActivityFeedCard> {
-  /// The feed needs its own controller rather than borrowing the ambient one:
-  /// this card sits inside the page's [SingleChildScrollView], so a [Scrollbar]
-  /// left to find a controller itself would attach to the *page's* scroll
-  /// position and drive the wrong list.
-  final ScrollController _controller = ScrollController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Activity Feed',
-      child: SizedBox(
-        // Fixed viewport. The feed is unbounded server-side, so letting it set
-        // the card's height moved everything below it by an amount that changed
-        // with the data.
-        height: context.isMobile ? 240 : 300,
-        child: Scrollbar(
-          controller: _controller,
-          // Kept visible so it's obvious the list continues past the fold —
-          // without it a cut-off row just looks like the end of the feed.
-          thumbVisibility: true,
-          child: ListView.builder(
-            controller: _controller,
-            // Room for the thumb so it doesn't sit on top of the text.
-            padding: const EdgeInsets.only(right: AppSpacing.md),
-            itemCount: widget.entries.length,
-            itemBuilder: (context, i) =>
-                _ActivityRow(activity: widget.entries[i]),
-          ),
-        ),
-      ),
+      // Fixed viewport either way. The feed is unbounded server-side, so
+      // letting it set the card's height moved everything below it by an
+      // amount that changed with the data.
+      child: entries.isEmpty
+          ? _CardEmpty(
+              icon: Icons.history_toggle_off,
+              accent: AppColors.success,
+              unit: 'activities',
+              height: _feedBody(context),
+            )
+          : _ScrollPane(
+              height: _feedBody(context),
+              builder: (controller) => ListView.builder(
+                controller: controller,
+                // Room for the thumb so it doesn't sit on top of the text.
+                padding: const EdgeInsets.only(right: AppSpacing.md),
+                itemCount: entries.length,
+                itemBuilder: (context, i) => _ActivityRow(activity: entries[i]),
+              ),
+            ),
     );
   }
 }
@@ -1263,47 +1534,56 @@ class _ActivityRow extends StatelessWidget {
 }
 
 // ─── Drop-off reasons table ─────────────────────────────
-class _DropOffCard extends StatefulWidget {
+class _DropOffCard extends StatelessWidget {
   const _DropOffCard({required this.entries});
   final List<DropOffReason> entries;
 
-  @override
-  State<_DropOffCard> createState() => _DropOffCardState();
-}
-
-class _DropOffCardState extends State<_DropOffCard> {
   /// Below this the five columns squeeze into unreadable slivers, so the table
   /// scrolls sideways instead of shrinking.
   static const double _minTableWidth = 720;
 
-  /// Same reasoning as the activity feed's: the card is inside the page's
-  /// [SingleChildScrollView], so the [Scrollbar] has to be handed the table's
-  /// own controller rather than resolving one from the tree.
-  final ScrollController _controller = ScrollController();
+  /// Rows shown before the body starts scrolling.
+  static const int _maxVisibleRows = 5;
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  /// Height of one row. Fixed, so five rows is exactly five rows tall and the
+  /// body can't be left showing half a sixth; scaled with the platform text
+  /// size so a larger setting grows the rows rather than clipping them.
+  static double _rowExtent(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(28) + AppSpacing.md * 2;
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Drop-off Reasons (Lost & Cold Deals)',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Lay the table out at the card's own width when there's room.
-          // Wrapping it in a horizontal scroll view unconditionally hands the
-          // rows unbounded width, which pushes every column after the reason
-          // name off-screen.
-          if (constraints.maxWidth >= _minTableWidth) return _table(context);
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(width: _minTableWidth, child: _table(context)),
-          );
-        },
-      ),
+      // No reasons means no rows worth heading - a bare header row over empty
+      // space reads as a table that failed to load.
+      child: entries.isEmpty
+          ? _CardEmpty(
+              icon: Icons.trending_down,
+              accent: AppColors.error,
+              unit: 'lost or cold deals',
+              // Matched to a full table, so an empty period doesn't leave a
+              // shorter card than a populated one.
+              height: _rowExtent(context) * _maxVisibleRows,
+            )
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                // Lay the table out at the card's own width when there's room.
+                // Wrapping it in a horizontal scroll view unconditionally hands
+                // the rows unbounded width, which pushes every column after the
+                // reason name off-screen.
+                if (constraints.maxWidth >= _minTableWidth) {
+                  return _table(context);
+                }
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: _minTableWidth,
+                    child: _table(context),
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -1326,24 +1606,21 @@ class _DropOffCardState extends State<_DropOffCard> {
           ),
         ),
         const Divider(height: 1),
-        SizedBox(
-          // Fixed body height — the reason list grows with the pipeline, and
-          // this card is last on the page, so an uncapped table left the scroll
-          // length changing with the data.
-          height: context.isMobile ? 260 : 320,
-          child: Scrollbar(
-            controller: _controller,
-            // Visible by design: a row clipped at the fold otherwise reads as
-            // the last reason rather than the start of more.
-            thumbVisibility: true,
-            child: ListView.builder(
-              controller: _controller,
-              // Room for the thumb so it doesn't sit over the Trend column.
-              padding: const EdgeInsets.only(right: AppSpacing.md),
-              itemCount: widget.entries.length,
-              itemBuilder: (context, i) =>
-                  _DropOffRow(reason: widget.entries[i]),
-            ),
+        // Five rows, then scroll. The reason list grows with the pipeline and
+        // this card is last on the page, so an uncapped table left the page's
+        // own scroll length changing with the data; sizing to the row count
+        // below the cap keeps a two-reason table from sitting in a hole.
+        _ScrollPane(
+          height:
+              _rowExtent(context) * entries.length.clamp(1, _maxVisibleRows),
+          builder: (controller) => ListView.builder(
+            controller: controller,
+            // Uniform rows, and it keeps the list lazy at any length.
+            itemExtent: _rowExtent(context),
+            // Room for the thumb so it doesn't sit over the Impact column.
+            padding: const EdgeInsets.only(right: AppSpacing.md),
+            itemCount: entries.length,
+            itemBuilder: (context, i) => _DropOffRow(reason: entries[i]),
           ),
         ),
       ],
@@ -1362,6 +1639,9 @@ class _DropOffRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The list gives every row the same extent (see _DropOffCard._rowExtent),
+    // so this padding insets the content inside that rather than setting the
+    // row's height itself.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
