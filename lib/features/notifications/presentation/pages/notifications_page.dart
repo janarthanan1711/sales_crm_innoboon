@@ -637,6 +637,10 @@ class _NotificationCard extends StatelessWidget {
         return Icons.access_time;
       case NotificationType.newLead:
         return Icons.star_outline;
+      case NotificationType.dealCreated:
+        return Icons.add_business;
+      case NotificationType.accountCreated:
+        return Icons.domain_add;
     }
   }
 
@@ -649,6 +653,10 @@ class _NotificationCard extends StatelessWidget {
       case NotificationType.taskOverdue:
         return AppColors.warning;
       case NotificationType.newLead:
+        return AppColors.primary;
+      case NotificationType.dealCreated:
+        return AppColors.primary;
+      case NotificationType.accountCreated:
         return AppColors.primary;
     }
   }

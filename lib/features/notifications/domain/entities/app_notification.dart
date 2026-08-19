@@ -1,16 +1,26 @@
 import 'package:equatable/equatable.dart';
 
-/// Backend wire values: `task_overdue|deal_stage_changed|lead_assigned|new_lead`
-/// (see doc §9.1). `task_overdue` entries are computed from overdue-follow-up
-/// leads at read time — they carry a negative [AppNotification.id] and are not
-/// stored rows, so they can't be marked read or deleted individually.
-enum NotificationType { taskOverdue, dealStageChanged, leadAssigned, newLead }
+/// Backend wire values: `task_overdue|deal_stage_changed|lead_assigned|new_lead|
+/// deal_created|account_created` (see doc §9.1). `task_overdue` entries are
+/// computed from overdue-follow-up leads at read time — they carry a negative
+/// [AppNotification.id] and are not stored rows, so they can't be marked read
+/// or deleted individually.
+enum NotificationType {
+  taskOverdue,
+  dealStageChanged,
+  leadAssigned,
+  newLead,
+  dealCreated,
+  accountCreated,
+}
 
 const Map<String, String> notificationTypeLabels = {
   'task_overdue': 'Task Overdue',
   'deal_stage_changed': 'Deal Update',
   'lead_assigned': 'Lead Assigned',
   'new_lead': 'New Lead',
+  'deal_created': 'New Deal',
+  'account_created': 'New Account',
 };
 
 NotificationType notificationTypeFromWire(String wireValue) {
@@ -21,6 +31,10 @@ NotificationType notificationTypeFromWire(String wireValue) {
       return NotificationType.leadAssigned;
     case 'new_lead':
       return NotificationType.newLead;
+    case 'deal_created':
+      return NotificationType.dealCreated;
+    case 'account_created':
+      return NotificationType.accountCreated;
     case 'task_overdue':
     default:
       return NotificationType.taskOverdue;
@@ -35,6 +49,10 @@ String notificationTypeWireValue(NotificationType type) {
       return 'lead_assigned';
     case NotificationType.newLead:
       return 'new_lead';
+    case NotificationType.dealCreated:
+      return 'deal_created';
+    case NotificationType.accountCreated:
+      return 'account_created';
     case NotificationType.taskOverdue:
       return 'task_overdue';
   }

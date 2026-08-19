@@ -158,10 +158,129 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
     super.dispose();
   }
 
+  /// Case-folded email for comparison.
+  static String _emailKey(String value) => value.trim().toLowerCase();
+
+  /// Digits-only phone for comparison, so '+1 (555) 000-0000' and
+  /// '15550000000' are recognised as the same number rather than as two
+  /// different ones that happen to reach the same person.
+  static String _phoneKey(String value) =>
+      value.replaceAll(RegExp(r'[^0-9]'), '');
+
+  /// Which contact on this form already holds [value], or null if it's unique.
+  ///
+  /// [index] is the additional-contact row being checked, so a row never
+  /// reports itself. Only rows *above* it can be named as the owner: flagging
+  /// the later of two identical entries points at the one the user just typed,
+  /// and fixing it clears the clash instead of leaving both ends of it marked.
+  String? _duplicateContactHolder({
+    required int index,
+    required String value,
+    required bool isEmail,
+  }) {
+    final key = isEmail ? _emailKey(value) : _phoneKey(value);
+    if (key.isEmpty) return null;
+
+    // The lead's own email/phone is a contact too, and it's the one an edit
+    // pre-fills — which is how the same address ends up typed twice.
+    final primary = isEmail
+        ? _emailKey(_emailController.text)
+        : _phoneKey(_phoneController.text);
+    if (key == primary) return 'the primary contact';
+
+    for (var i = 0; i < index; i++) {
+      final other = isEmail
+          ? _emailKey(_additionalContacts[i].email.text)
+          : _phoneKey(_additionalContacts[i].phone.text);
+      if (other.isNotEmpty && other == key) return 'contact ${i + 1}';
+    }
+    return null;
+  }
+
+  /// Validators for an additional contact's email/phone. Wired with
+  /// [AutovalidateMode.onUserInteraction], so the clash is flagged on the field
+  /// as soon as the value is typed rather than only on save. A partial match
+  /// can't trip them — the comparison is exact — so nothing lights up
+  /// mid-word.
+  String? _validateContactEmail(int index, String? raw) {
+    final value = (raw ?? '').trim();
+    if (value.isEmpty) return null;
+    final malformed = Validators.email(value);
+    if (malformed != null) return malformed;
+    final holder = _duplicateContactHolder(
+      index: index,
+      value: value,
+      isEmail: true,
+    );
+    return holder == null ? null : 'This email is already used by $holder.';
+  }
+
+  String? _validateContactPhone(int index, String? raw) {
+    final value = (raw ?? '').trim();
+    if (value.isEmpty) return null;
+    final holder = _duplicateContactHolder(
+      index: index,
+      value: value,
+      isEmail: false,
+    );
+    return holder == null
+        ? null
+        : 'This phone number is already used by $holder.';
+  }
+
+  /// Every duplicate on the form as a user-facing line, each naming the value
+  /// that clashed.
+  ///
+  /// The inline errors alone aren't enough: Save sits in the page header, so on
+  /// a long form the offending contact row is usually scrolled out of view and
+  /// a save that silently does nothing looks like a broken button.
+  List<String> _duplicateContactErrors() {
+    final errors = <String>[];
+    for (var i = 0; i < _additionalContacts.length; i++) {
+      final email = _additionalContacts[i].email.text.trim();
+      final phone = _additionalContacts[i].phone.text.trim();
+
+      final emailHolder = _duplicateContactHolder(
+        index: i,
+        value: email,
+        isEmail: true,
+      );
+      if (emailHolder != null) {
+        errors.add('$email (contact ${i + 1}) is already used by $emailHolder');
+      }
+
+      final phoneHolder = _duplicateContactHolder(
+        index: i,
+        value: phone,
+        isEmail: false,
+      );
+      if (phoneHolder != null) {
+        errors.add('$phone (contact ${i + 1}) is already used by $phoneHolder');
+      }
+    }
+    return errors;
+  }
+
   /// Saves the form. With [convert] the new lead is immediately turned into an
   /// account — only offered on create, since an existing lead converts from its
   /// own detail page (and a converted one can't convert twice).
   Future<void> _onSubmit({bool convert = false}) async {
+    // Checked ahead of validate() so the summary can quote the offending
+    // values, which a field-level error can't — it only has room to say what
+    // the value clashes with. validate() still runs, to paint the inline errors
+    // on the rows themselves.
+    final duplicates = _duplicateContactErrors();
+    if (duplicates.isNotEmpty) {
+      _formKey.currentState?.validate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(duplicates.join('\n')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     // Ask for the account's tier and owner *before* writing anything. Asking
@@ -408,6 +527,10 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
       hintText: hint,
       hintStyle: TextStyle(color: AppColors.textMuted),
       prefixIcon: prefix,
+      // Two lines: "This email is already used by the primary contact." runs
+      // past one line in a half-width field, and the default single line
+      // ellipsises it to nothing useful.
+      errorMaxLines: 2,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -571,9 +694,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                         false,
                         TextFormField(
                           controller: _additionalContacts[i].email,
-                          validator: (v) => v == null || v.isEmpty
-                              ? null
-                              : Validators.email(v),
+                          validator: (v) => _validateContactEmail(i, v),
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           decoration: _inputDecoration(
                             'alternate@acme.com',
                             prefix: Icon(
@@ -590,6 +712,8 @@ class _CreateLeadViewState extends State<_CreateLeadView> {
                         TextFormField(
                           controller: _additionalContacts[i].phone,
                           keyboardType: TextInputType.phone,
+                          validator: (v) => _validateContactPhone(i, v),
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           decoration: _inputDecoration(
                             '+1 (555) 000-0000',
                             prefix: Icon(
