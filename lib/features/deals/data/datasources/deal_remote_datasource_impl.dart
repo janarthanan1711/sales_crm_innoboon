@@ -43,10 +43,10 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           // which the API ORs together (doc §6.3).
           if (stageId != null && stageId.isNotEmpty) 'stage_id': stageId,
           if (search != null && search.isNotEmpty) 'search': search,
-          if (dateField != null) 'date_field': dateField,
+          'date_field': ?dateField,
           if (dateFrom != null) 'date_from': _formatDate(dateFrom),
           if (dateTo != null) 'date_to': _formatDate(dateTo),
-          if (stageState != null) 'stage_state': stageState,
+          'stage_state': ?stageState,
           'limit': 200,
           'offset': 0,
         },
@@ -254,7 +254,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
         ApiEndpoints.deals,
         queryParameters: {
           'to_export': true,
-          if (ownerId != null) 'owner_id': ownerId,
+          'owner_id': ?ownerId,
           if (stageId != null && stageId.isNotEmpty) 'stage_id': stageId,
           // `tier` is repeatable (doc §6.3) — Dio serialises a List as
           // `?tier=gold&tier=silver`, which the API ORs together.

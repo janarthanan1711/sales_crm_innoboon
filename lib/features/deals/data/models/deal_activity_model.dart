@@ -40,8 +40,8 @@ Map<String, dynamic> dealActivityUpdateJson({
   String? note,
 }) {
   return {
-    if (type != null) 'type': type,
+    'type': ?type,
     if (title != null) 'title': title.trim(),
-    if (note != null) 'note': note,
+    'note': ?note,
   };
 }

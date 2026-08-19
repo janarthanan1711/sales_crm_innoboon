@@ -366,9 +366,7 @@ class _WebSidebar extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Quick action menu
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Quick Action'),
                 ),

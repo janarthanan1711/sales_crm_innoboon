@@ -86,12 +86,9 @@ class LeadModel extends Lead {
   /// (server: present -> partial update, absent -> create). `contacts` is
   /// only honored by the server on create — `lead_service.update_lead`
   /// excludes it, so edits to additional contacts don't currently persist.
-  static Map<String, dynamic> toUpsertJson(
-    LeadUpsertParams params, {
-    int? id,
-  }) {
+  static Map<String, dynamic> toUpsertJson(LeadUpsertParams params, {int? id}) {
     return {
-      if (id != null) 'id': id,
+      'id': ?id,
       'first_name': params.firstName,
       'last_name': params.lastName,
       'company': params.company,
@@ -111,14 +108,16 @@ class LeadModel extends Lead {
           params.additionalContacts!.any((c) => !c.isEmpty))
         'contacts': params.additionalContacts!
             .where((c) => !c.isEmpty)
-            .map((c) => {
-                  if (c.firstName != null && c.firstName!.isNotEmpty)
-                    'first_name': c.firstName,
-                  if (c.lastName != null && c.lastName!.isNotEmpty)
-                    'last_name': c.lastName,
-                  if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
-                  if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
-                })
+            .map(
+              (c) => {
+                if (c.firstName != null && c.firstName!.isNotEmpty)
+                  'first_name': c.firstName,
+                if (c.lastName != null && c.lastName!.isNotEmpty)
+                  'last_name': c.lastName,
+                if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
+                if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
+              },
+            )
             .toList(),
     };
   }

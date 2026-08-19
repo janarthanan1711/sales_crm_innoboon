@@ -57,9 +57,8 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   /// True when the currently-selected stage needs a reason (cold stages, plus
   /// Closed Lost). Gates the extra "Reason" field and whether `cold_reason`
   /// is sent.
-  bool get _selectedStageIsCold => _stages.any(
-    (s) => s.id == _stageId && dealStageRequiresReason(s),
-  );
+  bool get _selectedStageIsCold =>
+      _stages.any((s) => s.id == _stageId && dealStageRequiresReason(s));
 
   @override
   void initState() {
@@ -267,7 +266,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                 ),
               ),
             ),
-            if (rightAction != null) rightAction,
+            ?rightAction,
           ],
         ),
         const SizedBox(height: 6),

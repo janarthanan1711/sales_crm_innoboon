@@ -16,7 +16,9 @@ class RoleRemoteDataSourceImpl implements RoleRemoteDataSource {
     try {
       final response = await dioClient.get(ApiEndpoints.permissions);
       final data = response.data as List<dynamic>;
-      return data.map((e) => Permission.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => Permission.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw _normalize(e);
     }
@@ -65,9 +67,9 @@ class RoleRemoteDataSourceImpl implements RoleRemoteDataSource {
       final response = await dioClient.patch(
         ApiEndpoints.roleById('$id'),
         data: {
-          if (name != null) 'name': name,
-          if (description != null) 'description': description,
-          if (permissionIds != null) 'permission_ids': permissionIds,
+          'name': ?name,
+          'description': ?description,
+          'permission_ids': ?permissionIds,
         },
       );
       return Role.fromJson(response.data as Map<String, dynamic>);
