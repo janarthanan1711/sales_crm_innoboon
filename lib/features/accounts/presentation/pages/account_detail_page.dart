@@ -93,13 +93,15 @@ class _AccountDetailViewState extends State<_AccountDetailView>
           }
         },
         builder: (context, state) {
-          if (state is AccountDetailLoading)
+          if (state is AccountDetailLoading) {
             return const AppLoadingIndicator(message: 'Loading account...');
+          }
           if (state is AccountDetailError) {
             return ErrorState(message: state.message, onRetry: () {});
           }
-          if (state is AccountDetailLoaded)
+          if (state is AccountDetailLoaded) {
             return _buildContent(context, state);
+          }
           return const SizedBox.shrink();
         },
       ),
@@ -217,8 +219,9 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                       tooltip: 'More actions',
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
-                        if (value == 'delete')
+                        if (value == 'delete') {
                           _confirmDeleteAccount(context, account);
+                        }
                       },
                       itemBuilder: (_) => [
                         PopupMenuItem(
@@ -1444,8 +1447,9 @@ class _DocumentsTabState extends State<_DocumentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const AppLoadingIndicator(message: 'Loading documents...');
+    }
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final canManage = context.can(Perms.accountsManage);
@@ -2248,8 +2252,9 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const AppLoadingIndicator(message: 'Loading activity...');
+    }
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final canManage = context.can(Perms.accountsManage);
