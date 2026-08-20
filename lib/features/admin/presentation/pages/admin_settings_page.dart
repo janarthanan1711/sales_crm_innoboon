@@ -387,13 +387,17 @@ class _UsersTabState extends State<_UsersTab> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     DropdownButtonFormField<int?>(
+                      isExpanded: true,
                       value: roleId,
                       decoration: const InputDecoration(labelText: 'Role'),
                       items: _roles
                           .map(
                             (r) => DropdownMenuItem(
                               value: r.id,
-                              child: Text(r.name),
+                              child: Text(
+                                r.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           )
                           .toList(),
@@ -786,9 +790,15 @@ Future<void> _showChangeRoleDialog(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 value: selectedRoleId,
                 items: roles
-                    .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name)))
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r.id,
+                        child: Text(r.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => selectedRoleId = v ?? selectedRoleId),
                 decoration: const InputDecoration(labelText: 'Role'),
