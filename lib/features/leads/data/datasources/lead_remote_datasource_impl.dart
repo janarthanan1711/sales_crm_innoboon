@@ -32,9 +32,9 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       final response = await dioClient.get(
         ApiEndpoints.leads,
         queryParameters: {
-          if (ownerId != null) 'owner_id': ownerId,
-          if (source != null) 'source': source,
-          if (status != null) 'status': status,
+          'owner_id': ?ownerId,
+          'source': ?source,
+          'status': ?status,
           if (search != null && search.isNotEmpty) 'search': search,
           if (dateFrom != null) 'date_from': _formatDate(dateFrom),
           if (dateTo != null) 'date_to': _formatDate(dateTo),
@@ -116,10 +116,7 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
     try {
       final response = await dioClient.post(
         ApiEndpoints.convertLead('$leadId'),
-        data: {
-          if (tier != null) 'tier': tier,
-          if (ownerId != null) 'owner_id': ownerId,
-        },
+        data: {'tier': ?tier, 'owner_id': ?ownerId},
       );
       final data = response.data as Map<String, dynamic>;
       return data['id'] as int;
@@ -180,10 +177,7 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
     try {
       final response = await dioClient.patch(
         '${ApiEndpoints.leadActivities('$leadId')}/$activityId',
-        data: {
-          if (type != null) 'type': type,
-          if (note != null) 'note': note,
-        },
+        data: {'type': ?type, 'note': ?note},
       );
       return leadActivityFromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -247,7 +241,7 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
         ApiEndpoints.leads,
         queryParameters: {
           'to_export': true,
-          if (ownerId != null) 'owner_id': ownerId,
+          'owner_id': ?ownerId,
           if (source != null && source.isNotEmpty) 'source': source,
           if (status != null && status.isNotEmpty) 'status': status,
           if (search != null && search.isNotEmpty) 'search': search,

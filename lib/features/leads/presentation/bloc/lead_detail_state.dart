@@ -17,6 +17,7 @@ class LeadDetailLoading extends LeadDetailState {
 
 class LeadDetailLoaded extends LeadDetailState {
   final Lead lead;
+
   /// Activities currently shown on the Activity tab — starts as
   /// `lead.activities` and is replaced whenever a filter changes or a
   /// mutation (log/update/delete) completes.
@@ -28,6 +29,12 @@ class LeadDetailLoaded extends LeadDetailState {
   const LeadDetailLoaded(
     this.lead, {
     this.activities = const [],
+
+    // Seeded to every known type by the load handler, so the filter bar opens
+    // with all boxes ticked — an empty set reads on screen as "no types
+    // selected" while the timeline is in fact showing all of them. The default
+    // stays empty only because a const constructor can't reference the label
+    // map; nothing constructs this without going through the load handler.
     this.activityTypeFilter = const {},
     this.activityDateFrom,
     this.activityDateTo,

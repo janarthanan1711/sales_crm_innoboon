@@ -222,9 +222,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
                                   title: Text(
                                     'Delete ${ids.length} notification${ids.length == 1 ? '' : 's'}?',
                                   ),
-                                  content: const Text(
-                                    'This cannot be undone.',
-                                  ),
+                                  content: const Text('This cannot be undone.'),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>
@@ -364,24 +362,31 @@ class _BulkActionBar extends StatelessWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
+      // An inverted bar, so it reads as overlaying the list rather than as one
+      // more row in it. Every child takes its colour from the same pair —
+      // this was `textPrimary` as a background with hard-coded white on top,
+      // which vanished in dark mode when textPrimary inverted to near-white.
       decoration: BoxDecoration(
-        color: AppColors.textPrimary,
+        color: AppColors.inverseSurface,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 12,
+            // Brand-filled, so its own label stays white in both themes.
             backgroundColor: AppColors.primary,
             child: Text(
               '$count',
-              style: const TextStyle(fontSize: 12, color: Colors.white),
+              style: TextStyle(fontSize: 12, color: AppColors.onAccent),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
             '$count selected',
-            style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textOnInverse,
+            ),
           ),
           const Spacer(),
           TextButton.icon(
@@ -391,25 +396,28 @@ class _BulkActionBar extends StatelessWidget {
                   ? Icons.mark_email_unread_outlined
                   : Icons.mark_email_read_outlined,
               size: 16,
-              color: Colors.white,
+              color: AppColors.textOnInverse,
             ),
             label: Text(
               markUnread ? 'Mark Unread' : 'Mark Read',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textOnInverse),
             ),
           ),
           TextButton.icon(
             onPressed: onDelete,
-            icon: const Icon(
+            icon: Icon(
               Icons.delete_outline,
               size: 16,
-              color: Colors.white,
+              color: AppColors.textOnInverse,
             ),
-            label: const Text('Delete', style: TextStyle(color: Colors.white)),
+            label: Text(
+              'Delete',
+              style: TextStyle(color: AppColors.textOnInverse),
+            ),
           ),
           IconButton(
             onPressed: onClear,
-            icon: const Icon(Icons.close, size: 18, color: Colors.white),
+            icon: Icon(Icons.close, size: 18, color: AppColors.textOnInverse),
           ),
         ],
       ),
