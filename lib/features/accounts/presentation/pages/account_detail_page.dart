@@ -12,6 +12,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/widgets/record_export_button.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
@@ -2008,15 +2009,20 @@ class _AccountActivityTabState extends State<_AccountActivityTab> {
     _refresh();
   }
 
+  /// Same picker the Accounts list uses, rather than Material's
+  /// [showDateRangePicker]: one small month, pick start then end in the one
+  /// open dialog instead of a near-full-screen takeover.
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final range = await showDateRangePicker(
+    final range = await showCompactDateRangePicker(
       context: context,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: (_dateFrom != null && _dateTo != null)
-          ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
-          : null,
+      initialStart: _dateFrom,
+      // `_dateTo` is stored a day past the picked date (see below), so hand the
+      // picker back the day the user actually chose — otherwise reopening it
+      // walks the end date forward one day each time.
+      initialEnd: _dateTo?.subtract(const Duration(days: 1)),
     );
     if (range == null || !mounted) return;
     setState(() {

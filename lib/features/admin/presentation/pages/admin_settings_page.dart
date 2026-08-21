@@ -784,7 +784,11 @@ Future<void> _showChangeRoleDialog(
       builder: (dialogContext, setState) => AlertDialog(
         title: Text('Change role for ${user.displayName}'),
         content: SizedBox(
-          width: 320,
+          // 380 to match the Invite User dialog. Role names are free text and
+          // run long ("Dashboard, Accounts & Deals Manager (Owned)"); at 320
+          // isExpanded + ellipsis stopped the overflow but clipped the name to
+          // the point where you couldn't tell which role you were picking.
+          width: 380,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

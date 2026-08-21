@@ -117,6 +117,12 @@ class AppColors {
   static Color get overlay => _palette.overlay;
   static Color get avatarBg => _palette.avatarBg;
 
+  /// For the few surfaces that invert against the page rather than sitting on
+  /// it — the notifications bulk-action bar, chart tooltips. Pair the two:
+  /// anything drawn on [inverseSurface] takes [textOnInverse].
+  static Color get inverseSurface => _palette.inverseSurface;
+  static Color get textOnInverse => _palette.textOnInverse;
+
   /// White in both modes — for text/icons sitting on a filled brand-coloured
   /// surface, where the background doesn't change with the theme.
   static const Color onAccent = Color(0xFFFFFFFF);

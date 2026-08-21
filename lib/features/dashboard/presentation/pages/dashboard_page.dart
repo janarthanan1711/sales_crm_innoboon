@@ -1088,11 +1088,14 @@ class _ConversionTrendCard extends StatelessWidget {
       borderData: FlBorderData(show: false),
       // fl_chart defaults a tooltip's text colour to the *line's* colour, so
       // the hovered value came out dark blue on the dark tooltip and was
-      // essentially unreadable. Spell out white text on a dark panel, and put
-      // the bucket's date above the count so the hover says what it's counting.
+      // essentially unreadable. Spell out the panel and its text as an
+      // inverse-surface pair — this used `textPrimary` as the panel colour
+      // with hard-coded white text, which became white-on-white once dark mode
+      // inverted textPrimary — and put the bucket's date above the count so
+      // the hover says what it's counting.
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
-          getTooltipColor: (_) => AppColors.textPrimary,
+          getTooltipColor: (_) => AppColors.inverseSurface,
           tooltipRoundedRadius: 6,
           getTooltipItems: (touched) => touched.map((spot) {
             final i = spot.x.toInt();
@@ -1104,8 +1107,8 @@ class _ConversionTrendCard extends StatelessWidget {
               // Read the rate off the data, not off `spot.y` — mid-entrance
               // the plotted y is a fraction of the real value.
               '${(inRange ? points[i].rate : spot.y).toStringAsFixed(1)}%',
-              const TextStyle(
-                color: Colors.white,
+              TextStyle(
+                color: AppColors.textOnInverse,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -1114,7 +1117,7 @@ class _ConversionTrendCard extends StatelessWidget {
                   TextSpan(
                     text: '\n$label',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
+                      color: AppColors.textOnInverse.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w500,
                       fontSize: 11,
                     ),

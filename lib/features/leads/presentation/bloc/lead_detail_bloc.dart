@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/entities/lead_enums.dart';
 import '../../domain/usecases/get_lead_by_id_usecase.dart';
 import '../../domain/usecases/convert_lead_usecase.dart';
 import '../../domain/usecases/delete_lead_usecase.dart';
@@ -50,7 +51,14 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     final result = await getLeadByIdUseCase(event.leadId);
     result.fold(
       (failure) => emit(LeadDetailError(failure.message)),
-      (lead) => emit(LeadDetailLoaded(lead, activities: lead.activities ?? [])),
+      (lead) => emit(
+        LeadDetailLoaded(
+          lead,
+          activities: lead.activities ?? [],
+          // All types ticked to start, matching the Accounts detail page.
+          activityTypeFilter: leadActivityTypeLabels.keys.toSet(),
+        ),
+      ),
     );
   }
 
@@ -63,7 +71,7 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     final result = await listLeadActivitiesUseCase(
       ListLeadActivitiesParams(
         leadId: event.leadId,
-        types: event.types.isEmpty ? null : event.types.toList(),
+        types: _typesParam(event.types),
         dateFrom: event.dateFrom,
         dateTo: event.dateTo,
       ),
@@ -152,9 +160,7 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
     final activitiesResult = await listLeadActivitiesUseCase(
       ListLeadActivitiesParams(
         leadId: leadId,
-        types: current.activityTypeFilter.isEmpty
-            ? null
-            : current.activityTypeFilter.toList(),
+        types: _typesParam(current.activityTypeFilter),
         dateFrom: current.activityDateFrom,
         dateTo: current.activityDateTo,
       ),
@@ -168,6 +174,18 @@ class LeadDetailBloc extends Bloc<LeadDetailEvent, LeadDetailState> {
             emit(current.copyWith(lead: lead, activities: activities)),
       );
     });
+  }
+
+  /// The `types` query parameter for a set of selected activity types.
+  ///
+  /// Null — meaning "don't filter by type" — for both extremes: nothing
+  /// ticked and everything ticked. Spelling out all five would ask the backend
+  /// for a narrower thing than the user selected, and it breaks the moment a
+  /// new activity type is added server-side.
+  List<String>? _typesParam(Set<String> types) {
+    if (types.isEmpty) return null;
+    if (types.length == leadActivityTypeLabels.length) return null;
+    return types.toList();
   }
 
   Future<void> _onConvertRequested(
