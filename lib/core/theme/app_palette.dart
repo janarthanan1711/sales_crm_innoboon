@@ -74,6 +74,8 @@ class AppPalette {
     required this.shadow,
     required this.overlay,
     required this.avatarBg,
+    required this.inverseSurface,
+    required this.textOnInverse,
   });
 
   final Brightness brightness;
@@ -148,6 +150,17 @@ class AppPalette {
   final Color overlay;
   final Color avatarBg;
 
+  /// A surface that deliberately contrasts with the page instead of sitting on
+  /// it — bulk-selection bars, chart tooltips. Dark slate on a light page,
+  /// light slate on a dark one, with [textOnInverse] for anything drawn on top.
+  ///
+  /// These exist because the two call sites were reaching for `textPrimary` as
+  /// a background and hard-coding white on top. That reads correctly in light
+  /// mode by coincidence — `textPrimary` happens to be near-black — and
+  /// in dark mode it inverts to near-white, leaving white text on a white bar.
+  final Color inverseSurface;
+  final Color textOnInverse;
+
   bool get isDark => brightness == Brightness.dark;
 
   /// Original Figma tokens, unchanged.
@@ -215,6 +228,10 @@ class AppPalette {
     shadow: Color(0x0A000000),
     overlay: Color(0x33000000),
     avatarBg: Color(0xFFE2E8F0),
+    // Exactly the old `textPrimary` value the two call sites were using, so
+    // light mode is unchanged to the pixel.
+    inverseSurface: Color(0xFF1E293B),
+    textOnInverse: Color(0xFFFFFFFF),
   );
 
   /// Dark counterpart.
@@ -290,5 +307,10 @@ class AppPalette {
     shadow: Color(0x33000000),
     overlay: Color(0x99000000),
     avatarBg: Color(0xFF334155),
+    // Genuinely inverted rather than mirrored: a *light* bar on the dark page,
+    // which is what makes a selection bar or a tooltip read as sitting above
+    // the content instead of blending into another card.
+    inverseSurface: Color(0xFFE2E8F0),
+    textOnInverse: Color(0xFF0F172A),
   );
 }

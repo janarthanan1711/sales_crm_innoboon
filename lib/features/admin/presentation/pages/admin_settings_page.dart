@@ -387,13 +387,17 @@ class _UsersTabState extends State<_UsersTab> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     DropdownButtonFormField<int?>(
+                      isExpanded: true,
                       value: roleId,
                       decoration: const InputDecoration(labelText: 'Role'),
                       items: _roles
                           .map(
                             (r) => DropdownMenuItem(
                               value: r.id,
-                              child: Text(r.name),
+                              child: Text(
+                                r.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           )
                           .toList(),
@@ -780,15 +784,25 @@ Future<void> _showChangeRoleDialog(
       builder: (dialogContext, setState) => AlertDialog(
         title: Text('Change role for ${user.displayName}'),
         content: SizedBox(
-          width: 320,
+          // 380 to match the Invite User dialog. Role names are free text and
+          // run long ("Dashboard, Accounts & Deals Manager (Owned)"); at 320
+          // isExpanded + ellipsis stopped the overflow but clipped the name to
+          // the point where you couldn't tell which role you were picking.
+          width: 380,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 value: selectedRoleId,
                 items: roles
-                    .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name)))
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r.id,
+                        child: Text(r.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => selectedRoleId = v ?? selectedRoleId),
                 decoration: const InputDecoration(labelText: 'Role'),

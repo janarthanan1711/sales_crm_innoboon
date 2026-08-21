@@ -11,12 +11,25 @@ abstract class AuthRemoteDataSource {
   Future<String> refreshToken(String refreshToken);
   Future<void> logout(String refreshToken);
   Future<UserModel> getMe();
-  Future<UserModel> updateMe({String? firstName, String? lastName, String? phoneNumber});
-  Future<void> changePassword({required String currentPassword, required String newPassword});
-  Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename});
+  Future<UserModel> updateMe({
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+  });
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+  Future<UserModel> uploadAvatar({
+    required Uint8List bytes,
+    required String filename,
+  });
   Future<UserModel> deleteAvatar();
   Future<void> forgotPassword(String email);
-  Future<void> resetPassword({required String token, required String newPassword});
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  });
 }
 
 /// Real API implementation of AuthRemoteDataSource.
@@ -95,14 +108,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> updateMe({String? firstName, String? lastName, String? phoneNumber}) async {
+  Future<UserModel> updateMe({
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+  }) async {
     try {
       final response = await dioClient.patch(
         ApiEndpoints.usersMe,
         data: {
-          if (firstName != null) 'first_name': firstName,
-          if (lastName != null) 'last_name': lastName,
-          if (phoneNumber != null) 'phone_number': phoneNumber,
+          'first_name': ?firstName,
+          'last_name': ?lastName,
+          'phone_number': ?phoneNumber,
         },
       );
       return UserModel.fromJson(response.data as Map<String, dynamic>);
@@ -112,11 +129,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
     try {
       await dioClient.post(
         ApiEndpoints.usersMePassword,
-        data: {'current_password': currentPassword, 'new_password': newPassword},
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
       );
     } on DioException catch (e) {
       throw _normalize(e);
@@ -124,7 +147,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> uploadAvatar({required Uint8List bytes, required String filename}) async {
+  Future<UserModel> uploadAvatar({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
     try {
       final response = await dioClient.post(
         ApiEndpoints.usersMeAvatar,
@@ -160,7 +186,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> resetPassword({required String token, required String newPassword}) async {
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
     try {
       await dioClient.post(
         ApiEndpoints.resetPassword,

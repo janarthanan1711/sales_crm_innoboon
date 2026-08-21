@@ -78,15 +78,18 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   }
 
   String? _validate() {
-    if (_companyController.text.trim().isEmpty)
+    if (_companyController.text.trim().isEmpty) {
       return 'Company name is required.';
-    if (_domainController.text.trim().isEmpty)
+    }
+    if (_domainController.text.trim().isEmpty) {
       return 'Company domain is required.';
+    }
     if (_industry == null) return 'Please select an industry.';
     if (_tier == null) return 'Please select an account tier.';
     if (_addPrimaryContact) {
-      if (_cFirstName.text.trim().isEmpty)
+      if (_cFirstName.text.trim().isEmpty) {
         return 'The primary contact needs a first name.';
+      }
       if (_cEmail.text.trim().isEmpty && _cPhone.text.trim().isEmpty) {
         return 'The primary contact needs an email or phone.';
       }

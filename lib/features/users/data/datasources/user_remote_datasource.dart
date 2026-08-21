@@ -47,9 +47,9 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
       final response = await dioClient.get(
         ApiEndpoints.users,
         queryParameters: {
-          if (roleId != null) 'role_id': roleId,
-          if (isActive != null) 'is_active': isActive,
-          if (status != null) 'status': status,
+          'role_id': ?roleId,
+          'is_active': ?isActive,
+          'status': ?status,
           if (search != null && search.isNotEmpty) 'search': search,
           if (dateFrom != null) 'date_from': _formatDate(dateFrom),
           if (dateTo != null) 'date_to': _formatDate(dateTo),
@@ -111,7 +111,9 @@ class UserRemoteDataSourceImpl implements UserRemoteDataSource {
   @override
   Future<OwnerUser> reinviteUser(int id) async {
     try {
-      final response = await dioClient.post('${ApiEndpoints.userById('$id')}/reinvite');
+      final response = await dioClient.post(
+        '${ApiEndpoints.userById('$id')}/reinvite',
+      );
       return OwnerUserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _normalize(e);

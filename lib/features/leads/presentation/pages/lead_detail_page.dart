@@ -10,6 +10,7 @@ import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/widgets/record_export_button.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/utils/link_launcher.dart';
+import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/lead.dart';
@@ -969,28 +970,18 @@ class _ActivityCenterState extends State<_ActivityCenter> {
     );
   }
 
+  /// Same picker the Leads list uses, rather than Material's
+  /// [showDateRangePicker]: one small month, pick start then end in the one
+  /// open dialog. The stock picker takes over the window and needed a
+  /// ConstrainedBox to be talked back down into something dialog-sized.
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
-    final range = await showDateRangePicker(
+    final range = await showCompactDateRangePicker(
       context: context,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 1),
-      // By default this picker takes over the whole window. Constrain it into
-      // a centered dialog-sized card so it reads as a filter popover.
-      builder: (context, child) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
-          child: child,
-        ),
-      ),
-      initialDateRange:
-          widget.state.activityDateFrom != null &&
-              widget.state.activityDateTo != null
-          ? DateTimeRange(
-              start: widget.state.activityDateFrom!,
-              end: widget.state.activityDateTo!,
-            )
-          : null,
+      initialStart: widget.state.activityDateFrom,
+      initialEnd: widget.state.activityDateTo,
     );
     if (range == null || !mounted) return;
     context.read<LeadDetailBloc>().add(
@@ -1056,9 +1047,16 @@ class _ActivityCenterState extends State<_ActivityCenter> {
         runSpacing: AppSpacing.xs,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          Text(
+            'FILTER ACTIVITY',
+            style: AppTextStyles.overline.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
           for (final entry in leadActivityTypeLabels.entries)
             _checkFilter(
-              label: '${entry.value}s',
+              type: entry.key,
+              label: entry.value,
               selected: state.activityTypeFilter.contains(entry.key),
               onTap: () => _toggleType(entry.key),
             ),
@@ -1083,7 +1081,11 @@ class _ActivityCenterState extends State<_ActivityCenter> {
     );
   }
 
+  /// One type toggle. Box + type icon + singular label, same as the Accounts
+  /// detail page's filter bar — the two used to differ in every one of
+  /// those three details.
   Widget _checkFilter({
+    required String type,
     required String label,
     required bool selected,
     required VoidCallback onTap,
@@ -1100,11 +1102,18 @@ class _ActivityCenterState extends State<_ActivityCenter> {
             child: Checkbox(
               value: selected,
               onChanged: (_) => onTap(),
+              activeColor: AppColors.primary,
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
+          const SizedBox(width: 6),
+          Icon(
+            _activityIcons[type] ?? Icons.circle,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 4),
           Text(label, style: AppTextStyles.bodyMedium),
         ],
       ),

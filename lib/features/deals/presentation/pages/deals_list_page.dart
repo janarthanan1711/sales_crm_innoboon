@@ -365,14 +365,23 @@ class _DealsListViewState extends State<_DealsListView> {
     return CurrencyFormatter.formatINR(v);
   }
 
-  /// The "Total Pipeline Value" figure — sum of the currently-shown deals.
+  /// The "Total Pipeline Value" figure — sum of the currently-shown deals,
+  /// excluding Closed Won / Closed Lost / Cold since those deals are no
+  /// longer "in pipeline".
   Widget _pipelineValue(BuildContext context) {
     return BlocBuilder<DealsListBloc, DealsListState>(
       builder: (context, state) {
         final deals = state is DealsListLoaded
             ? _applyClientFilters(state.deals)
             : const <Deal>[];
-        final total = deals.fold<double>(0, (s, d) => s + d.value);
+        final total = deals
+            .where(
+              (d) =>
+                  !d.stageIsCold &&
+                  d.stageName != 'Closed Won' &&
+                  d.stageName != 'Closed Lost',
+            )
+            .fold<double>(0, (s, d) => s + d.value);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
