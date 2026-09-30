@@ -8,9 +8,11 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_def.dart';
+import '../../domain/entities/scoring_dimension.dart';
 import '../../domain/usecases/create_deal_usecase.dart';
 import '../../domain/usecases/update_deal_usecase.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
+import '../../domain/usecases/get_scoring_dimensions_usecase.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
 
@@ -52,6 +54,11 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   List<Account> _accounts = [];
   List<OwnerUser> _users = [];
   List<DealStageDef> _stages = [];
+  List<ScoringDimension> _dimensions = [];
+
+  /// Selected level key per dimension key. All-or-nothing: once any level is
+  /// picked every dimension is required (the API rejects partial scoring).
+  Map<String, String> _scores = {};
   bool get isEdit => widget.deal != null;
 
   /// True when the currently-selected stage needs a reason (cold stages, plus
@@ -80,6 +87,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     // value not in our option list) so the Tier dropdown never asserts.
     final rawTier = widget.deal?.tier;
     _tier = (rawTier != null && _kDealTiers.contains(rawTier)) ? rawTier : null;
+    _scores = Map.of(widget.deal?.scores ?? const {});
     if (isEdit) {
       _stageId = widget.deal!.stageId;
       _selectedOwnerId = widget.deal!.ownerId;
@@ -110,11 +118,19 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     );
     final usersResult = await sl<GetUsersUseCase>()();
     final stagesResult = await sl<GetDealStagesUseCase>()();
+    final dimensionsResult = await sl<GetScoringDimensionsUseCase>()();
     if (!mounted) return;
     setState(() {
       accountsResult.fold((_) {}, (page) => _accounts = page.items);
       usersResult.fold((_) {}, (u) => _users = u);
       stagesResult.fold((_) {}, (s) => _stages = s);
+      dimensionsResult.fold((_) {}, (d) {
+        _dimensions = d;
+        // Drop levels for dimensions the backend no longer defines, so a
+        // re-save doesn't send keys it would reject.
+        final keys = d.map((dim) => dim.key).toSet();
+        _scores.removeWhere((k, _) => !keys.contains(k));
+      });
       // Default to the first pipeline stage on create.
       if (_stageId == null && _stages.isNotEmpty) _stageId = _stages.first.id;
       if (widget.presetAccount != null) {
@@ -181,6 +197,8 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
+              // Empty map clears scoring.
+              scores: Map.of(_scores),
             ),
           )
         : await sl<CreateDealUseCase>()(
@@ -194,6 +212,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               coldReason: coldReason,
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
+              scores: _scores.isEmpty ? null : _scores,
             ),
           );
 
@@ -271,6 +290,76 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
         ),
         const SizedBox(height: 6),
         field,
+      ],
+    );
+  }
+
+  /// D1–D8 rows, rendered entirely from `/deals/scoring-dimensions`. Each
+  /// level shows its "What This Score Means" text as a hover tooltip.
+  Widget _buildScoringSection() {
+    final scoring = _scores.isNotEmpty;
+    Widget row(ScoringDimension dim) => _buildField(
+      dim.label,
+      scoring,
+      DropdownButtonFormField<String>(
+        isExpanded: true,
+        value: dim.levels.any((l) => l.key == _scores[dim.key])
+            ? _scores[dim.key]
+            : null,
+        decoration: _inputDecoration('Select level'),
+        validator: (v) => scoring && v == null ? 'Required' : null,
+        items: dim.levels
+            .map(
+              (l) => DropdownMenuItem(
+                value: l.key,
+                child: Tooltip(
+                  message: l.description,
+                  waitDuration: const Duration(milliseconds: 300),
+                  // Full width, so hovering anywhere on the row shows it —
+                  // not just over the label text.
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(l.label, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: (v) => setState(() {
+          if (v != null) _scores[dim.key] = v;
+        }),
+      ),
+    );
+
+    final rows = <Widget>[];
+    for (var i = 0; i < _dimensions.length; i += 2) {
+      rows
+        ..add(const SizedBox(height: 16))
+        ..add(
+          i + 1 < _dimensions.length
+              ? _twoCol(row(_dimensions[i]), row(_dimensions[i + 1]))
+              : row(_dimensions[i]),
+        );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Deal Scoring', style: AppTextStyles.labelMedium),
+            if (scoring)
+              TextButton(
+                onPressed: () => setState(() => _scores = {}),
+                child: const Text('Clear'),
+              ),
+          ],
+        ),
+        Text(
+          'Optional — once you pick a level, all dimensions are required.',
+          style: AppTextStyles.caption,
+        ),
+        ...rows,
       ],
     );
   }
@@ -591,6 +680,13 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                             ),
                           ),
                         ),
+                        if (_dimensions.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(color: AppColors.border),
+                          ),
+                          _buildScoringSection(),
+                        ],
                       ],
                     ),
                   ),

@@ -102,6 +102,7 @@ import '../../features/deals/domain/usecases/update_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
+import '../../features/deals/domain/usecases/get_scoring_dimensions_usecase.dart';
 import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
 import '../../features/deals/domain/usecases/delete_deal_usecase.dart';
 import '../../features/deals/domain/usecases/export_deals_usecase.dart';
@@ -383,6 +384,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateDealStageUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
+  sl.registerLazySingleton(() => GetScoringDimensionsUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealsUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealDetailUseCase(sl()));
   sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));

@@ -58,6 +58,7 @@ class ApiEndpoints {
   // (see SalesHub API doc §6.3). Same pattern for leads/accounts/contacts.
   static const String deals = '/deals';
   static String dealById(String id) => '/deals/$id';
+  static const String dealScoringDimensions = '/deals/scoring-dimensions';
   static String dealStageHistory(String id) => '/deals/$id/stage-history';
   static String dealActivities(String id) => '/deals/$id/activities';
   static String dealActivityById(String dealId, String activityId) =>

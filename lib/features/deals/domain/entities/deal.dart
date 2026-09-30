@@ -29,6 +29,14 @@ class Deal extends Equatable {
   final String owner;
   final String? coldReason;
   final String tier;
+
+  /// D1–D8 level keys (`{"D1": "mild", ...}`), or null when unscored.
+  final Map<String, String>? scores;
+
+  /// Computed server-side from [scores]; null when unscored.
+  final int? totalScore;
+  final String? responseMode;
+  final String? proposalSla;
   final String description;
   final List<Stakeholder> stakeholders;
   final String paymentStatus;
@@ -51,6 +59,10 @@ class Deal extends Equatable {
     required this.owner,
     this.coldReason,
     this.tier = '',
+    this.scores,
+    this.totalScore,
+    this.responseMode,
+    this.proposalSla,
     this.description = '',
     this.stakeholders = const [],
     this.paymentStatus = 'Pending',
@@ -119,6 +131,10 @@ class Deal extends Equatable {
       owner: owner ?? this.owner,
       coldReason: coldReason ?? this.coldReason,
       tier: tier ?? this.tier,
+      scores: scores,
+      totalScore: totalScore,
+      responseMode: responseMode,
+      proposalSla: proposalSla,
       description: description ?? this.description,
       stakeholders: stakeholders ?? this.stakeholders,
       paymentStatus: paymentStatus ?? this.paymentStatus,
@@ -144,6 +160,10 @@ class Deal extends Equatable {
     owner,
     coldReason,
     tier,
+    scores,
+    totalScore,
+    responseMode,
+    proposalSla,
     description,
     stakeholders,
     paymentStatus,

@@ -7,6 +7,7 @@ import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_activity.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/entities/deal_stage_history.dart';
+import '../../domain/entities/scoring_dimension.dart';
 import '../../domain/repositories/deal_repository.dart';
 import '../models/deal_activity_model.dart';
 import '../models/deal_model.dart';
@@ -83,6 +84,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     String? tier,
     String? coldReason,
     int? ownerId,
+    Map<String, String>? scores,
   }) async {
     try {
       final response = await dioClient.post(
@@ -98,6 +100,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           tier: tier,
           coldReason: coldReason,
           ownerId: ownerId,
+          scores: scores,
         ),
       );
       return DealModel.fromJson(response.data as Map<String, dynamic>);
@@ -119,6 +122,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     String? coldReason,
     int? ownerId,
     String? note,
+    Map<String, String>? scores,
   }) async {
     try {
       final response = await dioClient.patch(
@@ -134,6 +138,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           ownerId: ownerId,
           tier: tier,
           note: note,
+          scores: scores,
         ),
       );
       return DealModel.fromJson(response.data as Map<String, dynamic>);
@@ -149,6 +154,18 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
       final items = response.data as List<dynamic>;
       return items
           .map((e) => DealStageHistoryEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<ScoringDimension>> getScoringDimensions() async {
+    try {
+      final response = await dioClient.get(ApiEndpoints.dealScoringDimensions);
+      return (response.data as List<dynamic>)
+          .map((e) => ScoringDimension.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw _normalize(e);
