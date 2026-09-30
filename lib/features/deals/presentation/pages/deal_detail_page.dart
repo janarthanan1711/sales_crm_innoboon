@@ -496,6 +496,10 @@ class _DealDetailView extends StatelessWidget {
                 ],
               ),
             ),
+            // D1–D8 scoring, computed server-side; '—' when unscored.
+            _infoRow('Total Score', deal.totalScore?.toString() ?? '—'),
+            _infoRow('Response Mode', deal.responseMode ?? '—'),
+            _infoRow('Proposal SLA', deal.proposalSla ?? '—'),
           ],
         ),
       ),
