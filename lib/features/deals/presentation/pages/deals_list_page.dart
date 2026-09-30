@@ -64,7 +64,8 @@ class DealsListPage extends StatelessWidget {
     // a drill-down's explicit value, so a range restored from memory alone
     // needs the same default or `date_field` silently drops on nav-back.
     final effectiveDateField =
-        dateField ?? (effectiveFrom != null || effectiveTo != null ? 'closed_at' : null);
+        dateField ??
+        (effectiveFrom != null || effectiveTo != null ? 'closed_at' : null);
     return BlocProvider(
       create: (_) => DealsListBloc(
         getDealsUseCase: sl(),
@@ -814,6 +815,9 @@ class _DealsTable extends StatelessWidget {
                 _header('STAGE', flex: 2),
                 _header('VALUE', flex: 1),
                 _header('OWNER', flex: 2),
+                _header('SCORE', flex: 1),
+                _header('MODE', flex: 2),
+                _header('PROPOSAL SLA', flex: 2),
               ],
             ),
           ),
@@ -835,7 +839,7 @@ class _DealsTable extends StatelessWidget {
       // with only minWidth leaves it unbounded, which fails Expanded's layout.
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: SizedBox(width: 800, child: table),
+        child: SizedBox(width: 1150, child: table),
       );
     }
     return table;
@@ -917,6 +921,28 @@ class _DealRowState extends State<_DealRow> {
                 ),
               ),
               Expanded(flex: 2, child: OwnerChip(name: widget.deal.ownerLabel)),
+              // Scoring is computed server-side; '—' when the deal is unscored.
+              Expanded(
+                flex: 1,
+                child: Text(
+                  widget.deal.totalScore?.toString() ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  widget.deal.responseMode ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  widget.deal.proposalSla ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
             ],
           ),
         ),

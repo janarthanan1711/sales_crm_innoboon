@@ -16,6 +16,9 @@ class UpdateDealParams {
   final int? ownerId;
   final String? note;
 
+  /// Empty map clears the scoring; null leaves it untouched.
+  final Map<String, String>? scores;
+
   const UpdateDealParams({
     required this.id,
     this.dealName,
@@ -28,6 +31,7 @@ class UpdateDealParams {
     this.coldReason,
     this.ownerId,
     this.note,
+    this.scores,
   });
 }
 
@@ -48,6 +52,7 @@ class UpdateDealUseCase {
       tier: params.tier,
       ownerId: params.ownerId,
       note: params.note,
+      scores: params.scores,
     );
   }
 }

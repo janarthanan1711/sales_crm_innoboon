@@ -14,6 +14,7 @@ class CreateDealParams {
   final String? tier;
   final String? coldReason;
   final int? ownerId;
+  final Map<String, String>? scores;
 
   const CreateDealParams({
     required this.dealName,
@@ -26,6 +27,7 @@ class CreateDealParams {
     this.tier,
     this.coldReason,
     this.ownerId,
+    this.scores,
   });
 }
 
@@ -45,6 +47,7 @@ class CreateDealUseCase {
       tier: params.tier,
       coldReason: params.coldReason,
       ownerId: params.ownerId,
+      scores: params.scores,
     );
   }
 }

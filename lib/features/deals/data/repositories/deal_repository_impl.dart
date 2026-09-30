@@ -5,6 +5,7 @@ import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_activity.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/entities/deal_stage_history.dart';
+import '../../domain/entities/scoring_dimension.dart';
 import '../../domain/repositories/deal_repository.dart';
 
 class DealRepositoryImpl implements DealRepository {
@@ -61,6 +62,7 @@ class DealRepositoryImpl implements DealRepository {
     String? tier,
     String? coldReason,
     int? ownerId,
+    Map<String, String>? scores,
   }) async {
     try {
       final deal = await remoteDataSource.createDeal(
@@ -74,6 +76,7 @@ class DealRepositoryImpl implements DealRepository {
         tier: tier,
         coldReason: coldReason,
         ownerId: ownerId,
+        scores: scores,
       );
       return Right(deal);
     } on Exception catch (e) {
@@ -94,6 +97,7 @@ class DealRepositoryImpl implements DealRepository {
     String? coldReason,
     int? ownerId,
     String? note,
+    Map<String, String>? scores,
   }) async {
     try {
       final deal = await remoteDataSource.updateDeal(
@@ -108,6 +112,7 @@ class DealRepositoryImpl implements DealRepository {
         coldReason: coldReason,
         ownerId: ownerId,
         note: note,
+        scores: scores,
       );
       return Right(deal);
     } on Exception catch (e) {
@@ -121,6 +126,15 @@ class DealRepositoryImpl implements DealRepository {
   ) async {
     try {
       return Right(await remoteDataSource.getStageHistory(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ScoringDimension>>> getScoringDimensions() async {
+    try {
+      return Right(await remoteDataSource.getScoringDimensions());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

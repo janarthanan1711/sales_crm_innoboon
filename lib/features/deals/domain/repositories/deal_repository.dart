@@ -5,6 +5,7 @@ import '../entities/deal.dart';
 import '../entities/deal_activity.dart';
 import '../entities/deal_stage_def.dart';
 import '../entities/deal_stage_history.dart';
+import '../entities/scoring_dimension.dart';
 
 abstract class DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals({
@@ -29,6 +30,7 @@ abstract class DealRepository {
     String? tier,
     String? coldReason,
     int? ownerId,
+    Map<String, String>? scores,
   });
   Future<Either<Failure, Deal>> updateDeal(
     String id, {
@@ -42,11 +44,13 @@ abstract class DealRepository {
     String? tier,
     int? ownerId,
     String? note,
+    Map<String, String>? scores,
   });
   Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
     String id,
   );
   Future<Either<Failure, List<DealStageDef>>> getDealStages();
+  Future<Either<Failure, List<ScoringDimension>>> getScoringDimensions();
 
   Future<Either<Failure, List<DealActivity>>> listActivities(
     String dealId, {
@@ -111,6 +115,7 @@ abstract class DealRemoteDataSource {
     String? tier,
     String? coldReason,
     int? ownerId,
+    Map<String, String>? scores,
   });
   Future<Deal> updateDeal(
     String id, {
@@ -124,9 +129,11 @@ abstract class DealRemoteDataSource {
     int? ownerId,
     String? tier,
     String? note,
+    Map<String, String>? scores,
   });
   Future<List<DealStageHistoryEntry>> getStageHistory(String id);
   Future<List<DealStageDef>> getDealStages();
+  Future<List<ScoringDimension>> getScoringDimensions();
 
   Future<List<DealActivity>> listActivities(
     String dealId, {

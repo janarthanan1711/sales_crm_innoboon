@@ -26,6 +26,10 @@ class DealModel extends Deal {
     required super.owner,
     super.coldReason,
     super.tier = '',
+    super.scores,
+    super.totalScore,
+    super.responseMode,
+    super.proposalSla,
     super.description = '',
     super.paymentStatus = 'Pending',
     required super.createdAt,
@@ -52,6 +56,10 @@ class DealModel extends Deal {
       owner: json['owner_name'] as String? ?? '',
       coldReason: json['cold_reason'] as String?,
       tier: json['tier'] as String? ?? '',
+      scores: (json['scores'] as Map<String, dynamic>?)?.cast<String, String>(),
+      totalScore: json['total_score'] as int?,
+      responseMode: json['response_mode'] as String?,
+      proposalSla: json['proposal_sla'] as String?,
       // Not in the API — placeholder so sort-by-date UI doesn't crash.
       createdAt: DateTime.now(),
     );
@@ -90,6 +98,7 @@ class DealModel extends Deal {
     String? tier,
     String? coldReason,
     required int? ownerId,
+    Map<String, String>? scores,
   }) {
     return {
       'deal_name': dealName,
@@ -105,12 +114,15 @@ class DealModel extends Deal {
       if (coldReason != null && coldReason.isNotEmpty)
         'cold_reason': coldReason,
       'owner_id': ?ownerId,
+      if (scores != null && scores.isNotEmpty) 'scores': scores,
     };
   }
 
   /// Request body for `PATCH /deals/{id}` (any subset, plus the write-only
   /// `note` recorded on the resulting stage-history row when `stage_id`
   /// changes). `contact_ids`, if supplied, fully replaces the deal's links.
+  /// [scores]: null leaves scoring untouched, an empty map clears it
+  /// (`"scores": null`), anything else replaces it.
   static Map<String, dynamic> toUpdateJson({
     String? dealName,
     double? value,
@@ -122,6 +134,7 @@ class DealModel extends Deal {
     String? tier,
     int? ownerId,
     String? note,
+    Map<String, String>? scores,
   }) {
     return {
       'deal_name': ?dealName,
@@ -135,6 +148,7 @@ class DealModel extends Deal {
       'owner_id': ?ownerId,
       'tier': ?tier,
       'note': ?note,
+      if (scores != null) 'scores': scores.isEmpty ? null : scores,
     };
   }
 
