@@ -39,7 +39,10 @@ class NotificationBell extends StatelessWidget {
                     color: AppColors.error,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
                   child: Text(
                     unreadCount > 99 ? '99+' : '$unreadCount',
                     style: const TextStyle(

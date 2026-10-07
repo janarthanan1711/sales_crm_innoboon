@@ -9,7 +9,9 @@ import '../../../deals/data/models/deal_model.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/account_activity.dart';
+import '../../domain/entities/account_options.dart';
 import '../../domain/entities/account_overview.dart';
+import '../../domain/entities/source_person.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../models/account_activity_model.dart';
 import '../models/account_model.dart';
@@ -77,6 +79,9 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
     List<AccountContactDraft>? contacts,
@@ -91,6 +96,9 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           ownerId: ownerId,
           industry: industry,
           city: city,
+          source: source,
+          country: country,
+          engagementType: engagementType,
           description: description,
           linkedinUrl: linkedinUrl,
           contacts: contacts,
@@ -111,6 +119,9 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
   }) async {
@@ -124,6 +135,9 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
           'owner_id': ?ownerId,
           'industry': ?industry,
           'city': ?city,
+          'source': ?source,
+          'country': ?country,
+          'engagement_type': ?engagementType,
           'description': ?description,
           'linkedin_url': ?linkedinUrl,
         },
@@ -295,6 +309,58 @@ class AccountRemoteDataSourceImpl implements AccountRemoteDataSource {
   Future<void> deleteAccount(String id) async {
     try {
       await _dioClient.delete(ApiEndpoints.accountById(id));
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<AccountOptions> getAccountOptions() async {
+    try {
+      final response = await _dioClient.get(ApiEndpoints.accountOptions);
+      return AccountOptions.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  List<SourcePerson> _people(dynamic data) => (data as List<dynamic>)
+      .map((e) => SourcePerson.fromJson(e as Map<String, dynamic>))
+      .toList();
+
+  @override
+  Future<List<SourcePerson>> getSourcePeople() async {
+    try {
+      final response = await _dioClient.get(ApiEndpoints.accountSourcePeople);
+      return _people(response.data);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<SourcePerson>> getSourceDetail(String accountId) async {
+    try {
+      final response = await _dioClient.get(
+        ApiEndpoints.accountSourceDetail(accountId),
+      );
+      return _people(response.data);
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<SourcePerson>> saveSourceDetail(
+    String accountId,
+    List<SourcePerson> members,
+  ) async {
+    try {
+      final response = await _dioClient.put(
+        ApiEndpoints.accountSourceDetail(accountId),
+        data: {'members': members.map((m) => m.toRefJson()).toList()},
+      );
+      return _people(response.data);
     } on DioException catch (e) {
       throw _normalize(e);
     }

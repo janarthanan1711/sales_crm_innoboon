@@ -23,18 +23,23 @@ class GetNotificationsParams extends Equatable {
 }
 
 class GetNotificationsUseCase
-    implements UseCase<({List<AppNotification> items, int total}), GetNotificationsParams> {
+    implements
+        UseCase<
+          ({List<AppNotification> items, int total}),
+          GetNotificationsParams
+        > {
   final NotificationRepository repository;
   GetNotificationsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, ({List<AppNotification> items, int total})>> call(GetNotificationsParams params) =>
-      repository.getNotifications(
-        unreadOnly: params.unreadOnly,
-        type: params.type,
-        limit: params.limit,
-        offset: params.offset,
-      );
+  Future<Either<Failure, ({List<AppNotification> items, int total})>> call(
+    GetNotificationsParams params,
+  ) => repository.getNotifications(
+    unreadOnly: params.unreadOnly,
+    type: params.type,
+    limit: params.limit,
+    offset: params.offset,
+  );
 }
 
 class GetUnreadCountUseCase implements UseCase<int, NoParams> {
@@ -42,7 +47,8 @@ class GetUnreadCountUseCase implements UseCase<int, NoParams> {
   GetUnreadCountUseCase(this.repository);
 
   @override
-  Future<Either<Failure, int>> call(NoParams params) => repository.getUnreadCount();
+  Future<Either<Failure, int>> call(NoParams params) =>
+      repository.getUnreadCount();
 }
 
 class MarkNotificationReadUseCase implements UseCase<void, int> {
@@ -50,7 +56,8 @@ class MarkNotificationReadUseCase implements UseCase<void, int> {
   MarkNotificationReadUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(int notificationId) => repository.markAsRead(notificationId);
+  Future<Either<Failure, void>> call(int notificationId) =>
+      repository.markAsRead(notificationId);
 }
 
 class MarkNotificationUnreadUseCase implements UseCase<void, int> {
@@ -58,7 +65,8 @@ class MarkNotificationUnreadUseCase implements UseCase<void, int> {
   MarkNotificationUnreadUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(int notificationId) => repository.markAsUnread(notificationId);
+  Future<Either<Failure, void>> call(int notificationId) =>
+      repository.markAsUnread(notificationId);
 }
 
 /// Marks every unread notification as read (doc §9.4 — omitted `ids`).
@@ -67,7 +75,8 @@ class MarkAllNotificationsReadUseCase implements UseCase<int, NoParams> {
   MarkAllNotificationsReadUseCase(this.repository);
 
   @override
-  Future<Either<Failure, int>> call(NoParams params) => repository.markManyAsRead(null);
+  Future<Either<Failure, int>> call(NoParams params) =>
+      repository.markManyAsRead(null);
 }
 
 class MarkManyNotificationsReadUseCase implements UseCase<int, List<int>> {
@@ -75,7 +84,8 @@ class MarkManyNotificationsReadUseCase implements UseCase<int, List<int>> {
   MarkManyNotificationsReadUseCase(this.repository);
 
   @override
-  Future<Either<Failure, int>> call(List<int> notificationIds) => repository.markManyAsRead(notificationIds);
+  Future<Either<Failure, int>> call(List<int> notificationIds) =>
+      repository.markManyAsRead(notificationIds);
 }
 
 class DeleteNotificationsUseCase implements UseCase<int, List<int>> {
@@ -83,5 +93,6 @@ class DeleteNotificationsUseCase implements UseCase<int, List<int>> {
   DeleteNotificationsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, int>> call(List<int> notificationIds) => repository.deleteNotifications(notificationIds);
+  Future<Either<Failure, int>> call(List<int> notificationIds) =>
+      repository.deleteNotifications(notificationIds);
 }

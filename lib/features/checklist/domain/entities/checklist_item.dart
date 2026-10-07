@@ -65,20 +65,20 @@ class ChecklistItem extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        accountId,
-        dealId,
-        stageName,
-        stageOrder,
-        itemText,
-        isCompleted,
-        owningTeam,
-        notes,
-        isConditional,
-        conditionDescription,
-        completedAt,
-        completedBy,
-      ];
+    id,
+    accountId,
+    dealId,
+    stageName,
+    stageOrder,
+    itemText,
+    isCompleted,
+    owningTeam,
+    notes,
+    isConditional,
+    conditionDescription,
+    completedAt,
+    completedBy,
+  ];
 }
 
 class ChecklistStage extends Equatable {
@@ -94,7 +94,8 @@ class ChecklistStage extends Equatable {
 
   int get completedCount => items.where((i) => i.isCompleted).length;
   int get totalCount => items.length;
-  double get completionPercentage => totalCount == 0 ? 0 : completedCount / totalCount;
+  double get completionPercentage =>
+      totalCount == 0 ? 0 : completedCount / totalCount;
 
   @override
   List<Object?> get props => [stageName, stageOrder, items];

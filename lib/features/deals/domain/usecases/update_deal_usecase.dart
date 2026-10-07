@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/deal.dart';
@@ -18,6 +19,12 @@ class UpdateDealParams {
 
   /// Empty map clears the scoring; null leaves it untouched.
   final Map<String, String>? scores;
+  final DateTime? followUpDate;
+  final bool clearFollowUp;
+  final SourcePerson? originator;
+  final bool clearOriginator;
+  final String? proposalStatus;
+  final DateTime? proposalSentAt;
 
   const UpdateDealParams({
     required this.id,
@@ -32,6 +39,12 @@ class UpdateDealParams {
     this.ownerId,
     this.note,
     this.scores,
+    this.followUpDate,
+    this.clearFollowUp = false,
+    this.originator,
+    this.clearOriginator = false,
+    this.proposalStatus,
+    this.proposalSentAt,
   });
 }
 
@@ -53,6 +66,12 @@ class UpdateDealUseCase {
       ownerId: params.ownerId,
       note: params.note,
       scores: params.scores,
+      followUpDate: params.followUpDate,
+      clearFollowUp: params.clearFollowUp,
+      originator: params.originator,
+      clearOriginator: params.clearOriginator,
+      proposalStatus: params.proposalStatus,
+      proposalSentAt: params.proposalSentAt,
     );
   }
 }

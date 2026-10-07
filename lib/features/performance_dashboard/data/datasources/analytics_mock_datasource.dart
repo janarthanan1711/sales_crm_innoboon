@@ -7,7 +7,7 @@ class AnalyticsMockDataSource implements AnalyticsRemoteDataSource {
     await Future.delayed(const Duration(milliseconds: 600));
 
     final now = DateTime.now();
-    
+
     // Generate 6 months of history
     final revenueHistory = List.generate(6, (i) {
       return RevenuePoint(
@@ -34,9 +34,24 @@ class AnalyticsMockDataSource implements AnalyticsRemoteDataSource {
         FunnelStage(stageName: 'Closed Won', count: 58, value: 12500000),
       ],
       leaderboard: const [
-        SalesRepPerformance(repName: 'Sarah Jenkins', dealsClosed: 24, revenueGenerated: 6200000, winRate: 0.75),
-        SalesRepPerformance(repName: 'M. Chen', dealsClosed: 18, revenueGenerated: 4100000, winRate: 0.62),
-        SalesRepPerformance(repName: 'P. Kumar', dealsClosed: 16, revenueGenerated: 2200000, winRate: 0.58),
+        SalesRepPerformance(
+          repName: 'Sarah Jenkins',
+          dealsClosed: 24,
+          revenueGenerated: 6200000,
+          winRate: 0.75,
+        ),
+        SalesRepPerformance(
+          repName: 'M. Chen',
+          dealsClosed: 18,
+          revenueGenerated: 4100000,
+          winRate: 0.62,
+        ),
+        SalesRepPerformance(
+          repName: 'P. Kumar',
+          dealsClosed: 16,
+          revenueGenerated: 2200000,
+          winRate: 0.58,
+        ),
       ],
     );
   }

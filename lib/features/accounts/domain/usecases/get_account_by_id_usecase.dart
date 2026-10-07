@@ -8,5 +8,6 @@ class GetAccountByIdUseCase implements UseCase<Account, String> {
   final AccountRepository repository;
   GetAccountByIdUseCase(this.repository);
   @override
-  Future<Either<Failure, Account>> call(String id) => repository.getAccountById(id);
+  Future<Either<Failure, Account>> call(String id) =>
+      repository.getAccountById(id);
 }

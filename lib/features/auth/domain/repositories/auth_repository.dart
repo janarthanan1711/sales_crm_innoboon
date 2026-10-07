@@ -7,6 +7,7 @@ import '../entities/user.dart';
 abstract class AuthRepository {
   Future<Either<Failure, User>> login(String email, String password);
   Future<Either<Failure, void>> logout();
+
   /// Cache-only — used for the app-boot session check. Does not hit the
   /// network; see [fetchCurrentUser] for a fresh `GET /users/me` call.
   Future<Either<Failure, User>> getCurrentUser();

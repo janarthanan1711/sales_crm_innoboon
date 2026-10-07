@@ -30,6 +30,9 @@ class ApiEndpoints {
 
   // ─── Accounts ──────────────────────────────────────────
   static const String accounts = '/accounts';
+  static const String accountOptions = '/accounts/options';
+  static const String accountSourcePeople = '/accounts/source-detail/people';
+  static String accountSourceDetail(String id) => '/accounts/$id/source-detail';
   static String accountById(String id) => '/accounts/$id';
   static String accountOverview(String id) => '/accounts/$id/overview';
   // GET lists contacts; POST creates-or-updates + links (contact_accounts).
@@ -59,6 +62,7 @@ class ApiEndpoints {
   static const String deals = '/deals';
   static String dealById(String id) => '/deals/$id';
   static const String dealScoringDimensions = '/deals/scoring-dimensions';
+  static const String dealOriginatorOptions = '/deals/originator-options';
   static String dealStageHistory(String id) => '/deals/$id/stage-history';
   static String dealActivities(String id) => '/deals/$id/activities';
   static String dealActivityById(String dealId, String activityId) =>

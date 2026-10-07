@@ -18,6 +18,4 @@ class AccountsFilterMemory extends DateRangeFilterMemory {}
 
 class ContactsFilterMemory extends DateRangeFilterMemory {}
 
-class DealsFilterMemory extends DateRangeFilterMemory {}
-
 class UsersFilterMemory extends DateRangeFilterMemory {}

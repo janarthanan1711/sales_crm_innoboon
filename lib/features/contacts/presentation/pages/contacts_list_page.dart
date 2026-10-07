@@ -20,6 +20,7 @@ import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contacts_list_bloc.dart';
 import '../widgets/contact_form_dialog.dart';
+import '../widgets/originator_badge.dart';
 
 const List<String> _kTiers = ['diamond', 'gold', 'silver', 'bronze'];
 
@@ -653,6 +654,10 @@ class _ContactRowState extends State<_ContactRow> {
                     if (c.isPrimary) ...[
                       const SizedBox(width: 6),
                       const _PrimaryBadge(),
+                    ],
+                    if (c.isOriginator) ...[
+                      const SizedBox(width: 6),
+                      const OriginatorBadge(),
                     ],
                   ],
                 ),

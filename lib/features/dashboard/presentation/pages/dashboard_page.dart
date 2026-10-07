@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -10,6 +11,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/widgets/compact_date_range_dialog.dart';
 import '../../../../app/di/injector.dart';
+import '../../../../app/router/route_paths.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../domain/entities/dashboard_data.dart';
 import '../../domain/entities/dashboard_range.dart';
@@ -181,7 +183,7 @@ class _DashboardView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SummaryTiles(summary: data.summary),
+        _DealTiles(tiles: data.dealTiles),
         const SizedBox(height: AppSpacing.xl),
         _halfGrid(context, [
           for (var i = 0; i < halfCards.length; i++)
@@ -515,66 +517,83 @@ class _PeriodToggle extends StatelessWidget {
   }
 }
 
-// ─── Summary stat tiles ─────────────────────────────────
-class _SummaryTiles extends StatelessWidget {
-  const _SummaryTiles({required this.summary});
-  final DashboardSummary summary;
+// ─── Deal tiles ─────────────────────────────────────────
+/// The five live open-deal tiles. Each opens the Deals list filtered by the
+/// same `quick_filter` the backend counted it with, so the number on the tile
+/// is the number of rows after the click.
+class _DealTiles extends StatelessWidget {
+  const _DealTiles({required this.tiles});
+  final DealTiles tiles;
 
   @override
   Widget build(BuildContext context) {
-    final tiles = [
-      _StatTile(
-        title: 'Leads Generated',
-        stat: summary.leadsGenerated,
-        icon: Icons.person_add_alt_1_outlined,
-        color: AppColors.primary,
+    void open(String filter, String title) => context.go(
+      Uri(
+        path: RoutePaths.deals,
+        queryParameters: {'quick_filter': filter, 'title': title},
+      ).toString(),
+    );
+    const orange = Color(0xFFEA580C);
+    final items = [
+      _DealTile(
+        title: 'In view',
+        icon: Icons.groups_outlined,
+        iconColor: AppColors.primary,
+        value: tiles.inView,
+        valueColor: AppColors.textPrimary,
+        caption: 'Open pipeline',
+        onTap: () => open('in_view', 'In view'),
       ),
-      _StatTile(
-        title: 'Leads to Accounts',
-        stat: summary.qualifiedLeads,
-        icon: Icons.verified_outlined,
-        color: const Color(0xFF7C3AED),
+      _DealTile(
+        title: 'Very high',
+        icon: Icons.layers_outlined,
+        iconColor: AppColors.success,
+        value: tiles.veryHigh,
+        valueColor: AppColors.success,
+        caption: '${tiles.inView} open',
+        onTap: () => open('very_high', 'Very high'),
       ),
-      // drill-down disabled per request (2026-08-12) — re-add the
-      // `onTap` (see git history) once the redirect behavior is revisited.
-      _StatTile(
-        title: 'Deals in Pipeline',
-        stat: summary.dealsInPipeline,
-        icon: Icons.trending_up,
-        color: const Color(0xFFD97706),
+      _DealTile(
+        title: 'Overdue',
+        icon: Icons.alarm,
+        iconColor: AppColors.error,
+        value: tiles.overdue,
+        valueColor: tiles.overdue > 0
+            ? AppColors.error
+            : AppColors.textSecondary,
+        caption: 'Follow-up or Call',
+        onTap: () => open('overdue', 'Overdue'),
       ),
-      // Same disabled-drill-down note as above. If this tile's `onTap` comes
-      // back, its URL must pass the Closed Won stage's `stage_id` explicitly
-      // (`?date_field=closed_at&stage_id=<won id>&...`) -- `date_field=closed_at`
-      // with no stage_id is no longer inferred as Closed-Won-only backend-side
-      // (see deal_service._deal_filters's removed `not stage_id` branch); it
-      // now means "every stage", same as the plain on-page Deals date filter.
-      _StatTile(
-        title: 'Deals Closed (Closed Won)',
-        stat: summary.dealsClosed,
-        icon: Icons.emoji_events_outlined,
-        color: AppColors.success,
+      _DealTile(
+        title: 'Due today',
+        icon: Icons.schedule,
+        iconColor: orange,
+        value: tiles.dueToday,
+        valueColor: orange,
+        caption: 'Follow-up or Call',
+        onTap: () => open('due_today', 'Due today'),
       ),
-      // Accounts created in the period. Absent (not zero) on API builds that
-      // don't return the section, in which case the tile is left out.
-      if (summary.numAccounts != null)
-        _StatTile(
-          title: 'No. of Accounts',
-          stat: summary.numAccounts!,
-          icon: Icons.business_outlined,
-          color: const Color(0xFF0891B2),
-        ),
+      _DealTile(
+        title: 'Past SLA',
+        icon: Icons.timer_outlined,
+        iconColor: AppColors.error,
+        value: tiles.pastSla,
+        valueColor: tiles.pastSla > 0
+            ? AppColors.error
+            : AppColors.textSecondary,
+        caption: 'Proposal or Call due',
+        onTap: () => open('past_sla', 'Past SLA'),
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Balanced rows at every width: 5 tiles go 5-up only when there's real
-        // room, else 3+2 — a 4-up grid would leave the fifth tile stranded.
-        final cols = constraints.maxWidth >= 1280
-            ? (tiles.length > 4 ? 5 : 4)
-            : constraints.maxWidth >= 1000
-            ? (tiles.length > 4 ? 3 : 4)
-            : constraints.maxWidth >= 560
+        // 5-up only when there's real room, else 3+2 / 2-up / stacked.
+        final cols = constraints.maxWidth >= 1000
+            ? 5
+            : constraints.maxWidth >= 720
+            ? 3
+            : constraints.maxWidth >= 480
             ? 2
             : 1;
         const gap = AppSpacing.lg;
@@ -583,10 +602,10 @@ class _SummaryTiles extends StatelessWidget {
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (var i = 0; i < tiles.length; i++)
+            for (var i = 0; i < items.length; i++)
               SizedBox(
                 width: tileWidth,
-                child: _FadeSlideIn(index: i, child: tiles[i]),
+                child: _FadeSlideIn(index: i, child: items[i]),
               ),
           ],
         );
@@ -595,40 +614,36 @@ class _SummaryTiles extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatefulWidget {
-  const _StatTile({
+class _DealTile extends StatefulWidget {
+  const _DealTile({
     required this.title,
-    required this.stat,
     required this.icon,
-    required this.color,
-    this.onTap,
+    required this.iconColor,
+    required this.value,
+    required this.valueColor,
+    required this.caption,
+    required this.onTap,
   });
   final String title;
-  final DashboardStat stat;
   final IconData icon;
-  final Color color;
-
-  /// Drills into the deals list filtered to match this tile. Null keeps the
-  /// tile inert (e.g. Leads Generated, No. of Accounts have no drill-down).
-  final VoidCallback? onTap;
+  final Color iconColor;
+  final int value;
+  final Color valueColor;
+  final String caption;
+  final VoidCallback onTap;
 
   @override
-  State<_StatTile> createState() => _StatTileState();
+  State<_DealTile> createState() => _DealTileState();
 }
 
-class _StatTileState extends State<_StatTile> {
+class _DealTileState extends State<_DealTile> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    // A 2px lift, a tinted border and a soft shadow in the tile's own accent.
-    // Only tiles with a drill-down (`onTap` set) also get a pointer cursor —
-    // the rest keep the original "focus, not affordance" restraint.
     final raised = _hovered && !_Motion.off(context);
     return MouseRegion(
-      cursor: widget.onTap != null
-          ? SystemMouseCursors.click
-          : MouseCursor.defer,
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
@@ -643,12 +658,12 @@ class _StatTileState extends State<_StatTile> {
             borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
             border: Border.all(
               color: raised
-                  ? widget.color.withValues(alpha: 0.45)
+                  ? widget.iconColor.withValues(alpha: 0.45)
                   : AppColors.border,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.color.withValues(alpha: raised ? 0.12 : 0),
+                color: widget.iconColor.withValues(alpha: raised ? 0.12 : 0),
                 blurRadius: raised ? 18 : 0,
                 offset: Offset(0, raised ? 6 : 0),
               ),
@@ -659,100 +674,49 @@ class _StatTileState extends State<_StatTile> {
             children: [
               Row(
                 children: [
+                  Icon(widget.icon, size: 16, color: widget.iconColor),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       widget.title,
-                      style: AppTextStyles.labelMedium.copyWith(
+                      style: AppTextStyles.labelLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  _CountUp(
+                    value: widget.value,
+                    style: AppTextStyles.h1.copyWith(
+                      color: widget.valueColor,
+                      fontSize: 36,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.caption,
+                      style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: widget.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(widget.icon, size: 18, color: widget.color),
-                  ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              _CountUp(value: widget.stat.value, style: AppTextStyles.h1),
-              const SizedBox(height: 6),
-              _ChangeBadge(changePct: widget.stat.changePct),
             ],
           ),
         ),
       ),
     );
   }
-}
-
-/// The "+12% vs last month" pill. Renders nothing meaningful when the change
-/// is null (e.g. deals-in-pipeline is a snapshot with no trend).
-class _ChangeBadge extends StatelessWidget {
-  const _ChangeBadge({required this.changePct});
-  final double? changePct;
-
-  @override
-  Widget build(BuildContext context) {
-    if (changePct == null) {
-      return _strip(
-        Text(
-          'Current snapshot',
-          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-        ),
-      );
-    }
-    final up = changePct! >= 0;
-    final color = up ? AppColors.success : AppColors.error;
-    final pct = changePct!.abs().toStringAsFixed(changePct! % 1 == 0 ? 0 : 1);
-    return _strip(
-      Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  up ? Icons.trending_up : Icons.trending_down,
-                  size: 12,
-                  color: color,
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  '${up ? '+' : '-'}$pct%',
-                  style: AppTextStyles.overline.copyWith(color: color),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              'vs prev. period',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Fixed-minimum strip both variants sit in, left-aligned.
-  Widget _strip(Widget child) => ConstrainedBox(
-    constraints: const BoxConstraints(minHeight: 24),
-    child: Align(alignment: Alignment.centerLeft, child: child),
-  );
 }
 
 // ─── Pipeline funnel ────────────────────────────────────

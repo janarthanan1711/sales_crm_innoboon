@@ -3,6 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../app/di/injector.dart';
 import '../../../accounts/domain/entities/account.dart';
+import '../../../accounts/domain/entities/source_person.dart';
+import '../../../accounts/presentation/widgets/person_type_icon.dart';
 import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
@@ -13,6 +15,7 @@ import '../../domain/usecases/create_deal_usecase.dart';
 import '../../domain/usecases/update_deal_usecase.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/get_scoring_dimensions_usecase.dart';
+import '../../domain/usecases/get_originator_options_usecase.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
 
@@ -41,7 +44,12 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
   late final TextEditingController _valueController;
   late final TextEditingController _closeDateController;
   late final TextEditingController _coldReasonController;
+  late final TextEditingController _followUpController;
 
+  DateTime? _followUp;
+  SourcePerson? _originator;
+  String _proposalStatus = 'not_sent';
+  List<SourcePerson> _originators = [];
   int? _stageId;
   DateTime? _closeDate;
   Account? _selectedAccount;
@@ -75,6 +83,12 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
       text: widget.deal != null ? widget.deal!.value.toStringAsFixed(2) : '',
     );
     _closeDate = widget.deal?.expectedCloseDate;
+    _followUp = widget.deal?.followUpDate;
+    _followUpController = TextEditingController(
+      text: _followUp == null ? '' : _fmtDate(_followUp!),
+    );
+    _originator = widget.deal?.originator;
+    _proposalStatus = widget.deal?.proposalStatus ?? 'not_sent';
     _closeDateController = TextEditingController(
       text: _closeDate != null
           ? '${_closeDate!.month.toString().padLeft(2, '0')}/${_closeDate!.day.toString().padLeft(2, '0')}/${_closeDate!.year}'
@@ -119,10 +133,12 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     final usersResult = await sl<GetUsersUseCase>()();
     final stagesResult = await sl<GetDealStagesUseCase>()();
     final dimensionsResult = await sl<GetScoringDimensionsUseCase>()();
+    final originatorsResult = await sl<GetOriginatorOptionsUseCase>()();
     if (!mounted) return;
     setState(() {
       accountsResult.fold((_) {}, (page) => _accounts = page.items);
       usersResult.fold((_) {}, (u) => _users = u);
+      originatorsResult.fold((_) {}, (o) => _originators = o);
       stagesResult.fold((_) {}, (s) => _stages = s);
       dimensionsResult.fold((_) {}, (d) {
         _dimensions = d;
@@ -149,6 +165,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
     _valueController.dispose();
     _closeDateController.dispose();
     _coldReasonController.dispose();
+    _followUpController.dispose();
     super.dispose();
   }
 
@@ -199,6 +216,13 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               contactIds: _contactId != null ? [_contactId!] : null,
               // Empty map clears scoring.
               scores: Map.of(_scores),
+              followUpDate: _followUp,
+              clearFollowUp:
+                  _followUp == null && widget.deal!.followUpDate != null,
+              originator: _originator,
+              clearOriginator:
+                  _originator == null && widget.deal!.originator != null,
+              proposalStatus: _proposalStatus,
             ),
           )
         : await sl<CreateDealUseCase>()(
@@ -213,6 +237,7 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
               tier: _tier,
               contactIds: _contactId != null ? [_contactId!] : null,
               scores: _scores.isEmpty ? null : _scores,
+              originator: _originator,
             ),
           );
 
@@ -296,6 +321,111 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
 
   /// D1–D8 rows, rendered entirely from `/deals/scoring-dimensions`. Each
   /// level shows its "What This Score Means" text as a hover tooltip.
+  static String _fmtDate(DateTime d) =>
+      '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';
+
+  /// Originator picker: platform users plus contacts marked "Is Originator".
+  Widget _buildOriginatorField() {
+    final options = [..._originators];
+    final current = _originator;
+    // The saved originator may no longer be listed (e.g. unflagged since).
+    if (current != null && !options.any((p) => p.key == current.key)) {
+      options.add(current);
+    }
+    return _buildField(
+      'Originator',
+      false,
+      DropdownButtonFormField<String?>(
+        isExpanded: true,
+        value: current?.key,
+        decoration: _inputDecoration('Select originator'),
+        items: [
+          const DropdownMenuItem<String?>(value: null, child: Text('None')),
+          for (final p in options)
+            DropdownMenuItem<String?>(
+              value: p.key,
+              child: Row(
+                children: [
+                  PersonTypeIcon(p.type),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(p.label, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ),
+        ],
+        onChanged: (key) => setState(() {
+          _originator = key == null
+              ? null
+              : options.firstWhere((p) => p.key == key);
+        }),
+      ),
+    );
+  }
+
+  /// Edit-only: follow-up date (clearable) and proposal status.
+  Widget _buildEditOnlyFields() {
+    return _twoCol(
+      _buildField(
+        'Follow-up Date',
+        false,
+        TextFormField(
+          controller: _followUpController,
+          readOnly: true,
+          decoration: _inputDecoration(
+            'mm/dd/yyyy',
+            suffix: _followUp == null
+                ? Icon(
+                    Icons.calendar_today,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  )
+                : IconButton(
+                    tooltip: 'Clear',
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() {
+                      _followUp = null;
+                      _followUpController.clear();
+                    }),
+                  ),
+          ),
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: _followUp ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (date != null) {
+              setState(() {
+                _followUp = date;
+                _followUpController.text = _fmtDate(date);
+              });
+            }
+          },
+        ),
+      ),
+      _buildField(
+        'Proposal Status',
+        false,
+        DropdownButtonFormField<String>(
+          isExpanded: true,
+          value: _proposalStatus,
+          decoration: _inputDecoration(''),
+          items: const [
+            DropdownMenuItem(value: 'not_sent', child: Text('Not Sent')),
+            DropdownMenuItem(
+              value: 'proposal_sent',
+              child: Text('Proposal Sent'),
+            ),
+          ],
+          onChanged: (v) => setState(() => _proposalStatus = v ?? 'not_sent'),
+        ),
+      ),
+    );
+  }
+
   Widget _buildScoringSection() {
     final scoring = _scores.isNotEmpty;
     Widget row(ScoringDimension dim) => _buildField(
@@ -680,6 +810,12 @@ class _CreateDealDialogState extends State<CreateDealDialog> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        _buildOriginatorField(),
+                        if (isEdit) ...[
+                          const SizedBox(height: 16),
+                          _buildEditOnlyFields(),
+                        ],
                         if (_dimensions.isNotEmpty) ...[
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 16),

@@ -15,7 +15,11 @@ class FunnelStage extends Equatable {
   final int count;
   final double value;
 
-  const FunnelStage({required this.stageName, required this.count, required this.value});
+  const FunnelStage({
+    required this.stageName,
+    required this.count,
+    required this.value,
+  });
 
   @override
   List<Object?> get props => [stageName, count, value];
@@ -54,5 +58,11 @@ class SalesMetrics extends Equatable {
   });
 
   @override
-  List<Object?> get props => [revenueHistory, targetHistory, funnel, overallWinRate, leaderboard];
+  List<Object?> get props => [
+    revenueHistory,
+    targetHistory,
+    funnel,
+    overallWinRate,
+    leaderboard,
+  ];
 }

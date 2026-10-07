@@ -10,9 +10,13 @@ import '../../../../core/utils/link_launcher.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../core/widgets/record_export_button.dart';
 import '../../../../app/di/injector.dart';
+import '../../../accounts/domain/entities/account.dart';
 import '../../domain/entities/contact.dart';
 import '../../domain/usecases/contact_usecases.dart';
 import '../bloc/contact_detail_bloc.dart';
+import '../widgets/contact_form_dialog.dart';
+import '../widgets/originator_badge.dart';
+import '../../../accounts/domain/usecases/get_accounts_usecase.dart';
 
 class ContactDetailPage extends StatelessWidget {
   const ContactDetailPage({super.key, required this.contactId});
@@ -126,6 +130,19 @@ class _HeaderCard extends StatelessWidget {
   const _HeaderCard({required this.contact});
   final Contact contact;
 
+  Future<void> _edit(BuildContext context) async {
+    final bloc = context.read<ContactDetailBloc>();
+    final accounts = (await sl<GetAccountsUseCase>()(
+      const GetAccountsParams(limit: 1000),
+    )).fold((_) => const <Account>[], (page) => page.items);
+    if (!context.mounted) return;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => ContactFormDialog(accounts: accounts, existing: contact),
+    );
+    if (saved == true) bloc.add(ContactDetailLoadRequested(contact.id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final subtitleParts = <String>[
@@ -154,6 +171,8 @@ class _HeaderCard extends StatelessWidget {
                   children: [
                     Text(contact.fullName, style: AppTextStyles.h2),
                     if (contact.isPrimary) const _PrimaryPill(),
+                    if (contact.isOriginator)
+                      const OriginatorBadge(compact: false),
                     if (contact.tier != null) TierBadge(tier: contact.tier!),
                   ],
                 ),
@@ -184,6 +203,12 @@ class _HeaderCard extends StatelessWidget {
               ],
             ),
           ),
+          OutlinedButton.icon(
+            onPressed: () => _edit(context),
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Edit Contact'),
+          ),
+          const SizedBox(width: AppSpacing.sm),
           RecordExportButton(
             iconOnly: false,
             tooltip: 'Export this contact to Excel',

@@ -54,7 +54,15 @@ class NotificationLoaded extends NotificationState {
   }
 
   @override
-  List<Object?> get props => [notifications, total, limit, unreadCount, unreadOnly, typeFilter, isLoadingMore];
+  List<Object?> get props => [
+    notifications,
+    total,
+    limit,
+    unreadCount,
+    unreadOnly,
+    typeFilter,
+    isLoadingMore,
+  ];
 }
 
 class NotificationError extends NotificationState {

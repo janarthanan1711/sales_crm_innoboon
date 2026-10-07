@@ -5,7 +5,8 @@ import '../entities/audit_log_entry.dart';
 abstract class AuditLogRepository {
   /// `GET /audit-log` — paginated. [dateFrom]/[dateTo] are plain `YYYY-MM-DD`
   /// dates (not timestamps). Requires the `audit_log.view` permission.
-  Future<Either<Failure, ({List<AuditLogEntry> items, int total})>> getAuditLog({
+  Future<Either<Failure, ({List<AuditLogEntry> items, int total})>>
+  getAuditLog({
     String? tableName,
     String? action,
     int? actorId,

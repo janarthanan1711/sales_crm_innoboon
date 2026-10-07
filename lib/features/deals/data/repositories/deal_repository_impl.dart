@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
@@ -23,6 +24,7 @@ class DealRepositoryImpl implements DealRepository {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? stageState,
+    String? quickFilter,
   }) async {
     try {
       final deals = await remoteDataSource.getDeals(
@@ -34,6 +36,7 @@ class DealRepositoryImpl implements DealRepository {
         dateFrom: dateFrom,
         dateTo: dateTo,
         stageState: stageState,
+        quickFilter: quickFilter,
       );
       return Right(deals);
     } on Exception catch (e) {
@@ -63,6 +66,7 @@ class DealRepositoryImpl implements DealRepository {
     String? coldReason,
     int? ownerId,
     Map<String, String>? scores,
+    SourcePerson? originator,
   }) async {
     try {
       final deal = await remoteDataSource.createDeal(
@@ -77,6 +81,7 @@ class DealRepositoryImpl implements DealRepository {
         coldReason: coldReason,
         ownerId: ownerId,
         scores: scores,
+        originator: originator,
       );
       return Right(deal);
     } on Exception catch (e) {
@@ -98,6 +103,12 @@ class DealRepositoryImpl implements DealRepository {
     int? ownerId,
     String? note,
     Map<String, String>? scores,
+    DateTime? followUpDate,
+    bool clearFollowUp = false,
+    SourcePerson? originator,
+    bool clearOriginator = false,
+    String? proposalStatus,
+    DateTime? proposalSentAt,
   }) async {
     try {
       final deal = await remoteDataSource.updateDeal(
@@ -113,6 +124,12 @@ class DealRepositoryImpl implements DealRepository {
         ownerId: ownerId,
         note: note,
         scores: scores,
+        followUpDate: followUpDate,
+        clearFollowUp: clearFollowUp,
+        originator: originator,
+        clearOriginator: clearOriginator,
+        proposalStatus: proposalStatus,
+        proposalSentAt: proposalSentAt,
       );
       return Right(deal);
     } on Exception catch (e) {
@@ -135,6 +152,15 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, List<ScoringDimension>>> getScoringDimensions() async {
     try {
       return Right(await remoteDataSource.getScoringDimensions());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SourcePerson>>> getOriginatorOptions() async {
+    try {
+      return Right(await remoteDataSource.getOriginatorOptions());
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

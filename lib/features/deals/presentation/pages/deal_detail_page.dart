@@ -14,6 +14,7 @@ import '../../../../core/auth/permissions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../app/di/injector.dart';
 import '../../../../core/utils/formatters.dart' show DateFormatter;
+import '../../../accounts/presentation/widgets/person_type_icon.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_activity.dart';
 import '../../domain/entities/deal_contact.dart';
@@ -108,7 +109,7 @@ class _DealDetailView extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                _dealInfoTab(deal),
+                _dealInfoTab(context, deal),
                 _ContactsTab(deal: deal),
                 _DealDocumentsTab(dealId: deal.id),
                 _activityTab(context, state),
@@ -436,7 +437,7 @@ class _DealDetailView extends StatelessWidget {
   }
 
   // ── Tab views ──────────────────────────────────────────
-  Widget _dealInfoTab(Deal deal) {
+  Widget _dealInfoTab(BuildContext context, Deal deal) {
     final close = deal.expectedCloseDate;
     String? remaining;
     Color remainingColor = AppColors.textMuted;
@@ -500,6 +501,67 @@ class _DealDetailView extends StatelessWidget {
             _infoRow('Total Score', deal.totalScore?.toString() ?? '—'),
             _infoRow('Response Mode', deal.responseMode ?? '—'),
             _infoRow('Proposal SLA', deal.proposalSla ?? '—'),
+            _infoRow(
+              'Proposal SLA Due',
+              deal.proposalSlaDueAt == null
+                  ? '—'
+                  : DateFormatter.dateTime(deal.proposalSlaDueAt!),
+            ),
+            _infoRow(
+              'Proposal Status',
+              deal.proposalStatus == 'proposal_sent'
+                  ? 'Proposal Sent${deal.proposalSentAt == null ? '' : ' on ${DateFormatter.displayDate(deal.proposalSentAt!)}'}'
+                  : 'Not Sent',
+            ),
+            _infoRowWidget(
+              'Originator',
+              deal.originator == null
+                  ? Text('—', style: AppTextStyles.bodyMedium)
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PersonTypeIcon(deal.originator!.type),
+                        const SizedBox(width: 6),
+                        Text(
+                          deal.originator!.name,
+                          style: AppTextStyles.bodyMedium,
+                        ),
+                      ],
+                    ),
+            ),
+            // The one field editable straight from this card.
+            _infoRowWidget(
+              'Follow-up',
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    deal.followUpDate == null
+                        ? 'Not set'
+                        : DateFormatter.displayDate(deal.followUpDate!),
+                    style: AppTextStyles.bodyMedium,
+                  ),
+                  if (context.can(Perms.dealsManage)) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: () => _pickFollowUp(context, deal),
+                      icon: const Icon(Icons.event, size: 16),
+                      label: Text(
+                        deal.followUpDate == null
+                            ? 'Add follow-up'
+                            : 'Follow-up',
+                      ),
+                    ),
+                    if (deal.followUpDate != null)
+                      IconButton(
+                        tooltip: 'Clear follow-up',
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => _saveFollowUp(context, deal, null),
+                      ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -634,6 +696,43 @@ class _DealDetailView extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Future<void> _pickFollowUp(BuildContext context, Deal deal) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: deal.followUpDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !context.mounted) return;
+    await _saveFollowUp(context, deal, date);
+  }
+
+  /// PATCHes only `follow_up_date` ([date] null clears it).
+  Future<void> _saveFollowUp(
+    BuildContext context,
+    Deal deal,
+    DateTime? date,
+  ) async {
+    final bloc = context.read<DealDetailBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await sl<UpdateDealUseCase>()(
+      UpdateDealParams(
+        id: deal.id,
+        followUpDate: date,
+        clearFollowUp: date == null,
+      ),
+    );
+    result.fold(
+      (f) => messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to save follow-up: ${f.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      ),
+      (_) => bloc.add(DealDetailLoadRequested(deal.id)),
     );
   }
 

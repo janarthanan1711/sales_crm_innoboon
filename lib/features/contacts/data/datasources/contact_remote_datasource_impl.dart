@@ -98,6 +98,7 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
   }) async {
     try {
       final response = await dioClient.post(
@@ -112,6 +113,7 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
           jobTitle: jobTitle,
           linkedinUrl: linkedinUrl,
           isPrimary: isPrimary,
+          isOriginator: isOriginator,
         ),
       );
       return ContactModel.fromJson(response.data as Map<String, dynamic>);

@@ -1,13 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum ActivityType {
-  call,
-  email,
-  meeting,
-  note,
-  stageChange,
-  taskComplete
-}
+enum ActivityType { call, email, meeting, note, stageChange, taskComplete }
 
 class AppActivity extends Equatable {
   final String id;
@@ -32,13 +25,13 @@ class AppActivity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        type,
-        title,
-        description,
-        entityType,
-        entityId,
-        performedBy,
-        performedAt,
-      ];
+    id,
+    type,
+    title,
+    description,
+    entityType,
+    entityId,
+    performedBy,
+    performedAt,
+  ];
 }

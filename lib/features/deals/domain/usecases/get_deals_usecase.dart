@@ -19,6 +19,7 @@ class GetDealsParams {
   /// `all` (default), `open`, or `closed` — matches the dashboard's Deals in
   /// Pipeline (`open`) / Deals Closed (`closed`) tile semantics.
   final String? stageState;
+  final String? quickFilter;
 
   const GetDealsParams({
     this.ownerId,
@@ -29,6 +30,7 @@ class GetDealsParams {
     this.dateFrom,
     this.dateTo,
     this.stageState,
+    this.quickFilter,
   });
 }
 
@@ -47,5 +49,6 @@ class GetDealsUseCase implements UseCase<List<Deal>, GetDealsParams> {
         dateFrom: params.dateFrom,
         dateTo: params.dateTo,
         stageState: params.stageState,
+        quickFilter: params.quickFilter,
       );
 }

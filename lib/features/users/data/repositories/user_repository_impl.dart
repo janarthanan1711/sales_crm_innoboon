@@ -63,7 +63,10 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteUser(int id, {bool permanent = false}) async {
+  Future<Either<Failure, void>> deleteUser(
+    int id, {
+    bool permanent = false,
+  }) async {
     try {
       await remoteDataSource.deleteUser(id, permanent: permanent);
       return const Right(null);

@@ -102,7 +102,11 @@ abstract class LeadRemoteDataSource {
   Future<void> deleteLead(int id);
   Future<Lead> setFavourite(int id, bool isFavourite);
   Future<int> convertToAccount(int leadId, {String? tier, int? ownerId});
-  Future<LeadActivity> logActivity(int leadId, {required String type, required String note});
+  Future<LeadActivity> logActivity(
+    int leadId, {
+    required String type,
+    required String note,
+  });
   Future<List<LeadActivity>> listActivities(
     int leadId, {
     List<String>? types,

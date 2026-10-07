@@ -5,7 +5,9 @@ import '../../../contacts/domain/entities/contact.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/account_activity.dart';
+import '../../domain/entities/account_options.dart';
 import '../../domain/entities/account_overview.dart';
+import '../../domain/entities/source_person.dart';
 import '../../domain/repositories/account_repository.dart';
 
 class AccountRepositoryImpl implements AccountRepository {
@@ -59,6 +61,9 @@ class AccountRepositoryImpl implements AccountRepository {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
     List<AccountContactDraft>? contacts,
@@ -71,6 +76,9 @@ class AccountRepositoryImpl implements AccountRepository {
         ownerId: ownerId,
         industry: industry,
         city: city,
+        source: source,
+        country: country,
+        engagementType: engagementType,
         description: description,
         linkedinUrl: linkedinUrl,
         contacts: contacts,
@@ -90,6 +98,9 @@ class AccountRepositoryImpl implements AccountRepository {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
   }) async {
@@ -102,6 +113,9 @@ class AccountRepositoryImpl implements AccountRepository {
         ownerId: ownerId,
         industry: industry,
         city: city,
+        source: source,
+        country: country,
+        engagementType: engagementType,
         description: description,
         linkedinUrl: linkedinUrl,
       );
@@ -150,12 +164,14 @@ class AccountRepositoryImpl implements AccountRepository {
     DateTime? dateTo,
   }) async {
     try {
-      return Right(await remoteDataSource.listActivities(
-        accountId,
-        types: types,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-      ));
+      return Right(
+        await remoteDataSource.listActivities(
+          accountId,
+          types: types,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -168,11 +184,9 @@ class AccountRepositoryImpl implements AccountRepository {
     required String note,
   }) async {
     try {
-      return Right(await remoteDataSource.logActivity(
-        accountId,
-        type: type,
-        note: note,
-      ));
+      return Right(
+        await remoteDataSource.logActivity(accountId, type: type, note: note),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -186,12 +200,14 @@ class AccountRepositoryImpl implements AccountRepository {
     String? note,
   }) async {
     try {
-      return Right(await remoteDataSource.updateActivity(
-        accountId,
-        activityId,
-        type: type,
-        note: note,
-      ));
+      return Right(
+        await remoteDataSource.updateActivity(
+          accountId,
+          activityId,
+          type: type,
+          note: note,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -218,12 +234,14 @@ class AccountRepositoryImpl implements AccountRepository {
     int? ownerId,
   }) async {
     try {
-      return Right(await remoteDataSource.exportAccounts(
-        search: search,
-        industry: industry,
-        tier: tier,
-        ownerId: ownerId,
-      ));
+      return Right(
+        await remoteDataSource.exportAccounts(
+          search: search,
+          industry: industry,
+          tier: tier,
+          ownerId: ownerId,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -233,6 +251,47 @@ class AccountRepositoryImpl implements AccountRepository {
   Future<Either<Failure, Uint8List>> exportAccount(String id) async {
     try {
       return Right(await remoteDataSource.exportAccount(id));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AccountOptions>> getAccountOptions() async {
+    try {
+      return Right(await remoteDataSource.getAccountOptions());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SourcePerson>>> getSourcePeople() async {
+    try {
+      return Right(await remoteDataSource.getSourcePeople());
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SourcePerson>>> getSourceDetail(
+    String accountId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getSourceDetail(accountId));
+    } on Exception catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<SourcePerson>>> saveSourceDetail(
+    String accountId,
+    List<SourcePerson> members,
+  ) async {
+    try {
+      return Right(await remoteDataSource.saveSourceDetail(accountId, members));
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

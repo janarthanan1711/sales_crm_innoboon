@@ -7,7 +7,8 @@ import '../repositories/role_repository.dart';
 class ListPermissionsUseCase {
   final RoleRepository repository;
   ListPermissionsUseCase(this.repository);
-  Future<Either<Failure, List<Permission>>> call() => repository.getPermissions();
+  Future<Either<Failure, List<Permission>>> call() =>
+      repository.getPermissions();
 }
 
 class ListRolesUseCase {

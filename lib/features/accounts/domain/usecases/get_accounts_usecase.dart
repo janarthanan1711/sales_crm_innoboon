@@ -34,15 +34,14 @@ class GetAccountsUseCase
   @override
   Future<Either<Failure, ({List<Account> items, int total})>> call(
     GetAccountsParams params,
-  ) =>
-      repository.getAccounts(
-        search: params.search,
-        industry: params.industry,
-        tier: params.tier,
-        ownerId: params.ownerId,
-        dateFrom: params.dateFrom,
-        dateTo: params.dateTo,
-        limit: params.limit,
-        offset: params.offset,
-      );
+  ) => repository.getAccounts(
+    search: params.search,
+    industry: params.industry,
+    tier: params.tier,
+    ownerId: params.ownerId,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    limit: params.limit,
+    offset: params.offset,
+  );
 }

@@ -9,7 +9,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   AnalyticsRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, SalesMetrics>> getSalesMetrics({String period = 'Monthly'}) async {
+  Future<Either<Failure, SalesMetrics>> getSalesMetrics({
+    String period = 'Monthly',
+  }) async {
     try {
       final metrics = await remoteDataSource.getSalesMetrics(period: period);
       return Right(metrics);

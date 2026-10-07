@@ -10,6 +10,10 @@ class AccountModel extends Account {
     required super.primaryOwner,
     super.industry,
     super.city,
+    super.source,
+    super.country,
+    super.engagementType,
+    super.engagementTypeLabel,
     super.description,
     super.linkedinUrl,
     super.sourceLeadId,
@@ -31,6 +35,10 @@ class AccountModel extends Account {
           : (ownerId != null ? 'Owner $ownerId' : 'Unassigned'),
       industry: json['industry'] as String?,
       city: json['city'] as String?,
+      source: json['source'] as String?,
+      country: json['country'] as String?,
+      engagementType: json['engagement_type'] as String?,
+      engagementTypeLabel: json['engagement_type_label'] as String?,
       description: json['description'] as String? ?? '',
       linkedinUrl: json['linkedin_url'] as String?,
       sourceLeadId: json['source_lead_id'] as int?,
@@ -49,6 +57,9 @@ class AccountModel extends Account {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
     List<AccountContactDraft>? contacts,
@@ -60,21 +71,26 @@ class AccountModel extends Account {
       'owner_id': ownerId,
       'industry': industry,
       'city': city,
+      'source': source,
+      'country': country,
+      'engagement_type': engagementType,
       'description': description,
       'linkedin_url': linkedinUrl,
     };
     if (contacts != null && contacts.isNotEmpty) {
       body['contacts'] = contacts
-          .map((c) => <String, dynamic>{
-                if (c.firstName != null && c.firstName!.isNotEmpty)
-                  'first_name': c.firstName,
-                if (c.lastName != null && c.lastName!.isNotEmpty)
-                  'last_name': c.lastName,
-                if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
-                if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
-                if (c.jobTitle != null && c.jobTitle!.isNotEmpty)
-                  'job_title': c.jobTitle,
-              })
+          .map(
+            (c) => <String, dynamic>{
+              if (c.firstName != null && c.firstName!.isNotEmpty)
+                'first_name': c.firstName,
+              if (c.lastName != null && c.lastName!.isNotEmpty)
+                'last_name': c.lastName,
+              if (c.email != null && c.email!.isNotEmpty) 'email': c.email,
+              if (c.phone != null && c.phone!.isNotEmpty) 'phone': c.phone,
+              if (c.jobTitle != null && c.jobTitle!.isNotEmpty)
+                'job_title': c.jobTitle,
+            },
+          )
           .toList();
     }
     return body;

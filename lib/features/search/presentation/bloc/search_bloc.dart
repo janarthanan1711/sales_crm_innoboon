@@ -8,12 +8,16 @@ export 'search_state.dart';
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final GlobalSearchUseCase globalSearchUseCase;
 
-  SearchBloc({required this.globalSearchUseCase}) : super(const SearchInitial()) {
+  SearchBloc({required this.globalSearchUseCase})
+    : super(const SearchInitial()) {
     on<SearchQuerySubmitted>(_onQuerySubmitted);
     on<SearchCleared>(_onCleared);
   }
 
-  Future<void> _onQuerySubmitted(SearchQuerySubmitted event, Emitter<SearchState> emit) async {
+  Future<void> _onQuerySubmitted(
+    SearchQuerySubmitted event,
+    Emitter<SearchState> emit,
+  ) async {
     final query = event.query.trim();
     if (query.isEmpty) {
       emit(const SearchInitial());

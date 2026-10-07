@@ -35,11 +35,19 @@ class Account extends Equatable {
   final String? domain;
   final String tier;
   final int? ownerId;
+
   /// Owner's display name — from the API's `owner_name`, falling back to
   /// "Owner {id}"/"Unassigned" when the server didn't resolve a name.
   final String primaryOwner;
   final String? industry;
   final String? city;
+
+  /// Lead-source key (see `leadSourceLabels`), country name, and engagement
+  /// type key (labels come from `GET /accounts/options`).
+  final String? source;
+  final String? country;
+  final String? engagementType;
+  final String? engagementTypeLabel;
   final String description;
   final String? linkedinUrl;
   final int? sourceLeadId;
@@ -55,6 +63,10 @@ class Account extends Equatable {
     required this.primaryOwner,
     this.industry,
     this.city,
+    this.source,
+    this.country,
+    this.engagementType,
+    this.engagementTypeLabel,
     this.description = '',
     this.linkedinUrl,
     this.sourceLeadId,
@@ -71,6 +83,10 @@ class Account extends Equatable {
     String? primaryOwner,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
+    String? engagementTypeLabel,
     String? description,
     String? linkedinUrl,
     int? sourceLeadId,
@@ -86,6 +102,10 @@ class Account extends Equatable {
       primaryOwner: primaryOwner ?? this.primaryOwner,
       industry: industry ?? this.industry,
       city: city ?? this.city,
+      source: source ?? this.source,
+      country: country ?? this.country,
+      engagementType: engagementType ?? this.engagementType,
+      engagementTypeLabel: engagementTypeLabel ?? this.engagementTypeLabel,
       description: description ?? this.description,
       linkedinUrl: linkedinUrl ?? this.linkedinUrl,
       sourceLeadId: sourceLeadId ?? this.sourceLeadId,
@@ -104,6 +124,10 @@ class Account extends Equatable {
     primaryOwner,
     industry,
     city,
+    source,
+    country,
+    engagementType,
+    engagementTypeLabel,
     description,
     linkedinUrl,
     sourceLeadId,

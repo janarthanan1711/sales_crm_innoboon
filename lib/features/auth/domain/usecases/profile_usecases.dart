@@ -16,7 +16,11 @@ class UpdateCurrentUserParams {
   final String? firstName;
   final String? lastName;
   final String? phoneNumber;
-  const UpdateCurrentUserParams({this.firstName, this.lastName, this.phoneNumber});
+  const UpdateCurrentUserParams({
+    this.firstName,
+    this.lastName,
+    this.phoneNumber,
+  });
 }
 
 class UpdateCurrentUserUseCase {
@@ -34,7 +38,10 @@ class UpdateCurrentUserUseCase {
 class ChangePasswordParams {
   final String currentPassword;
   final String newPassword;
-  const ChangePasswordParams({required this.currentPassword, required this.newPassword});
+  const ChangePasswordParams({
+    required this.currentPassword,
+    required this.newPassword,
+  });
 }
 
 class ChangePasswordUseCase {
@@ -58,7 +65,10 @@ class UploadAvatarUseCase {
   final AuthRepository repository;
   UploadAvatarUseCase(this.repository);
   Future<Either<Failure, User>> call(UploadAvatarParams params) {
-    return repository.uploadAvatar(bytes: params.bytes, filename: params.filename);
+    return repository.uploadAvatar(
+      bytes: params.bytes,
+      filename: params.filename,
+    );
   }
 }
 

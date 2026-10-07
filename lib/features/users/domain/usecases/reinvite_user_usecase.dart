@@ -10,5 +10,6 @@ class ReinviteUserUseCase {
   final UserRepository repository;
   ReinviteUserUseCase(this.repository);
 
-  Future<Either<Failure, OwnerUser>> call(int id) => repository.reinviteUser(id);
+  Future<Either<Failure, OwnerUser>> call(int id) =>
+      repository.reinviteUser(id);
 }

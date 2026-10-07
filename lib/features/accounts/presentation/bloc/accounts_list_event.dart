@@ -20,6 +20,7 @@ class AccountsListSearchChanged extends AccountsListEvent {
 class AccountsListFilterChanged extends AccountsListEvent {
   final String? industry;
   final String? tier;
+
   /// Sentinel: pass `AccountsListFilterChanged.clearOwner` to reset the owner
   /// filter (null means "leave unchanged" so other filters can be set alone).
   final Object? ownerId;
@@ -40,7 +41,14 @@ class AccountsListFilterChanged extends AccountsListEvent {
   static const Object clearOwner = 'clear-owner';
 
   @override
-  List<Object?> get props => [industry, tier, ownerId, dateFrom, dateTo, clearDate];
+  List<Object?> get props => [
+    industry,
+    tier,
+    ownerId,
+    dateFrom,
+    dateTo,
+    clearDate,
+  ];
 }
 
 /// Resets search + tier/owner/industry filters and returns to the first page.

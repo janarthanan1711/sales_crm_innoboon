@@ -18,6 +18,9 @@ class Contact extends Equatable {
   final String? jobTitle;
   final String? linkedinUrl;
   final bool isPrimary;
+
+  /// Eligible for the Deal "Originator" dropdown.
+  final bool isOriginator;
   final int? accountId;
 
   /// Derived from the contact's "representative" account link (see the
@@ -39,6 +42,7 @@ class Contact extends Equatable {
     this.jobTitle,
     this.linkedinUrl,
     this.isPrimary = false,
+    this.isOriginator = false,
     this.accountId,
     this.accountName,
     this.ownerId,
@@ -59,6 +63,7 @@ class Contact extends Equatable {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
     int? accountId,
     String? accountName,
     int? ownerId,
@@ -75,6 +80,7 @@ class Contact extends Equatable {
       jobTitle: jobTitle ?? this.jobTitle,
       linkedinUrl: linkedinUrl ?? this.linkedinUrl,
       isPrimary: isPrimary ?? this.isPrimary,
+      isOriginator: isOriginator ?? this.isOriginator,
       accountId: accountId ?? this.accountId,
       accountName: accountName ?? this.accountName,
       ownerId: ownerId ?? this.ownerId,
@@ -94,6 +100,7 @@ class Contact extends Equatable {
     jobTitle,
     linkedinUrl,
     isPrimary,
+    isOriginator,
     accountId,
     accountName,
     ownerId,

@@ -302,7 +302,10 @@ class _LoginFormState extends State<_LoginForm> {
     if (_formKey.currentState?.validate() ?? false) {
       final prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
-        await prefs.setString(_rememberedEmailKey, _emailController.text.trim());
+        await prefs.setString(
+          _rememberedEmailKey,
+          _emailController.text.trim(),
+        );
       } else {
         await prefs.remove(_rememberedEmailKey);
       }

@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_contact.dart';
 
@@ -30,6 +31,11 @@ class DealModel extends Deal {
     super.totalScore,
     super.responseMode,
     super.proposalSla,
+    super.followUpDate,
+    super.originator,
+    super.proposalStatus,
+    super.proposalSentAt,
+    super.proposalSlaDueAt,
     super.description = '',
     super.paymentStatus = 'Pending',
     required super.createdAt,
@@ -60,10 +66,19 @@ class DealModel extends Deal {
       totalScore: json['total_score'] as int?,
       responseMode: json['response_mode'] as String?,
       proposalSla: json['proposal_sla'] as String?,
-      // Not in the API — placeholder so sort-by-date UI doesn't crash.
-      createdAt: DateTime.now(),
+      followUpDate: _date(json['follow_up_date']),
+      originator: json['originator'] == null
+          ? null
+          : SourcePerson.fromJson(json['originator'] as Map<String, dynamic>),
+      proposalStatus: json['proposal_status'] as String? ?? 'not_sent',
+      proposalSentAt: _date(json['proposal_sent_at']),
+      proposalSlaDueAt: _date(json['proposal_sla_due_at']),
+      createdAt: _date(json['created_at']) ?? DateTime.now(),
     );
   }
+
+  static DateTime? _date(dynamic v) =>
+      v is String ? DateTime.tryParse(v) : null;
 
   /// Reads the `contacts` array (`[{id, name}]`). Falls back to a bare
   /// `contact_ids` list — older responses, and `PATCH` echoes that may still
@@ -99,6 +114,7 @@ class DealModel extends Deal {
     String? coldReason,
     required int? ownerId,
     Map<String, String>? scores,
+    SourcePerson? originator,
   }) {
     return {
       'deal_name': dealName,
@@ -115,6 +131,7 @@ class DealModel extends Deal {
         'cold_reason': coldReason,
       'owner_id': ?ownerId,
       if (scores != null && scores.isNotEmpty) 'scores': scores,
+      if (originator != null) 'originator': originator.toRefJson(),
     };
   }
 
@@ -135,6 +152,12 @@ class DealModel extends Deal {
     int? ownerId,
     String? note,
     Map<String, String>? scores,
+    DateTime? followUpDate,
+    bool clearFollowUp = false,
+    SourcePerson? originator,
+    bool clearOriginator = false,
+    String? proposalStatus,
+    DateTime? proposalSentAt,
   }) {
     return {
       'deal_name': ?dealName,
@@ -149,6 +172,13 @@ class DealModel extends Deal {
       'tier': ?tier,
       'note': ?note,
       if (scores != null) 'scores': scores.isEmpty ? null : scores,
+      if (followUpDate != null) 'follow_up_date': _formatDate(followUpDate),
+      if (clearFollowUp) 'follow_up_date': null,
+      if (originator != null) 'originator': originator.toRefJson(),
+      if (clearOriginator) 'originator': null,
+      'proposal_status': ?proposalStatus,
+      if (proposalSentAt != null)
+        'proposal_sent_at': _formatDate(proposalSentAt),
     };
   }
 

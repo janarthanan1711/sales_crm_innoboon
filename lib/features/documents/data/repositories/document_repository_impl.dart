@@ -43,11 +43,13 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required String fileName,
   }) async {
     try {
-      return Right(await dataSource.uploadAccountDocument(
-        accountId,
-        bytes: bytes,
-        fileName: fileName,
-      ));
+      return Right(
+        await dataSource.uploadAccountDocument(
+          accountId,
+          bytes: bytes,
+          fileName: fileName,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }
@@ -84,11 +86,13 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required String fileName,
   }) async {
     try {
-      return Right(await dataSource.uploadDealDocument(
-        dealId,
-        bytes: bytes,
-        fileName: fileName,
-      ));
+      return Right(
+        await dataSource.uploadDealDocument(
+          dealId,
+          bytes: bytes,
+          fileName: fileName,
+        ),
+      );
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

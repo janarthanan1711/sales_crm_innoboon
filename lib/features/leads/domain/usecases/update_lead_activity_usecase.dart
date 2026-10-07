@@ -22,9 +22,7 @@ class UpdateLeadActivityUseCase {
 
   UpdateLeadActivityUseCase(this.repository);
 
-  Future<Either<Failure, LeadActivity>> call(
-    UpdateLeadActivityParams params,
-  ) {
+  Future<Either<Failure, LeadActivity>> call(UpdateLeadActivityParams params) {
     return repository.updateActivity(
       params.leadId,
       params.activityId,

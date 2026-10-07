@@ -7,7 +7,9 @@ AppNotification appNotificationFromJson(Map<String, dynamic> json) {
     title: json['title'] as String,
     body: json['body'] as String,
     isRead: json['is_read'] as bool? ?? false,
-    readAt: json['read_at'] != null ? DateTime.parse(json['read_at'] as String) : null,
+    readAt: json['read_at'] != null
+        ? DateTime.parse(json['read_at'] as String)
+        : null,
     actorId: json['actor_id'] as int?,
     entityType: json['entity_type'] as String?,
     entityId: json['entity_id'] as int?,

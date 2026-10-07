@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
@@ -32,6 +33,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? stageState,
+    String? quickFilter,
   }) async {
     try {
       final response = await dioClient.get(
@@ -48,6 +50,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           if (dateFrom != null) 'date_from': _formatDate(dateFrom),
           if (dateTo != null) 'date_to': _formatDate(dateTo),
           'stage_state': ?stageState,
+          'quick_filter': ?quickFilter,
           'limit': 200,
           'offset': 0,
         },
@@ -85,6 +88,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     String? coldReason,
     int? ownerId,
     Map<String, String>? scores,
+    SourcePerson? originator,
   }) async {
     try {
       final response = await dioClient.post(
@@ -101,6 +105,7 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           coldReason: coldReason,
           ownerId: ownerId,
           scores: scores,
+          originator: originator,
         ),
       );
       return DealModel.fromJson(response.data as Map<String, dynamic>);
@@ -123,6 +128,12 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     int? ownerId,
     String? note,
     Map<String, String>? scores,
+    DateTime? followUpDate,
+    bool clearFollowUp = false,
+    SourcePerson? originator,
+    bool clearOriginator = false,
+    String? proposalStatus,
+    DateTime? proposalSentAt,
   }) async {
     try {
       final response = await dioClient.patch(
@@ -139,6 +150,12 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
           tier: tier,
           note: note,
           scores: scores,
+          followUpDate: followUpDate,
+          clearFollowUp: clearFollowUp,
+          originator: originator,
+          clearOriginator: clearOriginator,
+          proposalStatus: proposalStatus,
+          proposalSentAt: proposalSentAt,
         ),
       );
       return DealModel.fromJson(response.data as Map<String, dynamic>);
@@ -166,6 +183,18 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
       final response = await dioClient.get(ApiEndpoints.dealScoringDimensions);
       return (response.data as List<dynamic>)
           .map((e) => ScoringDimension.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _normalize(e);
+    }
+  }
+
+  @override
+  Future<List<SourcePerson>> getOriginatorOptions() async {
+    try {
+      final response = await dioClient.get(ApiEndpoints.dealOriginatorOptions);
+      return (response.data as List<dynamic>)
+          .map((e) => SourcePerson.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw _normalize(e);

@@ -5,6 +5,9 @@ DashboardData dashboardFromJson(Map<String, dynamic> json) {
     summary: _summaryFromJson(
       json['summary'] as Map<String, dynamic>? ?? const {},
     ),
+    dealTiles: _dealTilesFromJson(
+      json['deal_tiles'] as Map<String, dynamic>? ?? const {},
+    ),
     funnel: _listOf(json['funnel'], 'stages', _funnelStageFromJson),
     dealDistribution: _listOf(
       json['deal_distribution'],
@@ -47,6 +50,14 @@ DashboardStat _statFromJson(Map<String, dynamic>? json) {
     changePct: (json['change_pct'] as num?)?.toDouble(),
   );
 }
+
+DealTiles _dealTilesFromJson(Map<String, dynamic> json) => DealTiles(
+  inView: json['in_view'] as int? ?? 0,
+  veryHigh: json['very_high'] as int? ?? 0,
+  overdue: json['overdue'] as int? ?? 0,
+  dueToday: json['due_today'] as int? ?? 0,
+  pastSla: json['past_sla'] as int? ?? 0,
+);
 
 DashboardSummary _summaryFromJson(Map<String, dynamic> json) {
   return DashboardSummary(

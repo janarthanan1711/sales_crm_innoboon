@@ -3,10 +3,20 @@ import '../../../../core/error/failures.dart';
 import '../entities/checklist_item.dart';
 
 abstract class ChecklistRepository {
-  Future<Either<Failure, List<ChecklistStage>>> getChecklistForDeal(String dealId);
-  Future<Either<Failure, List<ChecklistStage>>> getChecklistForAccount(String accountId);
-  Future<Either<Failure, ChecklistItem>> toggleItemStatus(String itemId, bool isCompleted);
-  Future<Either<Failure, ChecklistItem>> updateItemNotes(String itemId, String notes);
+  Future<Either<Failure, List<ChecklistStage>>> getChecklistForDeal(
+    String dealId,
+  );
+  Future<Either<Failure, List<ChecklistStage>>> getChecklistForAccount(
+    String accountId,
+  );
+  Future<Either<Failure, ChecklistItem>> toggleItemStatus(
+    String itemId,
+    bool isCompleted,
+  );
+  Future<Either<Failure, ChecklistItem>> updateItemNotes(
+    String itemId,
+    String notes,
+  );
 }
 
 abstract class ChecklistRemoteDataSource {

@@ -207,6 +207,7 @@ class AppRouter {
                 child: DealsListPage(
                   title: q['title'],
                   stageState: q['stage_state'],
+                  quickFilter: q['quick_filter'],
                   dateField: q['date_field'],
                   dateFrom: parseDate(q['date_from']),
                   dateTo: parseDate(q['date_to']),

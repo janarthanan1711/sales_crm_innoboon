@@ -201,7 +201,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required String newPassword,
   }) async {
     try {
-      await remoteDataSource.resetPassword(token: token, newPassword: newPassword);
+      await remoteDataSource.resetPassword(
+        token: token,
+        newPassword: newPassword,
+      );
       return const Right(null);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));

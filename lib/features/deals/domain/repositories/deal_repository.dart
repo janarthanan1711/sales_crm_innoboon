@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
@@ -17,6 +18,7 @@ abstract class DealRepository {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? stageState,
+    String? quickFilter,
   });
   Future<Either<Failure, Deal>> getDealById(String id);
   Future<Either<Failure, Deal>> createDeal({
@@ -31,6 +33,7 @@ abstract class DealRepository {
     String? coldReason,
     int? ownerId,
     Map<String, String>? scores,
+    SourcePerson? originator,
   });
   Future<Either<Failure, Deal>> updateDeal(
     String id, {
@@ -45,12 +48,19 @@ abstract class DealRepository {
     int? ownerId,
     String? note,
     Map<String, String>? scores,
+    DateTime? followUpDate,
+    bool clearFollowUp = false,
+    SourcePerson? originator,
+    bool clearOriginator = false,
+    String? proposalStatus,
+    DateTime? proposalSentAt,
   });
   Future<Either<Failure, List<DealStageHistoryEntry>>> getStageHistory(
     String id,
   );
   Future<Either<Failure, List<DealStageDef>>> getDealStages();
   Future<Either<Failure, List<ScoringDimension>>> getScoringDimensions();
+  Future<Either<Failure, List<SourcePerson>>> getOriginatorOptions();
 
   Future<Either<Failure, List<DealActivity>>> listActivities(
     String dealId, {
@@ -102,6 +112,7 @@ abstract class DealRemoteDataSource {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? stageState,
+    String? quickFilter,
   });
   Future<Deal> getDealById(String id);
   Future<Deal> createDeal({
@@ -116,6 +127,7 @@ abstract class DealRemoteDataSource {
     String? coldReason,
     int? ownerId,
     Map<String, String>? scores,
+    SourcePerson? originator,
   });
   Future<Deal> updateDeal(
     String id, {
@@ -130,10 +142,17 @@ abstract class DealRemoteDataSource {
     String? tier,
     String? note,
     Map<String, String>? scores,
+    DateTime? followUpDate,
+    bool clearFollowUp = false,
+    SourcePerson? originator,
+    bool clearOriginator = false,
+    String? proposalStatus,
+    DateTime? proposalSentAt,
   });
   Future<List<DealStageHistoryEntry>> getStageHistory(String id);
   Future<List<DealStageDef>> getDealStages();
   Future<List<ScoringDimension>> getScoringDimensions();
+  Future<List<SourcePerson>> getOriginatorOptions();
 
   Future<List<DealActivity>> listActivities(
     String dealId, {

@@ -25,6 +25,9 @@ import '../../domain/usecases/update_account_usecase.dart';
 import '../../domain/usecases/account_activity_usecases.dart';
 import '../../domain/usecases/export_accounts_usecase.dart';
 import '../bloc/account_detail_bloc.dart';
+import '../widgets/account_classification_fields.dart';
+import '../widgets/source_detail_tab.dart';
+import '../../../contacts/presentation/widgets/originator_badge.dart';
 import '../../../contacts/domain/entities/contact.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
 import '../../../deals/domain/entities/deal.dart';
@@ -65,7 +68,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {}); // header actions depend on the tab index
     });
@@ -302,6 +305,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                   'Deals${_countSuffix(account.dealCount, state.deals.length)}',
             ),
             const Tab(text: 'Documents'),
+            const Tab(text: 'Source Detail'),
             const Tab(text: 'Activity Log'),
           ],
         ),
@@ -315,6 +319,7 @@ class _AccountDetailViewState extends State<_AccountDetailView>
               _ContactsTab(account: account, contacts: state.contacts),
               _DealsTab(deals: state.deals),
               _DocumentsTab(accountId: account.id),
+              SourceDetailTab(accountId: account.id),
               _AccountActivityTab(accountId: account.id),
             ],
           ),
@@ -386,6 +391,9 @@ class _AccountDetailViewState extends State<_AccountDetailView>
         ? account.tier
         : leadTierLabels.keys.first;
     String? industry = account.industry;
+    String? source = account.source;
+    String? country = account.country;
+    String? engagementType = account.engagementType;
     int? ownerId = account.ownerId;
     List<OwnerUser> users = [];
     final usersResult = await sl<GetUsersUseCase>()();
@@ -459,6 +467,15 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      AccountClassificationFields(
+                        source: source,
+                        country: country,
+                        engagementType: engagementType,
+                        onSourceChanged: (v) => source = v,
+                        onCountryChanged: (v) => country = v,
+                        onEngagementTypeChanged: (v) => engagementType = v,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       TextField(
                         controller: descriptionController,
                         maxLines: 3,
@@ -502,6 +519,9 @@ class _AccountDetailViewState extends State<_AccountDetailView>
                           tier: tier,
                           ownerId: ownerId,
                           industry: industry,
+                          source: source,
+                          country: country,
+                          engagementType: engagementType,
                           city: cityController.text.trim().isEmpty
                               ? null
                               : cityController.text.trim(),
@@ -582,6 +602,46 @@ class _OverviewTab extends StatelessWidget {
                       ),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _labeled(
+                      'Source',
+                      Text(
+                        leadSourceLabels[account.source] ?? 'Not set',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _labeled(
+                      'Country',
+                      Text(
+                        account.country ?? 'Not set',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _labeled(
+                      'Engagement Type',
+                      Text(
+                        account.engagementTypeLabel ?? 'Not set',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
+                  ),
+                  const Expanded(child: SizedBox.shrink()),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -713,6 +773,10 @@ class _OverviewTab extends StatelessWidget {
                     if (c.isPrimary) ...[
                       const SizedBox(width: AppSpacing.xs),
                       const _PrimaryBadge(),
+                    ],
+                    if (c.isOriginator) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      const OriginatorBadge(),
                     ],
                   ],
                 ),
@@ -1159,6 +1223,10 @@ class _ContactRow extends StatelessWidget {
                 if (contact.isPrimary) ...[
                   const SizedBox(width: AppSpacing.xs),
                   const _PrimaryBadge(),
+                ],
+                if (contact.isOriginator) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  const OriginatorBadge(),
                 ],
               ],
             ),

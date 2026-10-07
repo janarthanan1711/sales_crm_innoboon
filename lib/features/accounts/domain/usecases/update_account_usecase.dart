@@ -23,6 +23,9 @@ class UpdateAccountUseCase {
       ownerId: params.data.ownerId,
       industry: params.data.industry,
       city: params.data.city,
+      source: params.data.source,
+      country: params.data.country,
+      engagementType: params.data.engagementType,
       description: params.data.description,
       linkedinUrl: params.data.linkedinUrl,
     );

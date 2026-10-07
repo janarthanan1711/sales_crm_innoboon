@@ -10,8 +10,12 @@ class AccountUpsertParams {
   final int? ownerId;
   final String? industry;
   final String? city;
+  final String? source;
+  final String? country;
+  final String? engagementType;
   final String? description;
   final String? linkedinUrl;
+
   /// Inline contacts to create alongside a new account. Ignored on update
   /// (the update endpoint doesn't accept a contacts array).
   final List<AccountContactDraft>? contacts;
@@ -23,6 +27,9 @@ class AccountUpsertParams {
     this.ownerId,
     this.industry,
     this.city,
+    this.source,
+    this.country,
+    this.engagementType,
     this.description,
     this.linkedinUrl,
     this.contacts,
@@ -41,6 +48,9 @@ class CreateAccountUseCase {
       ownerId: params.ownerId,
       industry: params.industry,
       city: params.city,
+      source: params.source,
+      country: params.country,
+      engagementType: params.engagementType,
       description: params.description,
       linkedinUrl: params.linkedinUrl,
       contacts: params.contacts,

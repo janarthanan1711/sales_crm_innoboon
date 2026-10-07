@@ -87,10 +87,7 @@ class AppNotification extends Equatable {
   /// backend — negative ids can't be passed to the read/delete endpoints.
   bool get isComputed => id < 0;
 
-  AppNotification copyWith({
-    bool? isRead,
-    DateTime? readAt,
-  }) {
+  AppNotification copyWith({bool? isRead, DateTime? readAt}) {
     return AppNotification(
       id: id,
       type: type,
@@ -107,15 +104,15 @@ class AppNotification extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        type,
-        title,
-        body,
-        isRead,
-        readAt,
-        actorId,
-        entityType,
-        entityId,
-        createdAt,
-      ];
+    id,
+    type,
+    title,
+    body,
+    isRead,
+    readAt,
+    actorId,
+    entityType,
+    entityId,
+    createdAt,
+  ];
 }

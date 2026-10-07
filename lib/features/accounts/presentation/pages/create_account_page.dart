@@ -13,6 +13,7 @@ import '../../../users/domain/entities/owner_user.dart';
 import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../contacts/domain/usecases/contact_usecases.dart';
 import '../../domain/usecases/create_account_usecase.dart';
+import '../widgets/account_classification_fields.dart';
 
 /// Full-page "New Account" form (matches the accounts-flow Figma) — replaces
 /// the old create dialog. Company info + classification + an optional
@@ -40,6 +41,9 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
   String? _tier;
   String? _industry;
+  String? _source;
+  String? _country;
+  String? _engagementType;
   int? _ownerId;
   bool _addPrimaryContact = false;
   bool _saving = false;
@@ -119,6 +123,9 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         ownerId: _ownerId,
         industry: _industry,
         city: val(_cityController),
+        source: _source,
+        country: _country,
+        engagementType: _engagementType,
         linkedinUrl: val(_linkedinController),
         description: _descriptionController.text.trim(),
       ),
@@ -300,6 +307,15 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.md),
+                              AccountClassificationFields(
+                                labelAbove: true,
+                                show: const {AccountField.country},
+                                onSourceChanged: (v) => _source = v,
+                                onCountryChanged: (v) => _country = v,
+                                onEngagementTypeChanged: (v) =>
+                                    _engagementType = v,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
                               _FieldLabel('Location (City)'),
                               TextField(
                                 controller: _cityController,
@@ -310,6 +326,18 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                                   ),
                                   hintText: 'e.g. Coimbatore',
                                 ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              AccountClassificationFields(
+                                labelAbove: true,
+                                show: const {
+                                  AccountField.source,
+                                  AccountField.engagementType,
+                                },
+                                onSourceChanged: (v) => _source = v,
+                                onCountryChanged: (v) => _country = v,
+                                onEngagementTypeChanged: (v) =>
+                                    _engagementType = v,
                               ),
                               const SizedBox(height: AppSpacing.md),
                               _FieldLabel('LinkedIn URL'),
@@ -384,6 +412,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: AppSpacing.lg),
                         const SizedBox(height: AppSpacing.lg),
                         _PrimaryContactSection(
                           enabled: _addPrimaryContact,

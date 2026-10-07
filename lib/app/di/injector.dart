@@ -66,6 +66,7 @@ import '../../features/accounts/domain/repositories/account_repository.dart';
 import '../../features/accounts/domain/usecases/get_accounts_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_by_id_usecase.dart';
 import '../../features/accounts/domain/usecases/create_account_usecase.dart';
+import '../../features/accounts/domain/usecases/account_source_usecases.dart';
 import '../../features/accounts/domain/usecases/delete_account_usecase.dart';
 import '../../features/accounts/domain/usecases/update_account_usecase.dart';
 import '../../features/accounts/domain/usecases/get_account_contacts_usecase.dart';
@@ -102,6 +103,7 @@ import '../../features/deals/domain/usecases/update_deal_usecase.dart';
 import '../../features/deals/domain/usecases/update_deal_stage_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stage_history_usecase.dart';
 import '../../features/deals/domain/usecases/get_deal_stages_usecase.dart';
+import '../../features/deals/domain/usecases/get_originator_options_usecase.dart';
 import '../../features/deals/domain/usecases/get_scoring_dimensions_usecase.dart';
 import '../../features/deals/domain/usecases/deal_activity_usecases.dart';
 import '../../features/deals/domain/usecases/delete_deal_usecase.dart';
@@ -309,6 +311,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ExportAccountDetailUseCase(sl()));
   sl.registerLazySingleton(() => GetAccountDealsUseCase(sl()));
   sl.registerLazySingleton(() => DeleteAccountUseCase(sl()));
+  sl.registerLazySingleton(() => GetAccountOptionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetSourcePeopleUseCase(sl()));
+  sl.registerLazySingleton(() => GetSourceDetailUseCase(sl()));
+  sl.registerLazySingleton(() => SaveSourceDetailUseCase(sl()));
   sl.registerFactory(() => AccountsListBloc(getAccountsUseCase: sl()));
   sl.registerFactory(
     () => AccountDetailBloc(
@@ -364,7 +370,6 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => LeadsFilterMemory());
   sl.registerLazySingleton(() => AccountsFilterMemory());
   sl.registerLazySingleton(() => ContactsFilterMemory());
-  sl.registerLazySingleton(() => DealsFilterMemory());
   sl.registerLazySingleton(() => UsersFilterMemory());
   sl.registerFactory(
     () => DashboardBloc(getDashboardUseCase: sl(), getUsersUseCase: sl()),
@@ -385,6 +390,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealStageHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetDealStagesUseCase(sl()));
   sl.registerLazySingleton(() => GetScoringDimensionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetOriginatorOptionsUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealsUseCase(sl()));
   sl.registerLazySingleton(() => ExportDealDetailUseCase(sl()));
   sl.registerLazySingleton(() => ListDealActivitiesUseCase(sl()));

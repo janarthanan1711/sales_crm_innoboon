@@ -34,7 +34,11 @@ class SearchResult extends Equatable {
   final int id;
   final String label;
 
-  const SearchResult({required this.type, required this.id, required this.label});
+  const SearchResult({
+    required this.type,
+    required this.id,
+    required this.label,
+  });
 
   @override
   List<Object?> get props => [type, id, label];

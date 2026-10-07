@@ -43,6 +43,7 @@ abstract class ContactRepository {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
   });
 
   Future<Either<Failure, void>> deleteContact(int id);
@@ -100,6 +101,7 @@ abstract class ContactRemoteDataSource {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
   });
   Future<void> deleteContact(int id);
   Future<ContactImportResult> importContacts({

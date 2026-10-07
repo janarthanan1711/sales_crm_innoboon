@@ -37,70 +37,115 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<NotificationsBulkDeleteRequested>(_onBulkDeleted);
   }
 
-  Future<void> _onLoadRequested(NotificationLoadRequested event, Emitter<NotificationState> emit) async {
+  Future<void> _onLoadRequested(
+    NotificationLoadRequested event,
+    Emitter<NotificationState> emit,
+  ) async {
     emit(const NotificationLoading());
-    await _load(emit, unreadOnly: event.unreadOnly, typeFilter: event.typeFilter, offset: 0);
-  }
-
-  Future<void> _onLoadMoreRequested(NotificationLoadMoreRequested event, Emitter<NotificationState> emit) async {
-    final current = state;
-    if (current is! NotificationLoaded || current.isLoadingMore || !current.hasMore) return;
-    emit(current.copyWith(isLoadingMore: true));
-
-    final result = await getNotificationsUseCase(GetNotificationsParams(
-      unreadOnly: current.unreadOnly,
-      type: current.typeFilter,
-      limit: _pageSize,
-      offset: current.notifications.length,
-    ));
-
-    result.fold(
-      (f) => emit(current.copyWith(isLoadingMore: false)),
-      (page) => emit(current.copyWith(
-        notifications: [...current.notifications, ...page.items],
-        total: page.total,
-        isLoadingMore: false,
-      )),
+    await _load(
+      emit,
+      unreadOnly: event.unreadOnly,
+      typeFilter: event.typeFilter,
+      offset: 0,
     );
   }
 
-  Future<void> _onMarkedRead(NotificationMarkedRead event, Emitter<NotificationState> emit) async {
+  Future<void> _onLoadMoreRequested(
+    NotificationLoadMoreRequested event,
+    Emitter<NotificationState> emit,
+  ) async {
+    final current = state;
+    if (current is! NotificationLoaded ||
+        current.isLoadingMore ||
+        !current.hasMore)
+      return;
+    emit(current.copyWith(isLoadingMore: true));
+
+    final result = await getNotificationsUseCase(
+      GetNotificationsParams(
+        unreadOnly: current.unreadOnly,
+        type: current.typeFilter,
+        limit: _pageSize,
+        offset: current.notifications.length,
+      ),
+    );
+
+    result.fold(
+      (f) => emit(current.copyWith(isLoadingMore: false)),
+      (page) => emit(
+        current.copyWith(
+          notifications: [...current.notifications, ...page.items],
+          total: page.total,
+          isLoadingMore: false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onMarkedRead(
+    NotificationMarkedRead event,
+    Emitter<NotificationState> emit,
+  ) async {
     await markNotificationReadUseCase(event.id);
     await _reload(emit);
   }
 
-  Future<void> _onMarkedUnread(NotificationMarkedUnread event, Emitter<NotificationState> emit) async {
+  Future<void> _onMarkedUnread(
+    NotificationMarkedUnread event,
+    Emitter<NotificationState> emit,
+  ) async {
     await markNotificationUnreadUseCase(event.id);
     await _reload(emit);
   }
 
-  Future<void> _onMarkedAllRead(NotificationMarkedAllRead event, Emitter<NotificationState> emit) async {
+  Future<void> _onMarkedAllRead(
+    NotificationMarkedAllRead event,
+    Emitter<NotificationState> emit,
+  ) async {
     await markAllNotificationsReadUseCase(const NoParams());
     await _reload(emit);
   }
 
-  Future<void> _onBulkMarkedRead(NotificationsBulkMarkReadRequested event, Emitter<NotificationState> emit) async {
+  Future<void> _onBulkMarkedRead(
+    NotificationsBulkMarkReadRequested event,
+    Emitter<NotificationState> emit,
+  ) async {
     await markManyNotificationsReadUseCase(event.ids);
     await _reload(emit);
   }
 
   // No bulk-unread endpoint exists on the backend -- reuse the single-item
   // unread usecase per id, same as the per-row toggle already does.
-  Future<void> _onBulkMarkedUnread(NotificationsBulkMarkUnreadRequested event, Emitter<NotificationState> emit) async {
+  Future<void> _onBulkMarkedUnread(
+    NotificationsBulkMarkUnreadRequested event,
+    Emitter<NotificationState> emit,
+  ) async {
     await Future.wait(event.ids.map(markNotificationUnreadUseCase.call));
     await _reload(emit);
   }
 
-  Future<void> _onBulkDeleted(NotificationsBulkDeleteRequested event, Emitter<NotificationState> emit) async {
+  Future<void> _onBulkDeleted(
+    NotificationsBulkDeleteRequested event,
+    Emitter<NotificationState> emit,
+  ) async {
     await deleteNotificationsUseCase(event.ids);
     await _reload(emit);
   }
 
   Future<void> _reload(Emitter<NotificationState> emit) async {
     final current = state;
-    final unreadOnly = current is NotificationLoaded ? current.unreadOnly : false;
-    final typeFilter = current is NotificationLoaded ? current.typeFilter : null;
-    await _load(emit, unreadOnly: unreadOnly, typeFilter: typeFilter, offset: 0);
+    final unreadOnly = current is NotificationLoaded
+        ? current.unreadOnly
+        : false;
+    final typeFilter = current is NotificationLoaded
+        ? current.typeFilter
+        : null;
+    await _load(
+      emit,
+      unreadOnly: unreadOnly,
+      typeFilter: typeFilter,
+      offset: 0,
+    );
   }
 
   Future<void> _load(
@@ -109,29 +154,30 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     NotificationType? typeFilter,
     required int offset,
   }) async {
-    final notificationsResult = await getNotificationsUseCase(GetNotificationsParams(
-      unreadOnly: unreadOnly,
-      type: typeFilter,
-      limit: _pageSize,
-      offset: offset,
-    ));
+    final notificationsResult = await getNotificationsUseCase(
+      GetNotificationsParams(
+        unreadOnly: unreadOnly,
+        type: typeFilter,
+        limit: _pageSize,
+        offset: offset,
+      ),
+    );
     final countResult = await getUnreadCountUseCase(const NoParams());
 
-    notificationsResult.fold(
-      (f) => emit(NotificationError(f.message)),
-      (page) {
-        countResult.fold(
-          (f) => emit(NotificationError(f.message)),
-          (count) => emit(NotificationLoaded(
+    notificationsResult.fold((f) => emit(NotificationError(f.message)), (page) {
+      countResult.fold(
+        (f) => emit(NotificationError(f.message)),
+        (count) => emit(
+          NotificationLoaded(
             notifications: page.items,
             total: page.total,
             limit: _pageSize,
             unreadCount: count,
             unreadOnly: unreadOnly,
             typeFilter: typeFilter,
-          )),
-        );
-      },
-    );
+          ),
+        ),
+      );
+    });
   }
 }

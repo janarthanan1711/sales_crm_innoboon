@@ -6,25 +6,27 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/utils/formatters.dart' hide CurrencyFormatter;
 import '../../../../core/utils/file_download/file_download.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/di/injector.dart';
-import '../../../users/domain/entities/owner_user.dart';
-import '../../../users/domain/usecases/get_users_usecase.dart';
+import '../../../../core/utils/formatters.dart' show DateFormatter;
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_stage_def.dart';
 import '../../domain/usecases/get_deal_stages_usecase.dart';
 import '../../domain/usecases/export_deals_usecase.dart';
-import '../../../../core/widgets/compact_date_range_dialog.dart';
-import '../../../../core/utils/date_range_filter_memory.dart';
 import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
 import 'create_deal_page.dart';
 
 /// The tiers shown as filter checkboxes (order matches the figma).
 const List<String> _kTierOrder = ['diamond', 'gold', 'silver', 'bronze'];
+
+/// Scoring-filter option for deals with no D1–D8 scoring.
+const String _kUnscored = 'Unscored';
+
+/// Narrowest the deals table gets before it scrolls horizontally.
+const double _kTableMinWidth = 1600;
 
 /// Client-side sort options for the "Expected Close" dropdown.
 enum _CloseSort { none, soonest, latest }
@@ -39,6 +41,7 @@ class DealsListPage extends StatelessWidget {
     super.key,
     this.title,
     this.stageState,
+    this.quickFilter,
     this.dateField,
     this.dateFrom,
     this.dateTo,
@@ -46,26 +49,16 @@ class DealsListPage extends StatelessWidget {
 
   final String? title;
   final String? stageState;
+
+  /// Dashboard deal-tile drill-down (`in_view`, `very_high`, `overdue`,
+  /// `due_today`, `past_sla`) — see `GET /deals?quick_filter=`.
+  final String? quickFilter;
   final String? dateField;
   final DateTime? dateFrom;
   final DateTime? dateTo;
 
   @override
   Widget build(BuildContext context) {
-    // A drill-down range wins outright; otherwise fall back to the last
-    // on-page range the rep picked (see DateRangeFilterMemory) rather than
-    // always starting unfiltered, since this bloc is a fresh instance every
-    // time you navigate to Deals.
-    final memory = sl<DealsFilterMemory>();
-    final effectiveFrom = dateFrom ?? memory.dateFrom;
-    final effectiveTo = dateTo ?? memory.dateTo;
-    // A remembered on-page range always applied as `closed_at` (see the
-    // bloc's `_dateField` doc) -- the constructor's `dateField` only carries
-    // a drill-down's explicit value, so a range restored from memory alone
-    // needs the same default or `date_field` silently drops on nav-back.
-    final effectiveDateField =
-        dateField ??
-        (effectiveFrom != null || effectiveTo != null ? 'closed_at' : null);
     return BlocProvider(
       create: (_) => DealsListBloc(
         getDealsUseCase: sl(),
@@ -74,34 +67,22 @@ class DealsListPage extends StatelessWidget {
         getAccountsUseCase: sl(),
         getUsersUseCase: sl(),
         stageState: stageState,
-        dateField: effectiveDateField,
-        dateFrom: effectiveFrom,
-        dateTo: effectiveTo,
+        quickFilter: quickFilter,
+        // Only a dashboard drill-down's range — the on-page Date Range
+        // filter was removed.
+        dateField: dateField,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
       )..add(const DealsListLoadRequested()),
-      // The on-page date filter only shows when there's no incoming
-      // drill-down range to conflict with.
-      child: _DealsListView(
-        title: title,
-        showDateFilter: dateFrom == null && dateTo == null,
-        initialDateFrom: effectiveFrom,
-        initialDateTo: effectiveTo,
-      ),
+      child: _DealsListView(title: title),
     );
   }
 }
 
 class _DealsListView extends StatefulWidget {
-  const _DealsListView({
-    this.title,
-    required this.showDateFilter,
-    this.initialDateFrom,
-    this.initialDateTo,
-  });
+  const _DealsListView({this.title});
 
   final String? title;
-  final bool showDateFilter;
-  final DateTime? initialDateFrom;
-  final DateTime? initialDateTo;
 
   @override
   State<_DealsListView> createState() => _DealsListViewState();
@@ -109,20 +90,27 @@ class _DealsListView extends StatefulWidget {
 
 class _DealsListViewState extends State<_DealsListView> {
   bool _isKanbanView = true;
-  List<OwnerUser> _users = [];
   List<DealStageDef> _stages = [];
 
-  // Client-side filters (owner is server-side via the bloc).
+  // Client-side filters.
   final TextEditingController _searchController = TextEditingController();
   String _search = '';
-  // null = "All" (no filter), same single-select convention as Owner.
+  // null = "All" (no filter).
   String? _selectedTier;
   _CloseSort _closeSort = _CloseSort.none;
   String? _closeLabel;
-  String? _ownerName;
+  // D1–D8 scoring filters — client-side, like Tier. Options come from the
+  // loaded deals' server-computed values, never a hardcoded list.
+  // null = "All"; [_kUnscored] = deals with no scoring.
+  String? _selectedScore;
+  String? _selectedMode;
+  String? _selectedSla;
   bool _exporting = false;
 
-  // Stage filter — server-side via the bloc, same as owner. Stages are
+  /// Filter panel visibility, toggled by the single Filters icon.
+  bool _showFilters = false;
+
+  // Stage filter — server-side via the bloc. Stages are
   // dynamic/per-company (loaded from GET /deal-stages into `_stages`), so
   // unlike Tier this can't be a fixed checkbox list. Defaults to every stage
   // checked once `_loadStages` resolves ("All", same as the other dropdowns)
@@ -130,23 +118,9 @@ class _DealsListViewState extends State<_DealsListView> {
   // dispatching the full id list up front instead of leaving it unset.
   final Set<int> _selectedStageIds = {};
 
-  // On-page date-range filter — server-side via the bloc, same as owner.
-  // Only rendered when `widget.showDateFilter` is true (i.e. no drill-down
-  // range came in via the constructor). Always filters on `closed_at` (via
-  // deal_stage_history, API doc §6.3) rather than `created_at` — there used
-  // to be a "Date Type" toggle between the two, but that let a rep pick
-  // `created_at` and see a different count than the dashboard's Deals Closed
-  // tile for the same range. Hard-coding `closed_at` makes the two agree by
-  // construction, with no filter step required to reconcile them.
-  DateTime? _dateFrom;
-  DateTime? _dateTo;
-
   @override
   void initState() {
     super.initState();
-    _dateFrom = widget.initialDateFrom;
-    _dateTo = widget.initialDateTo;
-    _loadUsers();
     _loadStages();
   }
 
@@ -154,12 +128,6 @@ class _DealsListViewState extends State<_DealsListView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadUsers() async {
-    final result = await sl<GetUsersUseCase>()();
-    if (!mounted) return;
-    result.fold((_) {}, (u) => setState(() => _users = u));
   }
 
   Future<void> _loadStages() async {
@@ -184,7 +152,7 @@ class _DealsListViewState extends State<_DealsListView> {
   }
 
   /// Applies the client-side search / tier / expected-close-sort over the
-  /// deals already loaded from the API. (Owner is filtered server-side.)
+  /// deals already loaded from the API.
   List<Deal> _applyClientFilters(List<Deal> deals) {
     var out = deals;
     final q = _search.trim().toLowerCase();
@@ -200,6 +168,16 @@ class _DealsListViewState extends State<_DealsListView> {
     if (_selectedTier != null) {
       out = out.where((d) => d.tier.toLowerCase() == _selectedTier).toList();
     }
+    bool matches(String? selected, String? value) =>
+        selected == null || (value ?? _kUnscored) == selected;
+    out = out
+        .where(
+          (d) =>
+              matches(_selectedScore, d.totalScore?.toString()) &&
+              matches(_selectedMode, d.responseMode) &&
+              matches(_selectedSla, d.proposalSla),
+        )
+        .toList();
     if (_closeSort != _CloseSort.none) {
       out = [...out]
         ..sort((a, b) {
@@ -477,31 +455,55 @@ class _DealsListViewState extends State<_DealsListView> {
     return Row(children: [title, const Spacer(), ...actions]);
   }
 
+  /// How many panel filters are narrowing the list — shown on the Filters icon.
+  int get _activeFilterCount =>
+      [
+        _closeLabel,
+        _selectedTier,
+        _selectedScore,
+        _selectedMode,
+        _selectedSla,
+      ].where((v) => v != null).length +
+      (_selectedStageIds.isNotEmpty && _selectedStageIds.length < _stages.length
+          ? 1
+          : 0);
+
   Widget _buildFilters(BuildContext context) {
-    final controls = Row(
-      mainAxisSize: MainAxisSize.min,
+    final bar = Row(
       children: [
-        SizedBox(
-          width: 240,
-          child: TextField(
-            controller: _searchController,
-            onChanged: (v) => setState(() => _search = v),
-            decoration: const InputDecoration(
-              isDense: true,
-              prefixIcon: Icon(Icons.search, size: 18),
-              hintText: 'Search deals, accounts...',
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 240),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _search = v),
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixIcon: Icon(Icons.search, size: 18),
+                hintText: 'Search deals, accounts...',
+              ),
             ),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        _FilterDropdown(
-          label: 'Owner',
-          icon: Icons.person_outline,
-          selected: _ownerName,
-          options: ['All', ..._users.map((u) => u.displayName)],
-          onSelected: (v) => _onOwnerSelected(context, v),
+        Badge(
+          isLabelVisible: _activeFilterCount > 0,
+          label: Text('$_activeFilterCount'),
+          child: IconButton(
+            tooltip: _showFilters ? 'Hide filters' : 'Show filters',
+            isSelected: _showFilters,
+            icon: const Icon(Icons.filter_list),
+            selectedIcon: Icon(Icons.filter_list, color: AppColors.primary),
+            onPressed: () => setState(() => _showFilters = !_showFilters),
+          ),
         ),
-        const SizedBox(width: AppSpacing.sm),
+      ],
+    );
+
+    // Owner filter removed: Workaround for Neotrack requirement.
+    final panel = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         _FilterDropdown(
           label: 'Expected Close',
           icon: Icons.calendar_today_outlined,
@@ -509,31 +511,7 @@ class _DealsListViewState extends State<_DealsListView> {
           options: const ['Soonest first', 'Latest first', 'Clear'],
           onSelected: _onCloseSelected,
         ),
-        if (widget.showDateFilter) ...[
-          const SizedBox(width: AppSpacing.sm),
-          // Always filters by Closed Date (`closed_at`, via
-          // deal_stage_history) — see the field comment on `_dateFrom` above
-          // for why there's no Created/Closed toggle here anymore.
-          OutlinedButton.icon(
-            onPressed: () => _pickDateRange(context),
-            icon: const Icon(Icons.date_range, size: 16),
-            label: Text(
-              _dateFrom != null && _dateTo != null
-                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
-                  : 'Date Range',
-            ),
-          ),
-          if (_dateFrom != null && _dateTo != null)
-            IconButton(
-              onPressed: () => _clearDateRange(context),
-              icon: const Icon(Icons.close, size: 16),
-              tooltip: 'Clear date filter',
-              visualDensity: VisualDensity.compact,
-            ),
-        ],
-        const SizedBox(width: AppSpacing.md),
-        Container(width: 1, height: 24, color: AppColors.border),
-        const SizedBox(width: AppSpacing.md),
+        const SizedBox(width: AppSpacing.sm),
         _FilterDropdown(
           label: 'Tier',
           icon: Icons.diamond_outlined,
@@ -548,6 +526,7 @@ class _DealsListViewState extends State<_DealsListView> {
             () => _selectedTier = v == 'All' ? null : v.toLowerCase(),
           ),
         ),
+        ..._buildScoringFilters(context),
         if (_stages.isNotEmpty) ...[
           const SizedBox(width: AppSpacing.sm),
           _MultiSelectFilterDropdown<DealStageDef>(
@@ -561,17 +540,6 @@ class _DealsListViewState extends State<_DealsListView> {
             onChanged: _onStageSelectionChanged,
           ),
         ],
-      ],
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: controls,
-          ),
-        ),
         const SizedBox(width: AppSpacing.md),
         // Icon + label to match the Leads/Accounts filter bars — as a bare
         // text button this read as body copy and was easy to miss.
@@ -582,6 +550,73 @@ class _DealsListViewState extends State<_DealsListView> {
         ),
       ],
     );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        bar,
+        if (_showFilters) ...[
+          const SizedBox(height: AppSpacing.sm),
+          SingleChildScrollView(scrollDirection: Axis.horizontal, child: panel),
+        ],
+      ],
+    );
+  }
+
+  /// Score / Mode / Proposal SLA dropdowns. Options are the distinct values
+  /// present in the loaded deals (highest score / Mode A first), plus
+  /// "Unscored" — so they follow whatever the backend computes.
+  List<Widget> _buildScoringFilters(BuildContext context) {
+    final state = context.watch<DealsListBloc>().state;
+    final deals = state is DealsListLoaded ? state.deals : const <Deal>[];
+    final scored = deals.where((d) => d.totalScore != null).toList()
+      ..sort((a, b) => b.totalScore!.compareTo(a.totalScore!));
+
+    List<String> options(String? Function(Deal) value) => [
+      'All',
+      ...{for (final d in scored) value(d)!},
+      _kUnscored,
+    ];
+    Widget filter(
+      String label,
+      IconData icon,
+      String? selected,
+      List<String> opts,
+      ValueChanged<String?> set,
+    ) => Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
+      child: _FilterDropdown(
+        label: label,
+        icon: icon,
+        selected: selected,
+        options: opts,
+        onSelected: (v) => setState(() => set(v == 'All' ? null : v)),
+      ),
+    );
+
+    return [
+      filter(
+        'Score',
+        Icons.leaderboard_outlined,
+        _selectedScore,
+        options((d) => d.totalScore.toString()),
+        (v) => _selectedScore = v,
+      ),
+      filter(
+        'Mode',
+        Icons.bolt_outlined,
+        _selectedMode,
+        options((d) => d.responseMode),
+        (v) => _selectedMode = v,
+      ),
+      filter(
+        'Proposal SLA',
+        Icons.timer_outlined,
+        _selectedSla,
+        options((d) => d.proposalSla),
+        (v) => _selectedSla = v,
+      ),
+    ];
   }
 
   void _onStageSelectionChanged(Set<DealStageDef> next) {
@@ -601,65 +636,6 @@ class _DealsListViewState extends State<_DealsListView> {
     context.read<DealsListBloc>().add(
       DealsListFilterChanged(stageId: effective),
     );
-  }
-
-  void _onOwnerSelected(BuildContext context, String v) {
-    final bloc = context.read<DealsListBloc>();
-    if (v == 'All') {
-      setState(() => _ownerName = null);
-      bloc.add(const DealsListFilterChanged(clearOwner: true));
-      return;
-    }
-    final match = _users.where((u) => u.displayName == v);
-    if (match.isNotEmpty) {
-      setState(() => _ownerName = v);
-      bloc.add(DealsListFilterChanged(ownerId: match.first.id));
-    }
-  }
-
-  Future<void> _pickDateRange(BuildContext context) async {
-    final now = DateTime.now();
-    final picked = await showCompactDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(now.year + 1),
-      initialStart: _dateFrom,
-      initialEnd: _dateTo,
-    );
-    if (picked == null || !context.mounted) return;
-    setState(() {
-      _dateFrom = picked.start;
-      _dateTo = picked.end;
-    });
-    _rememberDateRange();
-    context.read<DealsListBloc>().add(
-      DealsListFilterChanged(
-        dateFrom: picked.start,
-        dateTo: picked.end,
-        dateField: 'closed_at',
-      ),
-    );
-  }
-
-  void _clearDateRange(BuildContext context) {
-    setState(() {
-      _dateFrom = null;
-      _dateTo = null;
-    });
-    _rememberDateRange();
-    context.read<DealsListBloc>().add(
-      const DealsListFilterChanged(clearDate: true),
-    );
-  }
-
-  /// Keeps DealsFilterMemory in sync with `_dateFrom`/`_dateTo` so the range
-  /// survives navigating away and back (see DateRangeFilterMemory). Only
-  /// called from the on-page picker (hidden during a dashboard drill-down),
-  /// so a drill-down's own range never gets remembered as if it were picked.
-  void _rememberDateRange() {
-    final memory = sl<DealsFilterMemory>();
-    memory.dateFrom = _dateFrom;
-    memory.dateTo = _dateTo;
   }
 
   void _onCloseSelected(String v) {
@@ -689,17 +665,14 @@ class _DealsListViewState extends State<_DealsListView> {
         ..addAll(_stages.map((s) => s.id));
       _closeSort = _CloseSort.none;
       _closeLabel = null;
-      _ownerName = null;
-      _dateFrom = null;
-      _dateTo = null;
+      _selectedScore = null;
+      _selectedMode = null;
+      _selectedSla = null;
     });
-    _rememberDateRange();
+    // No clearDate: the only date range left is a dashboard drill-down's,
+    // which is part of what the page is showing, not a user filter.
     context.read<DealsListBloc>().add(
-      DealsListFilterChanged(
-        clearOwner: true,
-        clearDate: true,
-        stageId: _selectedStageIds.toList(),
-      ),
+      DealsListFilterChanged(stageId: _selectedStageIds.toList()),
     );
   }
 }
@@ -818,6 +791,7 @@ class _DealsTable extends StatelessWidget {
                 _header('SCORE', flex: 1),
                 _header('MODE', flex: 2),
                 _header('PROPOSAL SLA', flex: 2),
+                _header('SLA DUE', flex: 2),
               ],
             ),
           ),
@@ -832,17 +806,19 @@ class _DealsTable extends StatelessWidget {
       ),
     );
 
-    if (context.isMobile) {
-      // A fixed (tight) width — NOT just a minWidth — so the table's Row-based
-      // header/rows get a bounded width for their Expanded children. Inside a
-      // horizontal scroll view the max width is unbounded, and ConstrainedBox
-      // with only minWidth leaves it unbounded, which fails Expanded's layout.
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(width: 1150, child: table),
-      );
-    }
-    return table;
+    // Below _kTableMinWidth the table scrolls sideways instead of squeezing
+    // its columns. A fixed (tight) width -- NOT just a minWidth -- so the
+    // Row-based header/rows get a bounded width for their Expanded children
+    // (inside a horizontal scroll view the max width is unbounded).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _kTableMinWidth) return table;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(width: _kTableMinWidth, child: table),
+        );
+      },
+    );
   }
 
   Widget _header(String label, {int flex = 1}) {
@@ -897,20 +873,7 @@ class _DealRowState extends State<_DealRow> {
                 flex: 2,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      widget.deal.stageLabel,
-                      style: AppTextStyles.caption,
-                    ),
-                  ),
+                  child: StatusBadge.dealStage(widget.deal.stageLabel),
                 ),
               ),
               Expanded(
@@ -943,12 +906,28 @@ class _DealRowState extends State<_DealRow> {
                   style: AppTextStyles.tableCell,
                 ),
               ),
+              Expanded(flex: 2, child: _slaDue(widget.deal)),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Proposal SLA due time; red when it has passed and the proposal isn't sent
+/// (the same rule as the dashboard's Past SLA tile).
+Widget _slaDue(Deal deal) {
+  final due = deal.proposalSlaDueAt;
+  if (due == null) return Text('—', style: AppTextStyles.tableCell);
+  final late =
+      deal.proposalStatus != 'proposal_sent' && due.isBefore(DateTime.now());
+  return Text(
+    DateFormatter.dateTime(due),
+    style: AppTextStyles.tableCell.copyWith(
+      color: late ? AppColors.error : null,
+    ),
+  );
 }
 
 class _FilterDropdown extends StatelessWidget {

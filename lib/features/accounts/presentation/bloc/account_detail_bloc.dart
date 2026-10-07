@@ -98,15 +98,17 @@ class AccountDetailBloc extends Bloc<AccountDetailEvent, AccountDetailState> {
           }
         });
 
-        emit(AccountDetailLoaded(
-          overview.account,
-          contacts: contacts,
-          deals: _resolveNames(rawDeals, stages, ownerNames),
-          openDealValue: overview.openDealValue,
-          totalArr: overview.totalArr,
-          lastActivity: overview.lastActivity,
-          nextStep: overview.nextStep,
-        ));
+        emit(
+          AccountDetailLoaded(
+            overview.account,
+            contacts: contacts,
+            deals: _resolveNames(rawDeals, stages, ownerNames),
+            openDealValue: overview.openDealValue,
+            totalArr: overview.totalArr,
+            lastActivity: overview.lastActivity,
+            nextStep: overview.nextStep,
+          ),
+        );
       },
     );
   }

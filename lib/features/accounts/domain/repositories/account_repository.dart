@@ -5,7 +5,9 @@ import '../../../contacts/domain/entities/contact.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../entities/account.dart';
 import '../entities/account_activity.dart';
+import '../entities/account_options.dart';
 import '../entities/account_overview.dart';
+import '../entities/source_person.dart';
 
 abstract class AccountRepository {
   Future<Either<Failure, ({List<Account> items, int total})>> getAccounts({
@@ -21,6 +23,14 @@ abstract class AccountRepository {
 
   Future<Either<Failure, Account>> getAccountById(String id);
 
+  Future<Either<Failure, AccountOptions>> getAccountOptions();
+  Future<Either<Failure, List<SourcePerson>>> getSourcePeople();
+  Future<Either<Failure, List<SourcePerson>>> getSourceDetail(String accountId);
+  Future<Either<Failure, List<SourcePerson>>> saveSourceDetail(
+    String accountId,
+    List<SourcePerson> members,
+  );
+
   Future<Either<Failure, Account>> createAccount({
     required String company,
     String? domain,
@@ -28,6 +38,9 @@ abstract class AccountRepository {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
     List<AccountContactDraft>? contacts,
@@ -41,6 +54,9 @@ abstract class AccountRepository {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
   });
@@ -111,6 +127,9 @@ abstract class AccountRemoteDataSource {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
     List<AccountContactDraft>? contacts,
@@ -123,6 +142,9 @@ abstract class AccountRemoteDataSource {
     int? ownerId,
     String? industry,
     String? city,
+    String? source,
+    String? country,
+    String? engagementType,
     String? description,
     String? linkedinUrl,
   });
@@ -156,6 +178,14 @@ abstract class AccountRemoteDataSource {
     int? ownerId,
   });
   Future<Uint8List> exportAccount(String id);
+
+  Future<AccountOptions> getAccountOptions();
+  Future<List<SourcePerson>> getSourcePeople();
+  Future<List<SourcePerson>> getSourceDetail(String accountId);
+  Future<List<SourcePerson>> saveSourceDetail(
+    String accountId,
+    List<SourcePerson> members,
+  );
 
   Future<void> deleteAccount(String id);
 }

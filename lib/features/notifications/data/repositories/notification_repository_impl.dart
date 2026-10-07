@@ -9,7 +9,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, ({List<AppNotification> items, int total})>> getNotifications({
+  Future<Either<Failure, ({List<AppNotification> items, int total})>>
+  getNotifications({
     bool unreadOnly = false,
     NotificationType? type,
     int limit = 20,
@@ -59,7 +60,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, int>> markManyAsRead(List<int>? notificationIds) async {
+  Future<Either<Failure, int>> markManyAsRead(
+    List<int>? notificationIds,
+  ) async {
     try {
       final updated = await remoteDataSource.markManyAsRead(notificationIds);
       return Right(updated);
@@ -69,9 +72,13 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<Failure, int>> deleteNotifications(List<int> notificationIds) async {
+  Future<Either<Failure, int>> deleteNotifications(
+    List<int> notificationIds,
+  ) async {
     try {
-      final deleted = await remoteDataSource.deleteNotifications(notificationIds);
+      final deleted = await remoteDataSource.deleteNotifications(
+        notificationIds,
+      );
       return Right(deleted);
     } on Exception catch (e) {
       return Left(ServerFailure(message: e.toString()));

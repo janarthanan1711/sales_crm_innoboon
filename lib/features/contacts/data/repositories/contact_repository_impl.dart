@@ -80,6 +80,7 @@ class ContactRepositoryImpl implements ContactRepository {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
   }) async {
     try {
       final contact = await remoteDataSource.upsertAccountContact(
@@ -93,6 +94,7 @@ class ContactRepositoryImpl implements ContactRepository {
         jobTitle: jobTitle,
         linkedinUrl: linkedinUrl,
         isPrimary: isPrimary,
+        isOriginator: isOriginator,
       );
       return Right(contact);
     } on Exception catch (e) {

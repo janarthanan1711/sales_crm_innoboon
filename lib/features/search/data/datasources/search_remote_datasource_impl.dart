@@ -51,9 +51,11 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       data.forEach((key, value) {
         if (value is List) {
           final hint = searchResultTypeFromWire(key);
-          out.addAll(value
-              .whereType<Map<String, dynamic>>()
-              .map((e) => searchResultFromJson(e, typeHint: hint)));
+          out.addAll(
+            value.whereType<Map<String, dynamic>>().map(
+              (e) => searchResultFromJson(e, typeHint: hint),
+            ),
+          );
         }
       });
       return out;

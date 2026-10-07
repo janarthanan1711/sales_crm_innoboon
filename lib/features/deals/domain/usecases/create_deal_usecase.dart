@@ -1,3 +1,4 @@
+import '../../../accounts/domain/entities/source_person.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/deal.dart';
@@ -15,6 +16,7 @@ class CreateDealParams {
   final String? coldReason;
   final int? ownerId;
   final Map<String, String>? scores;
+  final SourcePerson? originator;
 
   const CreateDealParams({
     required this.dealName,
@@ -28,6 +30,7 @@ class CreateDealParams {
     this.coldReason,
     this.ownerId,
     this.scores,
+    this.originator,
   });
 }
 
@@ -48,6 +51,7 @@ class CreateDealUseCase {
       coldReason: params.coldReason,
       ownerId: params.ownerId,
       scores: params.scores,
+      originator: params.originator,
     );
   }
 }

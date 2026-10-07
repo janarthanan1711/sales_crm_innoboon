@@ -147,7 +147,12 @@ class ConversionTrendEntry extends Equatable {
   });
 
   @override
-  List<Object?> get props => [period, leadsCreated, leadsConverted, conversionRate];
+  List<Object?> get props => [
+    period,
+    leadsCreated,
+    leadsConverted,
+    conversionRate,
+  ];
 }
 
 /// One item of the merged Activity Feed across deal/lead/account logs.
@@ -185,8 +190,30 @@ class DashboardActivity extends Equatable {
 }
 
 /// The full `GET /dashboard` payload — one call powers the whole page.
+/// Live open-deal counts for the five dashboard tiles; each equals the total
+/// of `GET /deals?quick_filter=<same name>`. They ignore the period selector.
+class DealTiles extends Equatable {
+  final int inView;
+  final int veryHigh;
+  final int overdue;
+  final int dueToday;
+  final int pastSla;
+
+  const DealTiles({
+    this.inView = 0,
+    this.veryHigh = 0,
+    this.overdue = 0,
+    this.dueToday = 0,
+    this.pastSla = 0,
+  });
+
+  @override
+  List<Object?> get props => [inView, veryHigh, overdue, dueToday, pastSla];
+}
+
 class DashboardData extends Equatable {
   final DashboardSummary summary;
+  final DealTiles dealTiles;
   final List<FunnelStage> funnel;
   final List<DealDistributionEntry> dealDistribution;
   final List<LeaderboardEntry> leaderboard;
@@ -196,6 +223,7 @@ class DashboardData extends Equatable {
 
   const DashboardData({
     required this.summary,
+    this.dealTiles = const DealTiles(),
     this.funnel = const [],
     this.dealDistribution = const [],
     this.leaderboard = const [],
@@ -209,6 +237,7 @@ class DashboardData extends Equatable {
   DashboardData withLeaderboard(List<LeaderboardEntry> entries) =>
       DashboardData(
         summary: summary,
+        dealTiles: dealTiles,
         funnel: funnel,
         dealDistribution: dealDistribution,
         leaderboard: entries,
@@ -220,6 +249,7 @@ class DashboardData extends Equatable {
   @override
   List<Object?> get props => [
     summary,
+    dealTiles,
     funnel,
     dealDistribution,
     leaderboard,

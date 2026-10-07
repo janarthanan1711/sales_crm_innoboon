@@ -471,7 +471,11 @@ class _UsersTabState extends State<_UsersTab> {
 }
 
 class _UsersTable extends StatelessWidget {
-  const _UsersTable({required this.users, required this.roles, required this.onChanged});
+  const _UsersTable({
+    required this.users,
+    required this.roles,
+    required this.onChanged,
+  });
   final List<OwnerUser> users;
   final List<Role> roles;
   final VoidCallback onChanged;
@@ -509,8 +513,11 @@ class _UsersTable extends StatelessWidget {
             child: ListView.separated(
               itemCount: users.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) =>
-                  _UserRow(user: users[index], roles: roles, onChanged: onChanged),
+              itemBuilder: (context, index) => _UserRow(
+                user: users[index],
+                roles: roles,
+                onChanged: onChanged,
+              ),
             ),
           ),
         ],
@@ -525,7 +532,11 @@ class _UsersTable extends StatelessWidget {
 }
 
 class _UserRow extends StatelessWidget {
-  const _UserRow({required this.user, required this.roles, required this.onChanged});
+  const _UserRow({
+    required this.user,
+    required this.roles,
+    required this.onChanged,
+  });
   final OwnerUser user;
   final List<Role> roles;
   final VoidCallback onChanged;
@@ -610,7 +621,9 @@ class _UserRow extends StatelessWidget {
             child: Builder(
               builder: (context) {
                 final currentUserId =
-                    (context.read<AuthBloc>().state as AuthAuthenticated?)?.user.id;
+                    (context.read<AuthBloc>().state as AuthAuthenticated?)
+                        ?.user
+                        .id;
                 final isSelf = currentUserId == user.id;
                 return PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, size: 18),
@@ -626,11 +639,13 @@ class _UserRow extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, false),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, true),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
                                 child: Text(
                                   'Deactivate',
                                   style: TextStyle(color: AppColors.error),
@@ -645,7 +660,9 @@ class _UserRow extends StatelessWidget {
                         result.fold(
                           (f) => ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Failed to deactivate: ${f.message}'),
+                              content: Text(
+                                'Failed to deactivate: ${f.message}',
+                              ),
                               backgroundColor: AppColors.error,
                             ),
                           ),
@@ -673,11 +690,13 @@ class _UserRow extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, false),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, true),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
                                 child: const Text('Re-invite'),
                               ),
                             ],
@@ -689,19 +708,29 @@ class _UserRow extends StatelessWidget {
                         result.fold(
                           (f) => ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Failed to re-invite: ${f.message}'),
+                              content: Text(
+                                'Failed to re-invite: ${f.message}',
+                              ),
                               backgroundColor: AppColors.error,
                             ),
                           ),
                           (_) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Invitation resent to ${user.email}.')),
+                              SnackBar(
+                                content: Text(
+                                  'Invitation resent to ${user.email}.',
+                                ),
+                              ),
                             );
                             onChanged();
                           },
                         );
                       case 'change_role':
-                        await _showChangeRoleDialog(context, user: user, roles: roles);
+                        await _showChangeRoleDialog(
+                          context,
+                          user: user,
+                          roles: roles,
+                        );
                         onChanged();
                       case 'delete':
                         final confirmed = await showDialog<bool>(
@@ -714,18 +743,26 @@ class _UserRow extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, false),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.pop(dialogContext, true),
-                                child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
                               ),
                             ],
                           ),
                         );
                         if (confirmed != true) return;
-                        final result = await sl<DeleteUserUseCase>()(user.id, permanent: true);
+                        final result = await sl<DeleteUserUseCase>()(
+                          user.id,
+                          permanent: true,
+                        );
                         if (!context.mounted) return;
                         result.fold(
                           (f) => ScaffoldMessenger.of(context).showSnackBar(
@@ -740,22 +777,40 @@ class _UserRow extends StatelessWidget {
                   },
                   itemBuilder: (context) => [
                     if (user.status == 'deactivated') ...[
-                      const PopupMenuItem(value: 'activate', child: Text('Activate')),
-                      const PopupMenuItem(value: 'reinvite', child: Text('Re-invite')),
+                      const PopupMenuItem(
+                        value: 'activate',
+                        child: Text('Activate'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'reinvite',
+                        child: Text('Re-invite'),
+                      ),
                     ] else if (user.status == 'invited') ...[
                       // An invited user has never logged in -- there's
                       // nothing to "deactivate" yet, same reasoning as why
                       // an active user doesn't get a "Re-invite" option.
-                      const PopupMenuItem(value: 'reinvite', child: Text('Re-invite')),
+                      const PopupMenuItem(
+                        value: 'reinvite',
+                        child: Text('Re-invite'),
+                      ),
                     ] else ...[
-                      const PopupMenuItem(value: 'deactivate', child: Text('Deactivate')),
+                      const PopupMenuItem(
+                        value: 'deactivate',
+                        child: Text('Deactivate'),
+                      ),
                     ],
                     if (!isSelf)
-                      const PopupMenuItem(value: 'change_role', child: Text('Change Role')),
+                      const PopupMenuItem(
+                        value: 'change_role',
+                        child: Text('Change Role'),
+                      ),
                     if (!isSelf)
                       PopupMenuItem(
                         value: 'delete',
-                        child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: AppColors.error),
+                        ),
                       ),
                   ],
                 );
@@ -804,7 +859,8 @@ Future<void> _showChangeRoleDialog(
                       ),
                     )
                     .toList(),
-                onChanged: (v) => setState(() => selectedRoleId = v ?? selectedRoleId),
+                onChanged: (v) =>
+                    setState(() => selectedRoleId = v ?? selectedRoleId),
                 decoration: const InputDecoration(labelText: 'Role'),
               ),
               if (error != null) ...[
@@ -825,7 +881,10 @@ Future<void> _showChangeRoleDialog(
                 Navigator.pop(dialogContext, false);
                 return;
               }
-              final result = await sl<UpdateUserRoleUseCase>()(user.id, selectedRoleId);
+              final result = await sl<UpdateUserRoleUseCase>()(
+                user.id,
+                selectedRoleId,
+              );
               result.fold(
                 (f) => setState(() => error = f.message),
                 (_) => Navigator.pop(dialogContext, true),

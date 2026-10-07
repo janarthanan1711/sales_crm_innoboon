@@ -9,7 +9,9 @@ class ChecklistRepositoryImpl implements ChecklistRepository {
   ChecklistRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<ChecklistStage>>> getChecklistForDeal(String dealId) async {
+  Future<Either<Failure, List<ChecklistStage>>> getChecklistForDeal(
+    String dealId,
+  ) async {
     try {
       final stages = await remoteDataSource.getChecklistForDeal(dealId);
       return Right(stages);
@@ -19,7 +21,9 @@ class ChecklistRepositoryImpl implements ChecklistRepository {
   }
 
   @override
-  Future<Either<Failure, List<ChecklistStage>>> getChecklistForAccount(String accountId) async {
+  Future<Either<Failure, List<ChecklistStage>>> getChecklistForAccount(
+    String accountId,
+  ) async {
     try {
       final stages = await remoteDataSource.getChecklistForAccount(accountId);
       return Right(stages);
@@ -29,7 +33,10 @@ class ChecklistRepositoryImpl implements ChecklistRepository {
   }
 
   @override
-  Future<Either<Failure, ChecklistItem>> toggleItemStatus(String itemId, bool isCompleted) async {
+  Future<Either<Failure, ChecklistItem>> toggleItemStatus(
+    String itemId,
+    bool isCompleted,
+  ) async {
     try {
       final item = await remoteDataSource.toggleItemStatus(itemId, isCompleted);
       return Right(item);
@@ -39,7 +46,10 @@ class ChecklistRepositoryImpl implements ChecklistRepository {
   }
 
   @override
-  Future<Either<Failure, ChecklistItem>> updateItemNotes(String itemId, String notes) async {
+  Future<Either<Failure, ChecklistItem>> updateItemNotes(
+    String itemId,
+    String notes,
+  ) async {
     try {
       final item = await remoteDataSource.updateItemNotes(itemId, notes);
       return Right(item);

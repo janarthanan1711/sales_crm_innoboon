@@ -11,6 +11,7 @@ class ContactModel extends Contact {
     super.jobTitle,
     super.linkedinUrl,
     super.isPrimary,
+    super.isOriginator,
     super.accountId,
     super.accountName,
     super.ownerId,
@@ -29,6 +30,7 @@ class ContactModel extends Contact {
       jobTitle: json['job_title'] as String?,
       linkedinUrl: json['linkedin_url'] as String?,
       isPrimary: json['is_primary'] as bool? ?? false,
+      isOriginator: json['is_originator'] as bool? ?? false,
       // Present on the list / overview shapes; absent (⇒ null) on the bare
       // `GET /contacts/{id}` and account-scoped read shapes.
       accountId: json['account_id'] as int?,
@@ -89,6 +91,7 @@ class ContactModel extends Contact {
     String? jobTitle,
     String? linkedinUrl,
     bool? isPrimary,
+    bool? isOriginator,
   }) {
     return {
       'contact_id': ?contactId,
@@ -100,6 +103,7 @@ class ContactModel extends Contact {
       'job_title': ?jobTitle,
       'linkedin_url': ?linkedinUrl,
       'is_primary': ?isPrimary,
+      'is_originator': ?isOriginator,
     };
   }
 }

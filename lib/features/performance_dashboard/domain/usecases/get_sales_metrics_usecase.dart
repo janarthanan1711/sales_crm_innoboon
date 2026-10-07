@@ -9,11 +9,12 @@ class GetSalesMetricsParams {
   const GetSalesMetricsParams({this.period = 'Monthly'});
 }
 
-class GetSalesMetricsUseCase implements UseCase<SalesMetrics, GetSalesMetricsParams> {
+class GetSalesMetricsUseCase
+    implements UseCase<SalesMetrics, GetSalesMetricsParams> {
   final AnalyticsRepository repository;
   GetSalesMetricsUseCase(this.repository);
-  
+
   @override
-  Future<Either<Failure, SalesMetrics>> call(GetSalesMetricsParams params) => 
+  Future<Either<Failure, SalesMetrics>> call(GetSalesMetricsParams params) =>
       repository.getSalesMetrics(period: params.period);
 }

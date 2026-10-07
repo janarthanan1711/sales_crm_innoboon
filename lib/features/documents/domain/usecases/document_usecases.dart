@@ -19,7 +19,10 @@ class GetDocumentsUseCase {
   GetDocumentsUseCase(this.repository);
 
   Future<Either<Failure, List<Document>>> call(GetDocumentsParams params) {
-    return repository.getDocuments(source: params.source, search: params.search);
+    return repository.getDocuments(
+      source: params.source,
+      search: params.search,
+    );
   }
 }
 
@@ -63,7 +66,10 @@ class DeleteAccountDocumentUseCase {
   DeleteAccountDocumentUseCase(this.repository);
 
   Future<Either<Failure, Unit>> call(DeleteAccountDocumentParams params) {
-    return repository.deleteAccountDocument(params.accountId, params.documentId);
+    return repository.deleteAccountDocument(
+      params.accountId,
+      params.documentId,
+    );
   }
 }
 

@@ -102,6 +102,7 @@ class UpsertAccountContactParams {
   final String? jobTitle;
   final String? linkedinUrl;
   final bool? isPrimary;
+  final bool? isOriginator;
 
   const UpsertAccountContactParams({
     required this.accountId,
@@ -114,6 +115,7 @@ class UpsertAccountContactParams {
     this.jobTitle,
     this.linkedinUrl,
     this.isPrimary,
+    this.isOriginator,
   });
 }
 
@@ -133,6 +135,7 @@ class UpsertAccountContactUseCase {
       jobTitle: params.jobTitle,
       linkedinUrl: params.linkedinUrl,
       isPrimary: params.isPrimary,
+      isOriginator: params.isOriginator,
     );
   }
 }

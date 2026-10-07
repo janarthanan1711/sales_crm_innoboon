@@ -8,13 +8,16 @@ export 'analytics_state.dart';
 class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   final GetSalesMetricsUseCase getSalesMetricsUseCase;
 
-  AnalyticsBloc({required this.getSalesMetricsUseCase}) : super(const AnalyticsInitial()) {
+  AnalyticsBloc({required this.getSalesMetricsUseCase})
+    : super(const AnalyticsInitial()) {
     on<AnalyticsLoadRequested>((event, emit) async {
       emit(const AnalyticsLoading());
-      final result = await getSalesMetricsUseCase(GetSalesMetricsParams(period: event.period));
+      final result = await getSalesMetricsUseCase(
+        GetSalesMetricsParams(period: event.period),
+      );
       result.fold(
-        (f) => emit(AnalyticsError(f.message)), 
-        (m) => emit(AnalyticsLoaded(m))
+        (f) => emit(AnalyticsError(f.message)),
+        (m) => emit(AnalyticsLoaded(m)),
       );
     });
   }

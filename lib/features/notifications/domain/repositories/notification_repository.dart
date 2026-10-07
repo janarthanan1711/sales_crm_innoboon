@@ -3,7 +3,8 @@ import '../../../../core/error/failures.dart';
 import '../entities/app_notification.dart';
 
 abstract class NotificationRepository {
-  Future<Either<Failure, ({List<AppNotification> items, int total})>> getNotifications({
+  Future<Either<Failure, ({List<AppNotification> items, int total})>>
+  getNotifications({
     bool unreadOnly = false,
     NotificationType? type,
     int limit = 20,

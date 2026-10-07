@@ -42,8 +42,9 @@ class DocumentRemoteDataSourceImpl implements DocumentDataSource {
   @override
   Future<List<AccountDocument>> getAccountDocuments(String accountId) async {
     try {
-      final response =
-          await dioClient.get(ApiEndpoints.accountDocuments(accountId));
+      final response = await dioClient.get(
+        ApiEndpoints.accountDocuments(accountId),
+      );
       final data = response.data as List<dynamic>;
       return data
           .map((e) => accountDocumentFromJson(e as Map<String, dynamic>))
@@ -95,8 +96,7 @@ class DocumentRemoteDataSourceImpl implements DocumentDataSource {
   @override
   Future<List<DealDocument>> getDealDocuments(String dealId) async {
     try {
-      final response =
-          await dioClient.get(ApiEndpoints.dealDocuments(dealId));
+      final response = await dioClient.get(ApiEndpoints.dealDocuments(dealId));
       final data = response.data as List<dynamic>;
       return data
           .map((e) => dealDocumentFromJson(e as Map<String, dynamic>))
@@ -134,9 +134,7 @@ class DocumentRemoteDataSourceImpl implements DocumentDataSource {
   @override
   Future<void> deleteDealDocument(String dealId, String documentId) async {
     try {
-      await dioClient.delete(
-        ApiEndpoints.dealDocumentById(dealId, documentId),
-      );
+      await dioClient.delete(ApiEndpoints.dealDocumentById(dealId, documentId));
     } on DioException catch (e) {
       throw _normalize(e);
     }

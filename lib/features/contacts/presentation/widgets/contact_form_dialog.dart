@@ -32,6 +32,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
 
   int? _accountId;
   bool _isPrimary = false;
+  bool _isOriginator = false;
   bool _saving = false;
 
   bool get isEdit => widget.existing != null;
@@ -58,6 +59,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
     final opts = _accountOptions;
     _accountId = c?.accountId ?? (opts.isNotEmpty ? opts.first.key : null);
     _isPrimary = c?.isPrimary ?? false;
+    _isOriginator = c?.isOriginator ?? false;
   }
 
   @override
@@ -103,6 +105,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
             ? null
             : _linkedin.text.trim(),
         isPrimary: _isPrimary,
+        isOriginator: _isOriginator,
       ),
     );
     if (!mounted) return;
@@ -224,6 +227,19 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                   ),
                   subtitle: Text(
                     'Only one primary contact allowed per account.',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _isOriginator,
+                  onChanged: (v) => setState(() => _isOriginator = v ?? false),
+                  title: Text('Is Originator', style: AppTextStyles.bodyMedium),
+                  subtitle: Text(
+                    'Can be picked as the Originator of a deal.',
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textMuted,
                     ),

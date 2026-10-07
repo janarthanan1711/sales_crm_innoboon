@@ -35,6 +35,7 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
   DateTime? _dateFrom;
   DateTime? _dateTo;
   final String? _stageState;
+  final String? _quickFilter;
 
   /// True when this bloc was constructed with a drill-down date range — the
   /// on-page date picker hides itself in that case rather than fighting over
@@ -52,10 +53,12 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
     DateTime? dateFrom,
     DateTime? dateTo,
     String? stageState,
+    String? quickFilter,
   }) : _dateField = dateField,
        _dateFrom = dateFrom,
        _dateTo = dateTo,
        _stageState = stageState,
+       _quickFilter = quickFilter,
        hasDrillDownDateRange = dateFrom != null || dateTo != null,
        super(const DealsListInitial()) {
     on<DealsListLoadRequested>(_onLoadRequested);
@@ -185,6 +188,7 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
         dateFrom: _dateFrom,
         dateTo: _dateTo,
         stageState: _stageState,
+        quickFilter: _quickFilter,
       ),
     );
     await result.fold((f) async => emit(DealsListError(f.message)), (

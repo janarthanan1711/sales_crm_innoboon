@@ -59,7 +59,7 @@ class ChecklistMockDataSource implements ChecklistRemoteDataSource {
   @override
   Future<List<ChecklistStage>> getChecklistForDeal(String dealId) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final items = _mockItems.where((i) => i.dealId == dealId).toList();
     if (items.isEmpty) return [];
 
@@ -88,11 +88,14 @@ class ChecklistMockDataSource implements ChecklistRemoteDataSource {
   }
 
   @override
-  Future<ChecklistItem> toggleItemStatus(String itemId, bool isCompleted) async {
+  Future<ChecklistItem> toggleItemStatus(
+    String itemId,
+    bool isCompleted,
+  ) async {
     await Future.delayed(const Duration(milliseconds: 300));
     final index = _mockItems.indexWhere((i) => i.id == itemId);
     if (index == -1) throw Exception('Item not found');
-    
+
     final updated = _mockItems[index].copyWith(
       isCompleted: isCompleted,
       completedAt: isCompleted ? DateTime.now() : null,
@@ -107,7 +110,7 @@ class ChecklistMockDataSource implements ChecklistRemoteDataSource {
     await Future.delayed(const Duration(milliseconds: 300));
     final index = _mockItems.indexWhere((i) => i.id == itemId);
     if (index == -1) throw Exception('Item not found');
-    
+
     final updated = _mockItems[index].copyWith(notes: notes);
     _mockItems[index] = updated;
     return updated;

@@ -6,7 +6,8 @@ import '../repositories/auth_repository.dart';
 class ForgotPasswordUseCase {
   final AuthRepository repository;
   ForgotPasswordUseCase(this.repository);
-  Future<Either<Failure, void>> call(String email) => repository.forgotPassword(email);
+  Future<Either<Failure, void>> call(String email) =>
+      repository.forgotPassword(email);
 }
 
 class ResetPasswordParams {
@@ -20,6 +21,9 @@ class ResetPasswordUseCase {
   final AuthRepository repository;
   ResetPasswordUseCase(this.repository);
   Future<Either<Failure, void>> call(ResetPasswordParams params) {
-    return repository.resetPassword(token: params.token, newPassword: params.newPassword);
+    return repository.resetPassword(
+      token: params.token,
+      newPassword: params.newPassword,
+    );
   }
 }

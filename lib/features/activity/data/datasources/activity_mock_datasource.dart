@@ -8,7 +8,8 @@ class ActivityMockDataSource implements ActivityRemoteDataSource {
       id: 'act_1',
       type: ActivityType.meeting,
       title: 'Discovery Call',
-      description: 'Discussed cloud migration strategy and timeline expectations.',
+      description:
+          'Discussed cloud migration strategy and timeline expectations.',
       entityType: 'Deal',
       entityId: 'deal_001',
       performedBy: 'Sarah Jenkins',
@@ -46,9 +47,14 @@ class ActivityMockDataSource implements ActivityRemoteDataSource {
   ];
 
   @override
-  Future<List<AppActivity>> getActivities(String entityType, String entityId) async {
+  Future<List<AppActivity>> getActivities(
+    String entityType,
+    String entityId,
+  ) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    final filtered = _mockActivities.where((a) => a.entityType == entityType && a.entityId == entityId).toList();
+    final filtered = _mockActivities
+        .where((a) => a.entityType == entityType && a.entityId == entityId)
+        .toList();
     filtered.sort((a, b) => b.performedAt.compareTo(a.performedAt));
     return filtered;
   }

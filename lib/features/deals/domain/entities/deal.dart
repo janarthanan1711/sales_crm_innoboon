@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../accounts/domain/entities/source_person.dart';
 import 'deal_contact.dart';
 import 'stakeholder.dart';
 
@@ -37,6 +38,19 @@ class Deal extends Equatable {
   final int? totalScore;
   final String? responseMode;
   final String? proposalSla;
+
+  /// Next follow-up date; drives the dashboard Overdue / Due today tiles.
+  final DateTime? followUpDate;
+
+  /// The User or originator-Contact who brought the deal in.
+  final SourcePerson? originator;
+
+  /// `not_sent` | `proposal_sent`; [proposalSentAt] is set with the latter.
+  final String proposalStatus;
+  final DateTime? proposalSentAt;
+
+  /// When the proposal is due (received + the scored mode's SLA hours).
+  final DateTime? proposalSlaDueAt;
   final String description;
   final List<Stakeholder> stakeholders;
   final String paymentStatus;
@@ -63,6 +77,11 @@ class Deal extends Equatable {
     this.totalScore,
     this.responseMode,
     this.proposalSla,
+    this.followUpDate,
+    this.originator,
+    this.proposalStatus = 'not_sent',
+    this.proposalSentAt,
+    this.proposalSlaDueAt,
     this.description = '',
     this.stakeholders = const [],
     this.paymentStatus = 'Pending',
@@ -135,6 +154,11 @@ class Deal extends Equatable {
       totalScore: totalScore,
       responseMode: responseMode,
       proposalSla: proposalSla,
+      followUpDate: followUpDate,
+      originator: originator,
+      proposalStatus: proposalStatus,
+      proposalSentAt: proposalSentAt,
+      proposalSlaDueAt: proposalSlaDueAt,
       description: description ?? this.description,
       stakeholders: stakeholders ?? this.stakeholders,
       paymentStatus: paymentStatus ?? this.paymentStatus,
@@ -161,6 +185,11 @@ class Deal extends Equatable {
     coldReason,
     tier,
     scores,
+    followUpDate,
+    originator,
+    proposalStatus,
+    proposalSentAt,
+    proposalSlaDueAt,
     totalScore,
     responseMode,
     proposalSla,
