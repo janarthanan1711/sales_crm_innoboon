@@ -160,7 +160,7 @@ class _SourceDetailTabState extends State<SourceDetailTab> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     buildDefaultDragHandles: false,
-                    onReorderItem: (from, to) => setState(() {
+                    onReorder: (from, to) => setState(() {
                       final item = _draft.removeAt(from);
                       _draft.insert(to, item);
                     }),
