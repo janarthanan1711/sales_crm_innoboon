@@ -70,7 +70,7 @@ class ContactRepositoryImpl implements ContactRepository {
 
   @override
   Future<Either<Failure, Contact>> upsertAccountContact({
-    required int accountId,
+    int? accountId,
     int? contactId,
     String? firstName,
     String? lastName,

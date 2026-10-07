@@ -33,18 +33,23 @@ class ScoringLevel extends Equatable {
   /// Tooltip text ("What This Score Means").
   final String description;
 
+  /// Points for this level (1–3).
+  final int score;
+
   const ScoringLevel({
     required this.key,
     required this.label,
     required this.description,
+    this.score = 0,
   });
 
   factory ScoringLevel.fromJson(Map<String, dynamic> json) => ScoringLevel(
     key: json['key'] as String,
     label: json['label'] as String,
     description: json['description'] as String? ?? '',
+    score: json['score'] as int? ?? 0,
   );
 
   @override
-  List<Object?> get props => [key, label, description];
+  List<Object?> get props => [key, label, description, score];
 }

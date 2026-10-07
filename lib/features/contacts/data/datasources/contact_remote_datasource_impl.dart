@@ -88,7 +88,7 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
 
   @override
   Future<Contact> upsertAccountContact({
-    required int accountId,
+    int? accountId,
     int? contactId,
     String? firstName,
     String? lastName,
@@ -101,6 +101,25 @@ class ContactRemoteDataSourceImpl implements ContactRemoteDataSource {
     bool? isOriginator,
   }) async {
     try {
+      if (accountId == null) {
+        final data = ContactModel.toUpsertJson(
+          firstName: firstName,
+          lastName: lastName,
+          email: email,
+          phone: phone,
+          alternatePhone: alternatePhone,
+          jobTitle: jobTitle,
+          linkedinUrl: linkedinUrl,
+          isOriginator: isOriginator,
+        );
+        final response = contactId == null
+            ? await dioClient.post(ApiEndpoints.contacts, data: data)
+            : await dioClient.patch(
+                ApiEndpoints.contactById('$contactId'),
+                data: data,
+              );
+        return ContactModel.fromJson(response.data as Map<String, dynamic>);
+      }
       final response = await dioClient.post(
         ApiEndpoints.accountContacts('$accountId'),
         data: ContactModel.toUpsertJson(

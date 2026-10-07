@@ -39,6 +39,9 @@ class Deal extends Equatable {
   final String? responseMode;
   final String? proposalSla;
 
+  /// Very High / High / Medium / Low for Mode A–D; null when unscored.
+  final String? priority;
+
   /// Next follow-up date; drives the dashboard Overdue / Due today tiles.
   final DateTime? followUpDate;
 
@@ -77,6 +80,7 @@ class Deal extends Equatable {
     this.totalScore,
     this.responseMode,
     this.proposalSla,
+    this.priority,
     this.followUpDate,
     this.originator,
     this.proposalStatus = 'not_sent',
@@ -154,6 +158,7 @@ class Deal extends Equatable {
       totalScore: totalScore,
       responseMode: responseMode,
       proposalSla: proposalSla,
+      priority: priority,
       followUpDate: followUpDate,
       originator: originator,
       proposalStatus: proposalStatus,
@@ -193,6 +198,7 @@ class Deal extends Equatable {
     totalScore,
     responseMode,
     proposalSla,
+    priority,
     description,
     stakeholders,
     paymentStatus,

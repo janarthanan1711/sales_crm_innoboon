@@ -31,9 +31,11 @@ abstract class ContactRepository {
   /// Create-or-update a contact against an account (`POST
   /// /accounts/{accountId}/contacts`). Omit [contactId] to create a new
   /// contact; pass an existing id to update it and/or (un)set it primary for
-  /// this account.
+  /// this account. A null [accountId] saves a contact with no account
+  /// (`POST /contacts`, or `PATCH /contacts/{contactId}`) -- used for
+  /// originators, leaving any existing account links untouched.
   Future<Either<Failure, Contact>> upsertAccountContact({
-    required int accountId,
+    int? accountId,
     int? contactId,
     String? firstName,
     String? lastName,
@@ -91,7 +93,7 @@ abstract class ContactRemoteDataSource {
   Future<ContactOverview> getContactOverview(int id);
   Future<List<ContactDeal>> getContactDeals(int id);
   Future<Contact> upsertAccountContact({
-    required int accountId,
+    int? accountId,
     int? contactId,
     String? firstName,
     String? lastName,

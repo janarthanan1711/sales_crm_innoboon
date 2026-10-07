@@ -90,6 +90,7 @@ class AppColors {
 
   // ─── Stage Colors ──────────────────────────────────────
   static Color get stageReceived => _palette.stageReceived;
+  static Color get stageReceivedBg => _palette.stageReceivedBg;
   static Color get stageQualified => _palette.stageQualified;
   static Color get stageEvaluation => _palette.stageEvaluation;
   static Color get stageProposal => _palette.stageProposal;

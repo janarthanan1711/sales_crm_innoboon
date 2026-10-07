@@ -442,6 +442,7 @@ class _AccountsTable extends StatelessWidget {
                 _header('COMPANY NAME', flex: 3),
                 _header('DOMAIN', flex: 2),
                 _header('INDUSTRY', flex: 2),
+                _header('SOURCE', flex: 2),
                 _header('TIER', flex: 2),
                 _header('PRIMARY OWNER', flex: 2),
                 _header('CONTACTS', flex: 1),
@@ -556,6 +557,13 @@ class _AccountRowState extends State<_AccountRow> {
                 flex: 2,
                 child: Text(
                   account.industry ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  leadSourceLabels[account.source] ?? '—',
                   style: AppTextStyles.tableCell,
                 ),
               ),

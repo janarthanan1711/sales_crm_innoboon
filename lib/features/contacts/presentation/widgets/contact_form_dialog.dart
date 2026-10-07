@@ -9,8 +9,10 @@ import '../../domain/entities/contact.dart';
 import '../../domain/usecases/contact_usecases.dart';
 
 /// Create-or-edit a contact against an account (`POST /accounts/{id}/contacts`).
-/// Standalone contacts must still belong to an account here, so the account
-/// picker is required. Pops `true` when a save succeeds.
+/// The account picker is required, except for an originator: ticking "Is
+/// Originator" disables it and saves the contact on its own (`POST /contacts`
+/// / `PATCH /contacts/{id}`), keeping any account links it already has.
+/// Pops `true` when a save succeeds.
 class ContactFormDialog extends StatefulWidget {
   const ContactFormDialog({super.key, required this.accounts, this.existing});
   final List<Account> accounts;
@@ -57,7 +59,12 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
     _phone = TextEditingController(text: c?.phone ?? '');
     _altPhone = TextEditingController(text: c?.alternatePhone ?? '');
     final opts = _accountOptions;
-    _accountId = c?.accountId ?? (opts.isNotEmpty ? opts.first.key : null);
+    // Only a new contact defaults to the first account. An existing one with
+    // no account (an originator) must pick one explicitly if it's ever
+    // un-flagged, rather than silently landing on whichever account is first.
+    _accountId = c != null
+        ? c.accountId
+        : (opts.isNotEmpty ? opts.first.key : null);
     _isPrimary = c?.isPrimary ?? false;
     _isOriginator = c?.isOriginator ?? false;
   }
@@ -76,7 +83,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_accountId == null) {
+    if (!_isOriginator && _accountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Select an associated account.'),
@@ -91,7 +98,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
 
     final result = await sl<UpsertAccountContactUseCase>()(
       UpsertAccountContactParams(
-        accountId: _accountId!,
+        accountId: _isOriginator ? null : _accountId,
         contactId: widget.existing?.id,
         firstName: _firstName.text.trim(),
         lastName: _lastName.text.trim().isEmpty ? null : _lastName.text.trim(),
@@ -104,7 +111,7 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
         linkedinUrl: _linkedin.text.trim().isEmpty
             ? null
             : _linkedin.text.trim(),
-        isPrimary: _isPrimary,
+        isPrimary: _isOriginator ? null : _isPrimary,
         isOriginator: _isOriginator,
       ),
     );
@@ -140,6 +147,21 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _isOriginator,
+                  onChanged: (v) => setState(() => _isOriginator = v ?? false),
+                  title: Text('Is Originator', style: AppTextStyles.bodyMedium),
+                  subtitle: Text(
+                    'Can be picked as the Originator of a deal. Originators '
+                    'don\'t need an associated account.',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 Text('BASIC INFORMATION', style: AppTextStyles.overline),
                 const SizedBox(height: AppSpacing.md),
                 Row(
@@ -175,9 +197,13 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _email,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? null : Validators.email(v),
-                  decoration: _dec('Primary Email'),
+                  // POST /contacts (originators) requires an email.
+                  validator: (v) => v == null || v.isEmpty
+                      ? (_isOriginator ? 'Email is required' : null)
+                      : Validators.email(v),
+                  decoration: _dec(
+                    _isOriginator ? 'Primary Email *' : 'Primary Email',
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
@@ -204,7 +230,11 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                   initialValue: _accountOptions.any((e) => e.key == _accountId)
                       ? _accountId
                       : null,
-                  decoration: _dec('Associated Account *'),
+                  decoration: _dec(
+                    _isOriginator
+                        ? 'Associated Account'
+                        : 'Associated Account *',
+                  ),
                   items: _accountOptions
                       .map(
                         (e) => DropdownMenuItem<int>(
@@ -213,33 +243,24 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _accountId = v),
+                  onChanged: _isOriginator
+                      ? null
+                      : (v) => setState(() => _accountId = v),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _isPrimary,
-                  onChanged: (v) => setState(() => _isPrimary = v ?? false),
+                  onChanged: _isOriginator
+                      ? null
+                      : (v) => setState(() => _isPrimary = v ?? false),
                   title: Text(
                     'Set as Primary Contact',
                     style: AppTextStyles.bodyMedium,
                   ),
                   subtitle: Text(
                     'Only one primary contact allowed per account.',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: _isOriginator,
-                  onChanged: (v) => setState(() => _isOriginator = v ?? false),
-                  title: Text('Is Originator', style: AppTextStyles.bodyMedium),
-                  subtitle: Text(
-                    'Can be picked as the Originator of a deal.',
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textMuted,
                     ),

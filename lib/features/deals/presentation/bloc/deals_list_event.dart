@@ -29,6 +29,11 @@ class DealsListFilterChanged extends DealsListEvent {
   // asks for it explicitly.
   final String? dateField;
 
+  /// Server-side `quick_filter` (the page's "Due" dropdown: `due_today`,
+  /// `overdue`, `past_sla`); [clearQuickFilter] drops it.
+  final String? quickFilter;
+  final bool clearQuickFilter;
+
   const DealsListFilterChanged({
     this.ownerId,
     this.stageId,
@@ -38,6 +43,8 @@ class DealsListFilterChanged extends DealsListEvent {
     this.dateTo,
     this.clearDate = false,
     this.dateField,
+    this.quickFilter,
+    this.clearQuickFilter = false,
   });
   @override
   List<Object?> get props => [
@@ -49,6 +56,8 @@ class DealsListFilterChanged extends DealsListEvent {
     dateTo,
     clearDate,
     dateField,
+    quickFilter,
+    clearQuickFilter,
   ];
 }
 

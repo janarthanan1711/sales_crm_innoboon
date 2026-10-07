@@ -92,7 +92,8 @@ class GetContactByIdUseCase {
 /// Create-or-update a contact on an account. Omit [contactId] to create;
 /// pass it to update fields and/or toggle `isPrimary` for [accountId].
 class UpsertAccountContactParams {
-  final int accountId;
+  /// Null saves the contact with no account (originators).
+  final int? accountId;
   final int? contactId;
   final String? firstName;
   final String? lastName;
@@ -105,7 +106,7 @@ class UpsertAccountContactParams {
   final bool? isOriginator;
 
   const UpsertAccountContactParams({
-    required this.accountId,
+    this.accountId,
     this.contactId,
     this.firstName,
     this.lastName,

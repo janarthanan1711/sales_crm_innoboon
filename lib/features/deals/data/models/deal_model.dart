@@ -31,6 +31,7 @@ class DealModel extends Deal {
     super.totalScore,
     super.responseMode,
     super.proposalSla,
+    super.priority,
     super.followUpDate,
     super.originator,
     super.proposalStatus,
@@ -66,6 +67,7 @@ class DealModel extends Deal {
       totalScore: json['total_score'] as int?,
       responseMode: json['response_mode'] as String?,
       proposalSla: json['proposal_sla'] as String?,
+      priority: json['priority'] as String?,
       followUpDate: _date(json['follow_up_date']),
       originator: json['originator'] == null
           ? null

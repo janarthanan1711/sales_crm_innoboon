@@ -16,13 +16,14 @@ const String _cancelled = '__cancelled__';
 
 /// Accent colors for the column status dots, cycled by stage order.
 const List<Color> _kStageDotColors = [
-  Color(0xFF94A3B8), // slate
+  Color(0xFF14B8A6), // teal (Received Requirements)
   Color(0xFF3B82F6), // blue
   Color(0xFF8B5CF6), // violet
   Color(0xFFF97316), // orange
   Color(0xFF10B981), // emerald
   Color(0xFF06B6D4), // cyan
   Color(0xFFEF4444), // red
+  Color(0xFF94A3B8), // slate (Cold Deals)
 ];
 
 /// Result of the move dialog: cancelled, or a confirmed (note, coldReason).

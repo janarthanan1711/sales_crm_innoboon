@@ -54,6 +54,7 @@ class AppPalette {
     required this.tierBronzeBg,
     required this.tierBronzeText,
     required this.stageReceived,
+    required this.stageReceivedBg,
     required this.stageQualified,
     required this.stageEvaluation,
     required this.stageProposal,
@@ -126,6 +127,7 @@ class AppPalette {
   final Color tierBronzeText;
 
   final Color stageReceived;
+  final Color stageReceivedBg;
   final Color stageQualified;
   final Color stageEvaluation;
   final Color stageProposal;
@@ -207,7 +209,8 @@ class AppPalette {
     tierSilverText: Color(0xFF6B7280),
     tierBronzeBg: Color(0xFFFEF3C7),
     tierBronzeText: Color(0xFF92400E),
-    stageReceived: Color(0xFF64748B),
+    stageReceived: Color(0xFF0D9488),
+    stageReceivedBg: Color(0xFFF0FDFA),
     stageQualified: Color(0xFF2563EB),
     stageEvaluation: Color(0xFF7C3AED),
     stageProposal: Color(0xFF2563EB),
@@ -285,7 +288,8 @@ class AppPalette {
     tierSilverText: Color(0xFFCBD5E1),
     tierBronzeBg: Color(0xFF431407),
     tierBronzeText: Color(0xFFFDBA74),
-    stageReceived: Color(0xFF94A3B8),
+    stageReceived: Color(0xFF2DD4BF),
+    stageReceivedBg: Color(0xFF042F2E),
     stageQualified: Color(0xFF60A5FA),
     stageEvaluation: Color(0xFFA78BFA),
     stageProposal: Color(0xFF60A5FA),

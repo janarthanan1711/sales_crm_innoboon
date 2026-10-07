@@ -35,7 +35,7 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
   DateTime? _dateFrom;
   DateTime? _dateTo;
   final String? _stageState;
-  final String? _quickFilter;
+  String? _quickFilter;
 
   /// True when this bloc was constructed with a drill-down date range — the
   /// on-page date picker hides itself in that case rather than fighting over
@@ -97,6 +97,11 @@ class DealsListBloc extends Bloc<DealsListEvent, DealsListState> {
     }
     if (event.dateField != null) {
       _dateField = event.dateField;
+    }
+    if (event.clearQuickFilter) {
+      _quickFilter = null;
+    } else if (event.quickFilter != null) {
+      _quickFilter = event.quickFilter;
     }
     await _loadDeals(emit);
   }

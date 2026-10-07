@@ -19,14 +19,23 @@ import '../bloc/deals_list_bloc.dart';
 import '../widgets/kanban_board.dart';
 import 'create_deal_page.dart';
 
-/// The tiers shown as filter checkboxes (order matches the figma).
-const List<String> _kTierOrder = ['diamond', 'gold', 'silver', 'bronze'];
-
-/// Scoring-filter option for deals with no D1–D8 scoring.
+/// Priority-filter option for deals with no D1–D8 scoring.
 const String _kUnscored = 'Unscored';
 
+/// Priority filter options, highest first (server labels, Mode A–D).
+const List<String> _kPriorities = ['Very High', 'High', 'Medium', 'Low'];
+
+/// "Due" filter label -> `GET /deals?quick_filter=` key (null = Any Date).
+/// Server-side so the rules match the dashboard tiles exactly.
+const Map<String, String?> _kDueFilters = {
+  'Any Date': null,
+  'Due Today': 'due_today',
+  'Overdue': 'overdue',
+  'Past SLA': 'past_sla',
+};
+
 /// Narrowest the deals table gets before it scrolls horizontally.
-const double _kTableMinWidth = 1600;
+const double _kTableMinWidth = 2000;
 
 /// Client-side sort options for the "Expected Close" dropdown.
 enum _CloseSort { none, soonest, latest }
@@ -74,37 +83,39 @@ class DealsListPage extends StatelessWidget {
         dateFrom: dateFrom,
         dateTo: dateTo,
       )..add(const DealsListLoadRequested()),
-      child: _DealsListView(title: title),
+      child: _DealsListView(title: title, quickFilter: quickFilter),
     );
   }
 }
 
 class _DealsListView extends StatefulWidget {
-  const _DealsListView({this.title});
+  const _DealsListView({this.title, this.quickFilter});
 
   final String? title;
+
+  /// A dashboard drill-down's quick filter, so the Due dropdown can show it.
+  final String? quickFilter;
 
   @override
   State<_DealsListView> createState() => _DealsListViewState();
 }
 
 class _DealsListViewState extends State<_DealsListView> {
-  bool _isKanbanView = true;
+  bool _isKanbanView = false;
   List<DealStageDef> _stages = [];
 
   // Client-side filters.
   final TextEditingController _searchController = TextEditingController();
   String _search = '';
-  // null = "All" (no filter).
-  String? _selectedTier;
   _CloseSort _closeSort = _CloseSort.none;
   String? _closeLabel;
-  // D1–D8 scoring filters — client-side, like Tier. Options come from the
-  // loaded deals' server-computed values, never a hardcoded list.
-  // null = "All"; [_kUnscored] = deals with no scoring.
-  String? _selectedScore;
-  String? _selectedMode;
-  String? _selectedSla;
+  // Client-side over the loaded deals; null = "All".
+  // [_kUnscored] = deals with no D1–D8 scoring.
+  String? _selectedPriority;
+  int? _selectedOwnerId;
+  String? _selectedOriginatorKey; // "<type>:<id>", see [_originatorKey]
+  // Server-side `quick_filter` label from [_kDueFilters]; null = Any Date.
+  String? _selectedDue;
   bool _exporting = false;
 
   /// Filter panel visibility, toggled by the single Filters icon.
@@ -121,6 +132,10 @@ class _DealsListViewState extends State<_DealsListView> {
   @override
   void initState() {
     super.initState();
+    _selectedDue = _kDueFilters.entries
+        .where((e) => e.value != null && e.value == widget.quickFilter)
+        .map((e) => e.key)
+        .firstOrNull;
     _loadStages();
   }
 
@@ -165,17 +180,14 @@ class _DealsListViewState extends State<_DealsListView> {
           )
           .toList();
     }
-    if (_selectedTier != null) {
-      out = out.where((d) => d.tier.toLowerCase() == _selectedTier).toList();
-    }
-    bool matches(String? selected, String? value) =>
-        selected == null || (value ?? _kUnscored) == selected;
     out = out
         .where(
           (d) =>
-              matches(_selectedScore, d.totalScore?.toString()) &&
-              matches(_selectedMode, d.responseMode) &&
-              matches(_selectedSla, d.proposalSla),
+              (_selectedPriority == null ||
+                  (d.priority ?? _kUnscored) == _selectedPriority) &&
+              (_selectedOwnerId == null || d.ownerId == _selectedOwnerId) &&
+              (_selectedOriginatorKey == null ||
+                  _originatorKey(d) == _selectedOriginatorKey),
         )
         .toList();
     if (_closeSort != _CloseSort.none) {
@@ -287,12 +299,11 @@ class _DealsListViewState extends State<_DealsListView> {
     final bloc = context.read<DealsListBloc>();
     setState(() => _exporting = true);
 
-    final tiers = _selectedTier == null ? null : [_selectedTier!];
     final search = _search.trim().isEmpty ? null : _search.trim();
     final blocState = bloc.state;
-    final ownerId = blocState is DealsListLoaded
-        ? blocState.ownerIdFilter
-        : null;
+    final ownerId =
+        _selectedOwnerId ??
+        (blocState is DealsListLoaded ? blocState.ownerIdFilter : null);
     final stageId = blocState is DealsListLoaded
         ? blocState.stageIdFilter
         : null;
@@ -301,7 +312,6 @@ class _DealsListViewState extends State<_DealsListView> {
       ExportDealsParams(
         ownerId: ownerId,
         stageId: stageId,
-        tiers: tiers,
         search: search,
       ),
     );
@@ -459,10 +469,10 @@ class _DealsListViewState extends State<_DealsListView> {
   int get _activeFilterCount =>
       [
         _closeLabel,
-        _selectedTier,
-        _selectedScore,
-        _selectedMode,
-        _selectedSla,
+        _selectedPriority,
+        _selectedOwnerId,
+        _selectedOriginatorKey,
+        _selectedDue,
       ].where((v) => v != null).length +
       (_selectedStageIds.isNotEmpty && _selectedStageIds.length < _stages.length
           ? 1
@@ -500,7 +510,6 @@ class _DealsListViewState extends State<_DealsListView> {
       ],
     );
 
-    // Owner filter removed: Workaround for Neotrack requirement.
     final panel = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -511,22 +520,7 @@ class _DealsListViewState extends State<_DealsListView> {
           options: const ['Soonest first', 'Latest first', 'Clear'],
           onSelected: _onCloseSelected,
         ),
-        const SizedBox(width: AppSpacing.sm),
-        _FilterDropdown(
-          label: 'Tier',
-          icon: Icons.diamond_outlined,
-          selected: _selectedTier == null
-              ? null
-              : '${_selectedTier![0].toUpperCase()}${_selectedTier!.substring(1)}',
-          options: [
-            'All',
-            ..._kTierOrder.map((t) => '${t[0].toUpperCase()}${t.substring(1)}'),
-          ],
-          onSelected: (v) => setState(
-            () => _selectedTier = v == 'All' ? null : v.toLowerCase(),
-          ),
-        ),
-        ..._buildScoringFilters(context),
+        ..._buildDealFilters(context),
         if (_stages.isNotEmpty) ...[
           const SizedBox(width: AppSpacing.sm),
           _MultiSelectFilterDropdown<DealStageDef>(
@@ -563,25 +557,28 @@ class _DealsListViewState extends State<_DealsListView> {
     );
   }
 
-  /// Score / Mode / Proposal SLA dropdowns. Options are the distinct values
-  /// present in the loaded deals (highest score / Mode A first), plus
-  /// "Unscored" — so they follow whatever the backend computes.
-  List<Widget> _buildScoringFilters(BuildContext context) {
+  /// Priority / Originator / Owner / Due dropdowns. Owner and Originator
+  /// options are the people on the loaded deals, so they never list someone
+  /// with nothing to show.
+  List<Widget> _buildDealFilters(BuildContext context) {
     final state = context.watch<DealsListBloc>().state;
     final deals = state is DealsListLoaded ? state.deals : const <Deal>[];
-    final scored = deals.where((d) => d.totalScore != null).toList()
-      ..sort((a, b) => b.totalScore!.compareTo(a.totalScore!));
+    final owners = <int, String>{
+      for (final d in deals)
+        if (d.ownerId != null) d.ownerId!: d.ownerLabel,
+    };
+    final originators = <String, String>{
+      for (final d in deals)
+        if (d.originator != null) _originatorKey(d)!: d.originator!.name,
+    };
+    List<String> sortedNames(Iterable<String> names) =>
+        names.toSet().toList()..sort();
 
-    List<String> options(String? Function(Deal) value) => [
-      'All',
-      ...{for (final d in scored) value(d)!},
-      _kUnscored,
-    ];
     Widget filter(
       String label,
       IconData icon,
       String? selected,
-      List<String> opts,
+      List<String> options,
       ValueChanged<String?> set,
     ) => Padding(
       padding: const EdgeInsets.only(left: AppSpacing.sm),
@@ -589,34 +586,61 @@ class _DealsListViewState extends State<_DealsListView> {
         label: label,
         icon: icon,
         selected: selected,
-        options: opts,
+        options: ['All', ...options],
         onSelected: (v) => setState(() => set(v == 'All' ? null : v)),
       ),
     );
 
     return [
       filter(
-        'Score',
-        Icons.leaderboard_outlined,
-        _selectedScore,
-        options((d) => d.totalScore.toString()),
-        (v) => _selectedScore = v,
-      ),
-      filter(
-        'Mode',
+        'Priority',
         Icons.bolt_outlined,
-        _selectedMode,
-        options((d) => d.responseMode),
-        (v) => _selectedMode = v,
+        _selectedPriority,
+        [..._kPriorities, _kUnscored],
+        (v) => _selectedPriority = v,
       ),
       filter(
-        'Proposal SLA',
-        Icons.timer_outlined,
-        _selectedSla,
-        options((d) => d.proposalSla),
-        (v) => _selectedSla = v,
+        'Originator',
+        Icons.person_pin_outlined,
+        originators[_selectedOriginatorKey],
+        sortedNames(originators.values),
+        (v) => _selectedOriginatorKey = v == null
+            ? null
+            : originators.entries.firstWhere((e) => e.value == v).key,
+      ),
+      filter(
+        'Owner',
+        Icons.person_outline,
+        owners[_selectedOwnerId],
+        sortedNames(owners.values),
+        (v) => _selectedOwnerId = v == null
+            ? null
+            : owners.entries.firstWhere((e) => e.value == v).key,
+      ),
+      Padding(
+        padding: const EdgeInsets.only(left: AppSpacing.sm),
+        child: _FilterDropdown(
+          label: 'Due',
+          icon: Icons.event_outlined,
+          selected: _selectedDue,
+          options: _kDueFilters.keys.toList(),
+          onSelected: _onDueSelected,
+        ),
       ),
     ];
+  }
+
+  static String? _originatorKey(Deal d) =>
+      d.originator == null ? null : '${d.originator!.type}:${d.originator!.id}';
+
+  void _onDueSelected(String label) {
+    final key = _kDueFilters[label];
+    setState(() => _selectedDue = key == null ? null : label);
+    context.read<DealsListBloc>().add(
+      key == null
+          ? const DealsListFilterChanged(clearQuickFilter: true)
+          : DealsListFilterChanged(quickFilter: key),
+    );
   }
 
   void _onStageSelectionChanged(Set<DealStageDef> next) {
@@ -658,21 +682,24 @@ class _DealsListViewState extends State<_DealsListView> {
     _searchController.clear();
     setState(() {
       _search = '';
-      _selectedTier = null;
       // Back to "all checked" (no filter), not empty -- matches `_loadStages`.
       _selectedStageIds
         ..clear()
         ..addAll(_stages.map((s) => s.id));
       _closeSort = _CloseSort.none;
       _closeLabel = null;
-      _selectedScore = null;
-      _selectedMode = null;
-      _selectedSla = null;
+      _selectedPriority = null;
+      _selectedOwnerId = null;
+      _selectedOriginatorKey = null;
+      _selectedDue = null;
     });
     // No clearDate: the only date range left is a dashboard drill-down's,
     // which is part of what the page is showing, not a user filter.
     context.read<DealsListBloc>().add(
-      DealsListFilterChanged(stageId: _selectedStageIds.toList()),
+      DealsListFilterChanged(
+        stageId: _selectedStageIds.toList(),
+        clearQuickFilter: true,
+      ),
     );
   }
 }
@@ -786,8 +813,11 @@ class _DealsTable extends StatelessWidget {
                 _header('DEAL NAME', flex: 3),
                 _header('ACCOUNT', flex: 2),
                 _header('STAGE', flex: 2),
+                _header('PRIORITY', flex: 2),
                 _header('VALUE', flex: 1),
                 _header('OWNER', flex: 2),
+                _header('ORIGINATOR', flex: 2),
+                _header('NEXT FOLLOW-UP', flex: 2),
                 _header('SCORE', flex: 1),
                 _header('MODE', flex: 2),
                 _header('PROPOSAL SLA', flex: 2),
@@ -877,6 +907,15 @@ class _DealRowState extends State<_DealRow> {
                 ),
               ),
               Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: widget.deal.priority == null
+                      ? Text('—', style: AppTextStyles.tableCell)
+                      : StatusBadge.priority(widget.deal.priority!),
+                ),
+              ),
+              Expanded(
                 flex: 1,
                 child: Text(
                   CurrencyFormatter.formatINR(widget.deal.value),
@@ -884,6 +923,14 @@ class _DealRowState extends State<_DealRow> {
                 ),
               ),
               Expanded(flex: 2, child: OwnerChip(name: widget.deal.ownerLabel)),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  widget.deal.originator?.name ?? '—',
+                  style: AppTextStyles.tableCell,
+                ),
+              ),
+              Expanded(flex: 2, child: _followUp(widget.deal)),
               // Scoring is computed server-side; '—' when the deal is unscored.
               Expanded(
                 flex: 1,
@@ -926,6 +973,21 @@ Widget _slaDue(Deal deal) {
     DateFormatter.dateTime(due),
     style: AppTextStyles.tableCell.copyWith(
       color: late ? AppColors.error : null,
+    ),
+  );
+}
+
+/// Next follow-up date; red once it's today or past (the dashboard's
+/// Due today / Overdue rule).
+Widget _followUp(Deal deal) {
+  final date = deal.followUpDate;
+  if (date == null) return Text('—', style: AppTextStyles.tableCell);
+  final now = DateTime.now();
+  final due = !date.isAfter(DateTime(now.year, now.month, now.day));
+  return Text(
+    DateFormatter.displayDate(date),
+    style: AppTextStyles.tableCell.copyWith(
+      color: due ? AppColors.error : null,
     ),
   );
 }

@@ -30,6 +30,7 @@ import '../../../users/domain/usecases/get_users_usecase.dart';
 import '../../../documents/domain/entities/deal_document.dart';
 import '../../../documents/domain/usecases/document_usecases.dart';
 
+import '../widgets/qualification_card.dart';
 import 'create_deal_page.dart';
 
 class DealDetailPage extends StatelessWidget {
@@ -252,6 +253,10 @@ class _DealDetailView extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (deal.priority != null) ...[
+                                const SizedBox(width: AppSpacing.sm),
+                                StatusBadge.priority(deal.priority!),
+                              ],
                             ],
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -453,118 +458,136 @@ class _DealDetailView extends StatelessWidget {
         remainingColor = AppColors.error;
       }
     }
+    final info = SectionCard(
+      title: 'Deal Information',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _infoRow('Account', deal.accountName),
+          _infoRow('Stage', deal.stageLabel),
+          _infoRow('Value', CurrencyFormatter.formatINR(deal.value)),
+          _infoRowWidget(
+            'Tier',
+            deal.tier.isNotEmpty
+                ? TierBadge(tier: deal.tier)
+                : Text('—', style: AppTextStyles.bodyMedium),
+          ),
+          _infoRow('Owner', deal.ownerLabel),
+          _infoRow('Contacts', deal.contacts.isEmpty ? '—' : deal.contactNames),
+          if (deal.coldReason != null && deal.coldReason!.isNotEmpty)
+            _infoRow('Cold Reason', deal.coldReason!),
+          // "Description" and "Payment Status" rows were removed — neither
+          // exists on the Deal API, so both always rendered placeholders.
+          _infoRowWidget(
+            'Expected Close',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  close != null ? DateFormatter.displayDate(close) : 'N/A',
+                  style: AppTextStyles.bodyMedium,
+                ),
+                if (remaining != null)
+                  Text(
+                    '($remaining)',
+                    style: AppTextStyles.caption.copyWith(
+                      color: remainingColor,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // D1–D8 scoring, computed server-side; '—' when unscored.
+          _infoRowWidget(
+            'Priority',
+            deal.priority == null
+                ? Text('—', style: AppTextStyles.bodyMedium)
+                : StatusBadge.priority(deal.priority!),
+          ),
+          _infoRow('Total Score', deal.totalScore?.toString() ?? '—'),
+          _infoRow('Response Mode', deal.responseMode ?? '—'),
+          _infoRow('Proposal SLA', deal.proposalSla ?? '—'),
+          _infoRow(
+            'Proposal SLA Due',
+            deal.proposalSlaDueAt == null
+                ? '—'
+                : DateFormatter.dateTime(deal.proposalSlaDueAt!),
+          ),
+          _infoRow(
+            'Proposal Status',
+            deal.proposalStatus == 'proposal_sent'
+                ? 'Proposal Sent${deal.proposalSentAt == null ? '' : ' on ${DateFormatter.displayDate(deal.proposalSentAt!)}'}'
+                : 'Not Sent',
+          ),
+          _infoRowWidget(
+            'Originator',
+            deal.originator == null
+                ? Text('—', style: AppTextStyles.bodyMedium)
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PersonTypeIcon(deal.originator!.type),
+                      const SizedBox(width: 6),
+                      Text(
+                        deal.originator!.name,
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ],
+                  ),
+          ),
+          // The one field editable straight from this card.
+          _infoRowWidget(
+            'Follow-up',
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  deal.followUpDate == null
+                      ? 'Not set'
+                      : DateFormatter.displayDate(deal.followUpDate!),
+                  style: AppTextStyles.bodyMedium,
+                ),
+                if (context.can(Perms.dealsManage)) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: () => _pickFollowUp(context, deal),
+                    icon: const Icon(Icons.event, size: 16),
+                    label: Text(
+                      deal.followUpDate == null ? 'Add follow-up' : 'Follow-up',
+                    ),
+                  ),
+                  if (deal.followUpDate != null)
+                    IconButton(
+                      tooltip: 'Clear follow-up',
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => _saveFollowUp(context, deal, null),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final qualification = QualificationCard(deal: deal);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xxl),
-      child: SectionCard(
-        title: 'Deal Information',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _infoRow('Account', deal.accountName),
-            _infoRow('Stage', deal.stageLabel),
-            _infoRow('Value', CurrencyFormatter.formatINR(deal.value)),
-            _infoRowWidget(
-              'Tier',
-              deal.tier.isNotEmpty
-                  ? TierBadge(tier: deal.tier)
-                  : Text('—', style: AppTextStyles.bodyMedium),
+      child: context.isWeb
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: info),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(flex: 2, child: qualification),
+              ],
+            )
+          : Column(
+              children: [
+                info,
+                const SizedBox(height: AppSpacing.xl),
+                qualification,
+              ],
             ),
-            _infoRow('Owner', deal.ownerLabel),
-            _infoRow(
-              'Contacts',
-              deal.contacts.isEmpty ? '—' : deal.contactNames,
-            ),
-            if (deal.coldReason != null && deal.coldReason!.isNotEmpty)
-              _infoRow('Cold Reason', deal.coldReason!),
-            // "Description" and "Payment Status" rows were removed — neither
-            // exists on the Deal API, so both always rendered placeholders.
-            _infoRowWidget(
-              'Expected Close',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    close != null ? DateFormatter.displayDate(close) : 'N/A',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  if (remaining != null)
-                    Text(
-                      '($remaining)',
-                      style: AppTextStyles.caption.copyWith(
-                        color: remainingColor,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // D1–D8 scoring, computed server-side; '—' when unscored.
-            _infoRow('Total Score', deal.totalScore?.toString() ?? '—'),
-            _infoRow('Response Mode', deal.responseMode ?? '—'),
-            _infoRow('Proposal SLA', deal.proposalSla ?? '—'),
-            _infoRow(
-              'Proposal SLA Due',
-              deal.proposalSlaDueAt == null
-                  ? '—'
-                  : DateFormatter.dateTime(deal.proposalSlaDueAt!),
-            ),
-            _infoRow(
-              'Proposal Status',
-              deal.proposalStatus == 'proposal_sent'
-                  ? 'Proposal Sent${deal.proposalSentAt == null ? '' : ' on ${DateFormatter.displayDate(deal.proposalSentAt!)}'}'
-                  : 'Not Sent',
-            ),
-            _infoRowWidget(
-              'Originator',
-              deal.originator == null
-                  ? Text('—', style: AppTextStyles.bodyMedium)
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PersonTypeIcon(deal.originator!.type),
-                        const SizedBox(width: 6),
-                        Text(
-                          deal.originator!.name,
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                      ],
-                    ),
-            ),
-            // The one field editable straight from this card.
-            _infoRowWidget(
-              'Follow-up',
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    deal.followUpDate == null
-                        ? 'Not set'
-                        : DateFormatter.displayDate(deal.followUpDate!),
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  if (context.can(Perms.dealsManage)) ...[
-                    const SizedBox(width: AppSpacing.md),
-                    OutlinedButton.icon(
-                      onPressed: () => _pickFollowUp(context, deal),
-                      icon: const Icon(Icons.event, size: 16),
-                      label: Text(
-                        deal.followUpDate == null
-                            ? 'Add follow-up'
-                            : 'Follow-up',
-                      ),
-                    ),
-                    if (deal.followUpDate != null)
-                      IconButton(
-                        tooltip: 'Clear follow-up',
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => _saveFollowUp(context, deal, null),
-                      ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

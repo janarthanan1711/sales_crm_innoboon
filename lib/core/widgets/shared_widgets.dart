@@ -161,7 +161,7 @@ class StatusBadge extends StatelessWidget {
   static ({Color bg, Color text}) _getDealStageColors(String stage) {
     switch (stage.toLowerCase()) {
       case 'received requirements':
-        return (bg: AppColors.tierSilverBg, text: AppColors.stageReceived);
+        return (bg: AppColors.stageReceivedBg, text: AppColors.stageReceived);
       case 'qualified to buy':
       case 'discovery':
         return (bg: AppColors.discoveryBg, text: AppColors.discoveryText);
@@ -222,13 +222,14 @@ class StatusBadge extends StatelessWidget {
   }
 
   static ({Color bg, Color text}) _getPriorityColors(String priority) {
+    // Deal priority (Mode A–D): Very High / High / Medium / Low.
     switch (priority.toLowerCase()) {
-      case 'high':
+      case 'very high':
         return (bg: AppColors.errorLight, text: AppColors.error);
-      case 'medium':
+      case 'high':
         return (bg: AppColors.warningLight, text: AppColors.warning);
-      case 'low':
-        return (bg: AppColors.successLight, text: AppColors.success);
+      case 'medium':
+        return (bg: AppColors.infoLight, text: AppColors.info);
       default:
         return (bg: AppColors.tierSilverBg, text: AppColors.textSecondary);
     }
