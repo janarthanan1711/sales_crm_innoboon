@@ -62,6 +62,7 @@ class AppPalette {
     required this.stageWon,
     required this.stageLost,
     required this.stageCold,
+    required this.stageColdBg,
     required this.discoveryBg,
     required this.discoveryText,
     required this.proposalBg,
@@ -135,6 +136,7 @@ class AppPalette {
   final Color stageWon;
   final Color stageLost;
   final Color stageCold;
+  final Color stageColdBg;
 
   final Color discoveryBg;
   final Color discoveryText;
@@ -217,7 +219,8 @@ class AppPalette {
     stageContract: Color(0xFF0EA5E9),
     stageWon: Color(0xFF16A34A),
     stageLost: Color(0xFFDC2626),
-    stageCold: Color(0xFF94A3B8),
+    stageCold: Color(0xFF4F46E5),
+    stageColdBg: Color(0xFFEEF2FF),
     discoveryBg: Color(0xFFEFF6FF),
     discoveryText: Color(0xFF2563EB),
     proposalBg: Color(0xFFEFF6FF),
@@ -296,7 +299,8 @@ class AppPalette {
     stageContract: Color(0xFF38BDF8),
     stageWon: Color(0xFF4ADE80),
     stageLost: Color(0xFFF87171),
-    stageCold: Color(0xFF94A3B8),
+    stageCold: Color(0xFF818CF8),
+    stageColdBg: Color(0xFF1E1B4B),
     discoveryBg: Color(0xFF172554),
     discoveryText: Color(0xFF60A5FA),
     proposalBg: Color(0xFF172554),

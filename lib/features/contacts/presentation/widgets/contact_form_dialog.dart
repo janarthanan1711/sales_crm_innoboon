@@ -223,49 +223,46 @@ class _ContactFormDialogState extends State<ContactFormDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.xxl),
-                Text('ACCOUNT ASSOCIATION', style: AppTextStyles.overline),
-                const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<int>(
-                  initialValue: _accountOptions.any((e) => e.key == _accountId)
-                      ? _accountId
-                      : null,
-                  decoration: _dec(
-                    _isOriginator
-                        ? 'Associated Account'
-                        : 'Associated Account *',
+                // Originators don't belong to an account, so the account
+                // section is hidden (existing links are left untouched).
+                if (!_isOriginator) ...[
+                  const SizedBox(height: AppSpacing.xxl),
+                  Text('ACCOUNT ASSOCIATION', style: AppTextStyles.overline),
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<int>(
+                    initialValue:
+                        _accountOptions.any((e) => e.key == _accountId)
+                        ? _accountId
+                        : null,
+                    decoration: _dec('Associated Account *'),
+                    items: _accountOptions
+                        .map(
+                          (e) => DropdownMenuItem<int>(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _accountId = v),
                   ),
-                  items: _accountOptions
-                      .map(
-                        (e) => DropdownMenuItem<int>(
-                          value: e.key,
-                          child: Text(e.value),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _isOriginator
-                      ? null
-                      : (v) => setState(() => _accountId = v),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: _isPrimary,
-                  onChanged: _isOriginator
-                      ? null
-                      : (v) => setState(() => _isPrimary = v ?? false),
-                  title: Text(
-                    'Set as Primary Contact',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  subtitle: Text(
-                    'Only one primary contact allowed per account.',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textMuted,
+                  const SizedBox(height: AppSpacing.md),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _isPrimary,
+                    onChanged: (v) => setState(() => _isPrimary = v ?? false),
+                    title: Text(
+                      'Set as Primary Contact',
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                    subtitle: Text(
+                      'Only one primary contact allowed per account.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

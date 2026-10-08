@@ -98,6 +98,7 @@ class AppColors {
   static Color get stageWon => _palette.stageWon;
   static Color get stageLost => _palette.stageLost;
   static Color get stageCold => _palette.stageCold;
+  static Color get stageColdBg => _palette.stageColdBg;
 
   // ─── Deal Stage Badge Colors ───────────────────────────
   static Color get discoveryBg => _palette.discoveryBg;

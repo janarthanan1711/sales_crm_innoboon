@@ -180,7 +180,7 @@ class StatusBadge extends StatelessWidget {
         return (bg: AppColors.errorLight, text: AppColors.stageLost);
       case 'cold deals':
       case 'cold':
-        return (bg: AppColors.tierSilverBg, text: AppColors.stageCold);
+        return (bg: AppColors.stageColdBg, text: AppColors.stageCold);
       case 'negotiation':
         return (bg: AppColors.negotiationBg, text: AppColors.negotiationText);
       default:

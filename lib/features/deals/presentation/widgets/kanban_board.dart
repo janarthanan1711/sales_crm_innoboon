@@ -23,7 +23,7 @@ const List<Color> _kStageDotColors = [
   Color(0xFF10B981), // emerald
   Color(0xFF06B6D4), // cyan
   Color(0xFFEF4444), // red
-  Color(0xFF94A3B8), // slate (Cold Deals)
+  Color(0xFF6366F1), // indigo (Cold Deals)
 ];
 
 /// Result of the move dialog: cancelled, or a confirmed (note, coldReason).
