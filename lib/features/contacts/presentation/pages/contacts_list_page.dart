@@ -164,7 +164,11 @@ class _ContactsListViewState extends State<_ContactsListView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xxl),
+            if (!context.isMobile) ...[
+              _buildStats(context),
+              const SizedBox(height: AppSpacing.xl),
+            ],
             _buildFilters(context),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
@@ -227,63 +231,84 @@ class _ContactsListViewState extends State<_ContactsListView> {
 
   // ── Header ─────────────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Contacts', style: AppTextStyles.h1),
-        const SizedBox(height: 4),
-        Text(
-          'People across your accounts',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
+    return PageHeader(
+      title: 'Contacts',
+      subtitle:
+          'People across your accounts, their roles and how to reach them.',
+      actions: [
+        _exportButton(context),
+        OutlinedButton.icon(
+          onPressed: () {
+            final bloc = context.read<ContactsListBloc>();
+            showDialog<void>(
+              context: context,
+              builder: (_) => _ImportContactsDialog(listBloc: bloc),
+            );
+          },
+          icon: const Icon(Icons.upload_file_outlined, size: 18),
+          label: const Text('Import Contacts'),
+        ),
+        ElevatedButton.icon(
+          onPressed: () => _openContactDialog(context),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('New Contact'),
         ),
       ],
     );
-    final importBtn = OutlinedButton.icon(
-      onPressed: () {
-        final bloc = context.read<ContactsListBloc>();
-        showDialog<void>(
-          context: context,
-          builder: (_) => _ImportContactsDialog(listBloc: bloc),
+  }
+
+  // ── KPI strip ──────────────────────────────────────────
+  /// Total is the server-side count for the active filters; the rest are
+  /// computed over the page currently loaded.
+  Widget _buildStats(BuildContext context) {
+    return BlocBuilder<ContactsListBloc, ContactsListState>(
+      builder: (context, state) {
+        final loaded = state is ContactsListLoaded ? state : null;
+        final contacts = loaded?.contacts ?? const <Contact>[];
+        int count(bool Function(Contact) test) => contacts.where(test).length;
+        final onPage = contacts.length;
+        final primary = count((c) => c.isPrimary);
+        final originators = count((c) => c.isOriginator);
+        final linked = count((c) => c.accountName != null);
+        Widget share(int part) => Text(
+          onPage == 0 ? '0%' : '${(part * 100 / onPage).round()}%',
+          style: AppTextStyles.caption.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        );
+        return StatCardRow(
+          cards: [
+            StatCard(
+              label: 'Total contacts',
+              value: '${loaded?.total ?? 0}',
+              caption: 'Matching current filters',
+              dotColor: AppColors.primary,
+            ),
+            StatCard(
+              label: 'Primary contacts',
+              value: '$primary',
+              caption: 'On this page',
+              captionTrailing: share(primary),
+              dotColor: AppColors.success,
+            ),
+            StatCard(
+              label: 'Originators',
+              value: '$originators',
+              caption: 'Eligible deal originators',
+              captionTrailing: share(originators),
+              dotColor: AppColors.tierGoldText,
+            ),
+            StatCard(
+              label: 'Linked to account',
+              value: '$linked',
+              caption: '${onPage - linked} standalone',
+              captionTrailing: share(linked),
+              dotColor: AppColors.info,
+            ),
+          ],
         );
       },
-      icon: const Icon(Icons.upload_file_outlined, size: 18),
-      label: const Text('Import Contacts'),
-    );
-    final newBtn = ElevatedButton.icon(
-      onPressed: () => _openContactDialog(context),
-      icon: const Icon(Icons.add, size: 18),
-      label: const Text('New Contact'),
-    );
-
-    if (context.isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          title,
-          const SizedBox(height: AppSpacing.md),
-          Row(children: [Expanded(child: _exportButton(context))]),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(child: importBtn),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(child: newBtn),
-            ],
-          ),
-        ],
-      );
-    }
-    return Row(
-      children: [
-        Expanded(child: title),
-        _exportButton(context),
-        const SizedBox(width: AppSpacing.sm),
-        importBtn,
-        const SizedBox(width: AppSpacing.sm),
-        newBtn,
-      ],
     );
   }
 
@@ -307,100 +332,105 @@ class _ContactsListViewState extends State<_ContactsListView> {
         : null;
     final hasDateRange = dateFromFilter != null && dateToFilter != null;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          SizedBox(
-            width: context.isMobile ? 200 : 280,
-            child: AppSearchField(
-              controller: _searchController,
-              hintText: 'Search by name, email...',
-              onChanged: (q) => bloc.add(ContactsListSearchChanged(q)),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _MenuFilter<int?>(
-            label: 'Owner',
-            selected: ownerFilter,
-            options: [
-              const MapEntry<int?, String>(null, 'All Owners'),
-              ..._owners.map(
-                (o) => MapEntry<int?, String>(o.id, o.displayName),
-              ),
-            ],
-            onSelected: (v) => bloc.add(
-              ContactsListFilterChanged(
-                ownerId: v ?? ContactsListFilterChanged.clearOwner,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appCardDecoration(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            SizedBox(
+              width: context.isMobile ? 200 : 280,
+              child: AppSearchField(
+                controller: _searchController,
+                hintText: 'Search by name, email...',
+                onChanged: (q) => bloc.add(ContactsListSearchChanged(q)),
               ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _MenuFilter<int?>(
-            label: 'Account',
-            selected: accountFilter,
-            options: [
-              const MapEntry<int?, String>(null, 'All Accounts'),
-              ..._accounts.map(
-                (a) =>
-                    MapEntry<int?, String>(int.tryParse(a.id), a.companyName),
-              ),
-            ],
-            onSelected: (v) => bloc.add(
-              ContactsListFilterChanged(
-                accountId: v ?? ContactsListFilterChanged.clearAccount,
+            const SizedBox(width: AppSpacing.sm),
+            _MenuFilter<int?>(
+              label: 'Owner',
+              selected: ownerFilter,
+              options: [
+                const MapEntry<int?, String>(null, 'All Owners'),
+                ..._owners.map(
+                  (o) => MapEntry<int?, String>(o.id, o.displayName),
+                ),
+              ],
+              onSelected: (v) => bloc.add(
+                ContactsListFilterChanged(
+                  ownerId: v ?? ContactsListFilterChanged.clearOwner,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _MenuFilter<String?>(
-            label: 'Tier',
-            selected: tierFilter,
-            options: [
-              const MapEntry<String?, String>(null, 'All Tiers'),
-              ..._kTiers.map(
-                (t) => MapEntry<String?, String>(t, _titleCase(t)),
+            const SizedBox(width: AppSpacing.sm),
+            _MenuFilter<int?>(
+              label: 'Account',
+              selected: accountFilter,
+              options: [
+                const MapEntry<int?, String>(null, 'All Accounts'),
+                ..._accounts.map(
+                  (a) =>
+                      MapEntry<int?, String>(int.tryParse(a.id), a.companyName),
+                ),
+              ],
+              onSelected: (v) => bloc.add(
+                ContactsListFilterChanged(
+                  accountId: v ?? ContactsListFilterChanged.clearAccount,
+                ),
               ),
-            ],
-            onSelected: (v) =>
-                bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () =>
-                _pickDateRange(context, dateFromFilter, dateToFilter),
-            icon: const Icon(Icons.date_range, size: 18),
-            label: Text(
-              hasDateRange
-                  ? '${DateFormatter.shortDate(dateFromFilter)} – ${DateFormatter.shortDate(dateToFilter)}'
-                  : 'Date Range',
             ),
-          ),
-          if (hasDateRange)
-            IconButton(
+            const SizedBox(width: AppSpacing.sm),
+            _MenuFilter<String?>(
+              label: 'Tier',
+              selected: tierFilter,
+              options: [
+                const MapEntry<String?, String>(null, 'All Tiers'),
+                ..._kTiers.map(
+                  (t) => MapEntry<String?, String>(t, _titleCase(t)),
+                ),
+              ],
+              onSelected: (v) =>
+                  bloc.add(ContactsListFilterChanged(tier: v ?? 'all')),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(
               onPressed: () =>
-                  bloc.add(const ContactsListFilterChanged(clearDate: true)),
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Clear date range',
-            ),
-          const SizedBox(width: AppSpacing.md),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Switch(
-                value: primaryOnly,
-                onChanged: (v) =>
-                    bloc.add(ContactsListFilterChanged(isPrimary: v)),
+                  _pickDateRange(context, dateFromFilter, dateToFilter),
+              icon: const Icon(Icons.date_range, size: 18),
+              label: Text(
+                hasDateRange
+                    ? '${DateFormatter.shortDate(dateFromFilter)} – ${DateFormatter.shortDate(dateToFilter)}'
+                    : 'Date Range',
               ),
-              Text('Primary Only', style: AppTextStyles.labelMedium),
-            ],
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          TextButton(
-            onPressed: _clearFilters,
-            child: const Text('Clear Filters'),
-          ),
-        ],
+            ),
+            if (hasDateRange)
+              IconButton(
+                onPressed: () =>
+                    bloc.add(const ContactsListFilterChanged(clearDate: true)),
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Clear date range',
+              ),
+            const SizedBox(width: AppSpacing.md),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Switch(
+                  value: primaryOnly,
+                  onChanged: (v) =>
+                      bloc.add(ContactsListFilterChanged(isPrimary: v)),
+                ),
+                Text('Primary Only', style: AppTextStyles.labelMedium),
+              ],
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            TextButton.icon(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+              label: const Text('Clear Filters'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -463,70 +493,57 @@ class _ContactsListViewState extends State<_ContactsListView> {
     final allSelected =
         state.contacts.isNotEmpty &&
         state.contacts.every((c) => _selected.contains(c.id));
-    final table = Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+    final n = state.contacts.length;
+    final table = TableCard(
+      title: 'All Contacts',
+      trailing: Text(
+        'Showing $n contact${n == 1 ? '' : 's'}',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
-      child: Column(
+      header: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  child: Checkbox(
-                    value: allSelected,
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        _selected.addAll(state.contacts.map((c) => c.id));
-                      } else {
-                        _selected.clear();
-                      }
-                    }),
-                  ),
-                ),
-                _h('CONTACT NAME', flex: 4),
-                _h('JOB TITLE', flex: 3),
-                _h('ASSOCIATED ACCOUNT', flex: 3),
-                _h('EMAIL', flex: 4),
-                _h('PHONE', flex: 3),
-                SizedBox(
-                  width: 96,
-                  child: Text('ACTIONS', style: AppTextStyles.tableHeader),
-                ),
-              ],
+          SizedBox(
+            width: 40,
+            child: Checkbox(
+              value: allSelected,
+              onChanged: (v) => setState(() {
+                if (v == true) {
+                  _selected.addAll(state.contacts.map((c) => c.id));
+                } else {
+                  _selected.clear();
+                }
+              }),
             ),
           ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: state.contacts.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final c = state.contacts[index];
-                return _ContactRow(
-                  contact: c,
-                  selected: _selected.contains(c.id),
-                  onToggle: () => setState(() {
-                    _selected.contains(c.id)
-                        ? _selected.remove(c.id)
-                        : _selected.add(c.id);
-                  }),
-                  onView: () => context.go('/contacts/${c.id}'),
-                  onEdit: () => _openContactDialog(context, existing: c),
-                );
-              },
-            ),
+          _h('CONTACT NAME', flex: 4),
+          _h('JOB TITLE', flex: 3),
+          _h('ASSOCIATED ACCOUNT', flex: 3),
+          _h('EMAIL', flex: 4),
+          _h('PHONE', flex: 3),
+          SizedBox(
+            width: 96,
+            child: Text('ACTIONS', style: AppTextStyles.tableHeader),
           ),
         ],
+      ),
+      body: ListView.separated(
+        itemCount: n,
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.borderLight),
+        itemBuilder: (context, index) {
+          final c = state.contacts[index];
+          return _ContactRow(
+            contact: c,
+            selected: _selected.contains(c.id),
+            onToggle: () => setState(() {
+              _selected.contains(c.id)
+                  ? _selected.remove(c.id)
+                  : _selected.add(c.id);
+            }),
+            onView: () => context.go('/contacts/${c.id}'),
+            onEdit: () => _openContactDialog(context, existing: c),
+          );
+        },
       ),
     );
 
@@ -622,10 +639,10 @@ class _ContactRowState extends State<_ContactRow> {
         onTap: widget.onView,
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          color: _hovered ? AppColors.navHover : Colors.transparent,
+          color: _hovered ? AppColors.background : Colors.transparent,
           child: Row(
             children: [
               SizedBox(
@@ -641,14 +658,13 @@ class _ContactRowState extends State<_ContactRow> {
                   children: [
                     InitialsAvatar(
                       name: c.fullName.isEmpty ? c.firstName : c.fullName,
-                      size: 32,
+                      size: 36,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.md),
                     Flexible(
-                      child: Text(
-                        c.fullName,
-                        style: AppTextStyles.tableCellLink,
-                        overflow: TextOverflow.ellipsis,
+                      child: TwoLineCell(
+                        title: c.fullName,
+                        subtitle: c.email ?? c.jobTitle,
                       ),
                     ),
                     if (c.isPrimary) ...[

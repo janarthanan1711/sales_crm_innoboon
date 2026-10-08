@@ -71,8 +71,12 @@ class _DocumentsViewState extends State<_DocumentsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.xl),
+            const PageHeader(
+              title: 'Documents',
+              subtitle:
+                  'Every file across your accounts and deals, newest first.',
+            ),
+            const SizedBox(height: AppSpacing.xxl),
             _buildFilters(context),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
@@ -117,41 +121,30 @@ class _DocumentsViewState extends State<_DocumentsView> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Documents', style: AppTextStyles.h1),
-        const SizedBox(height: 4),
-        Text(
-          'Every file across your accounts and deals, newest first.',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildFilters(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          SizedBox(
-            width: context.isMobile ? 220 : 300,
-            child: AppSearchField(
-              controller: _searchController,
-              hintText: 'Search by file name...',
-              onChanged: (q) => setState(() => _search = q),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appCardDecoration(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            SizedBox(
+              width: context.isMobile ? 220 : 300,
+              child: AppSearchField(
+                controller: _searchController,
+                hintText: 'Search by file name...',
+                onChanged: (q) => setState(() => _search = q),
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          _SourceToggle(
-            selected: _source,
-            onSelected: (s) => setState(() => _source = s),
-          ),
-        ],
+            const SizedBox(width: AppSpacing.md),
+            _SourceToggle(
+              selected: _source,
+              onSelected: (s) => setState(() => _source = s),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -166,9 +159,9 @@ class _SourceToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: AppColors.background,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
       ),
@@ -185,15 +178,22 @@ class _SourceToggle extends StatelessWidget {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: active ? AppColors.primaryLight : Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  AppSpacing.buttonRadius - 2,
-                ),
+                color: active ? AppColors.cardBackground : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: AppColors.shadow,
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 s.$1,
                 style: AppTextStyles.labelMedium.copyWith(
-                  color: active ? AppColors.primary : AppColors.textSecondary,
+                  color: active ? AppColors.textPrimary : AppColors.textMuted,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -212,41 +212,28 @@ class _DocumentsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final table = Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+    final n = documents.length;
+    final table = TableCard(
+      title: 'All Documents',
+      trailing: Text(
+        'Showing $n document${n == 1 ? '' : 's'}',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
-      child: Column(
+      header: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                _h('DOCUMENT', flex: 4),
-                _h('SOURCE', flex: 2),
-                _h('LINKED TO', flex: 3),
-                _h('TYPE', flex: 2),
-                _h('UPLOADED', flex: 2),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: documents.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) => _DocumentRow(document: documents[i]),
-            ),
-          ),
+          _h('DOCUMENT', flex: 4),
+          _h('SOURCE', flex: 2),
+          _h('LINKED TO', flex: 3),
+          _h('TYPE', flex: 2),
+          _h('UPLOADED', flex: 2),
+          const SizedBox(width: 48),
         ],
+      ),
+      body: ListView.separated(
+        itemCount: n,
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.borderLight),
+        itemBuilder: (context, i) => _DocumentRow(document: documents[i]),
       ),
     );
 
@@ -315,29 +302,31 @@ class _DocumentRowState extends State<_DocumentRow> {
         onTap: _open,
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          color: _hovered ? AppColors.navHover : Colors.transparent,
+          color: _hovered ? AppColors.background : Colors.transparent,
           child: Row(
             children: [
               Expanded(
                 flex: 4,
                 child: Row(
                   children: [
-                    Icon(
-                      _icon(d.extension),
-                      size: 22,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        d.fileName,
-                        style: AppTextStyles.tableCellLink,
-                        overflow: TextOverflow.ellipsis,
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _icon(d.extension),
+                        size: 18,
+                        color: AppColors.primary,
                       ),
                     ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: TwoLineCell(title: d.fileName)),
                   ],
                 ),
               ),
@@ -396,15 +385,15 @@ class _SourceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isAccount ? AppColors.primary : const Color(0xFF7C3AED);
+    final color = isAccount ? AppColors.primary : AppColors.stageEvaluation;
     final label = isAccount ? 'Account' : 'Deal';
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

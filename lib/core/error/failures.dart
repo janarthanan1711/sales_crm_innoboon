@@ -14,17 +14,12 @@ abstract class Failure extends Equatable {
 
 /// Server-side error (API returned non-2xx)
 class ServerFailure extends Failure {
-  const ServerFailure({
-    required super.message,
-    super.statusCode,
-  });
+  const ServerFailure({required super.message, super.statusCode});
 }
 
 /// Local cache/storage error
 class CacheFailure extends Failure {
-  const CacheFailure({
-    required super.message,
-  });
+  const CacheFailure({required super.message});
 }
 
 /// Network connectivity error (no internet)
@@ -46,10 +41,7 @@ class AuthFailure extends Failure {
 class ValidationFailure extends Failure {
   final Map<String, String>? fieldErrors;
 
-  const ValidationFailure({
-    required super.message,
-    this.fieldErrors,
-  });
+  const ValidationFailure({required super.message, this.fieldErrors});
 
   @override
   List<Object?> get props => [message, fieldErrors];

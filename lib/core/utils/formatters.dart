@@ -40,10 +40,7 @@ class CurrencyFormatter {
 
   /// Parse INR string back to double
   static double? parseINR(String value) {
-    final cleaned = value
-        .replaceAll('₹', '')
-        .replaceAll(',', '')
-        .trim();
+    final cleaned = value.replaceAll('₹', '').replaceAll(',', '').trim();
     return double.tryParse(cleaned);
   }
 }
@@ -58,7 +55,8 @@ class DateFormatter {
   static final DateFormat _timeOnly = DateFormat('h:mm a');
   static final DateFormat _apiDate = DateFormat('yyyy-MM-dd');
 
-  static String displayDate(DateTime date) => _displayDate.format(date.toLocal());
+  static String displayDate(DateTime date) =>
+      _displayDate.format(date.toLocal());
   static String shortDate(DateTime date) => _shortDate.format(date.toLocal());
   static String dateTime(DateTime date) => _dateTime.format(date.toLocal());
   static String timeOnly(DateTime date) => _timeOnly.format(date.toLocal());

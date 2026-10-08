@@ -14,16 +14,17 @@ import '../pages/create_deal_page.dart';
 
 const String _cancelled = '__cancelled__';
 
-/// Accent colors for the column status dots, cycled by stage order.
-const List<Color> _kStageDotColors = [
-  Color(0xFF14B8A6), // teal (Received Requirements)
-  Color(0xFF3B82F6), // blue
-  Color(0xFF8B5CF6), // violet
-  Color(0xFFF97316), // orange
-  Color(0xFF10B981), // emerald
-  Color(0xFF06B6D4), // cyan
-  Color(0xFFEF4444), // red
-  Color(0xFF6366F1), // indigo (Cold Deals)
+/// Accent colours for the column status dots, cycled by stage order. Theme
+/// tokens (not hex) so they lift correctly in dark mode.
+List<Color> get _kStageDotColors => [
+  AppColors.stageReceived,
+  AppColors.stageQualified,
+  AppColors.stageEvaluation,
+  AppColors.warning,
+  AppColors.stageContract,
+  AppColors.stageWon,
+  AppColors.stageLost,
+  AppColors.stageCold,
 ];
 
 /// Result of the move dialog: cancelled, or a confirmed (note, coldReason).
@@ -121,8 +122,10 @@ class KanbanBoard extends StatelessWidget {
         .where((d) => !knownStageIds.contains(d.stageId))
         .toList(growable: false);
 
+    final accents = _kStageDotColors;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -131,7 +134,7 @@ class KanbanBoard extends StatelessWidget {
               stage: stages[i],
               deals: deals.where((d) => d.stageId == stages[i].id).toList(),
               canManage: canManage,
-              accent: _kStageDotColors[i % _kStageDotColors.length],
+              accent: accents[i % accents.length],
             ),
           if (orphans.isNotEmpty)
             _KanbanColumn(
@@ -185,57 +188,84 @@ class _KanbanColumn extends StatelessWidget {
         );
       },
       builder: (context, candidateData, rejectedData) {
-        return Container(
+        final hovering = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           width: 300,
           margin: const EdgeInsets.only(right: AppSpacing.lg),
           decoration: BoxDecoration(
-            color: candidateData.isNotEmpty
-                ? AppColors.primaryLight
-                : AppColors.background,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: AppColors.border),
+            color: hovering ? AppColors.primaryLight : AppColors.borderLight,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadiusLarge),
+            border: Border.all(
+              color: hovering ? AppColors.primary : Colors.transparent,
+              width: 1.5,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Column header — status dot + uppercase stage name + count.
+              // Column header — dot + stage name + count, stage total below.
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: accent,
-                        shape: BoxShape.circle,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            stage.name,
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.cardBackground,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.badgeRadius,
+                            ),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            '${deals.length}',
+                            style: AppTextStyles.badge.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16),
                       child: Text(
-                        stage.name.toUpperCase(),
+                        CurrencyFormatter.formatINR(totalValue),
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          fontWeight: FontWeight.w500,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${deals.length}',
-                        style: AppTextStyles.caption,
                       ),
                     ),
                   ],
@@ -245,10 +275,15 @@ class _KanbanColumn extends StatelessWidget {
               // drop targets.
               Expanded(
                 child: ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.xs,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
                   itemCount: deals.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: AppSpacing.sm),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final deal = deals[index];
                     void open() => context.go('/deals/${deal.id}');
@@ -271,12 +306,14 @@ class _KanbanColumn extends StatelessWidget {
                       key: ValueKey('deal-drag-${deal.id}'),
                       data: deal,
                       feedback: Material(
-                        elevation: 8,
+                        elevation: 12,
+                        color: Colors.transparent,
+                        shadowColor: AppColors.shadow,
                         borderRadius: BorderRadius.circular(
                           AppSpacing.cardRadius,
                         ),
                         child: SizedBox(
-                          width: 280,
+                          width: 276,
                           child: _DealCard(deal: deal, canManage: canManage),
                         ),
                       ),
@@ -291,20 +328,6 @@ class _KanbanColumn extends StatelessWidget {
                       ),
                     );
                   },
-                ),
-              ),
-              // Column footer — pinned total for the stage.
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: AppColors.border)),
-                ),
-                child: Text(
-                  'Total: ${CurrencyFormatter.formatINR(totalValue)}',
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
                 ),
               ),
             ],
@@ -335,13 +358,20 @@ class _DealCardState extends State<_DealCard> {
 
   Deal get deal => widget.deal;
 
-  /// True when the deal is due within the next 10 days (or already overdue) —
-  /// surfaced as a red left border to flag deals needing attention.
-  bool get _dueSoon {
+  /// Days until expected close (negative = overdue); null without a date.
+  int? get _daysLeft {
     final close = deal.expectedCloseDate;
-    if (close == null) return false;
-    return close.difference(DateTime.now()).inDays <= 10;
+    if (close == null) return null;
+    final now = DateTime.now();
+    return DateTime(
+      close.year,
+      close.month,
+      close.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
   }
+
+  /// Due within 10 days (or overdue) — flagged with a red date chip.
+  bool get _dueSoon => (_daysLeft ?? 999) <= 10;
 
   void _openDetail() => context.go('/deals/${deal.id}');
 
@@ -356,122 +386,109 @@ class _DealCardState extends State<_DealCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Red for a deal that's due (or overdue), primary while hovered, nothing
-    // otherwise. Painted as an overlaid stripe rather than a thick left
-    // BorderSide — see the note on the decoration below.
-    final accentColor = _dueSoon
-        ? AppColors.error
-        : (_hover ? AppColors.primary : null);
-    final accentWidth = _dueSoon ? 4.0 : 3.0;
-
-    final card = Container(
+    // Uniform border on purpose: BoxDecoration can't paint a rounded border
+    // with mismatched sides (it throws mid-paint and leaves an empty card).
+    final card = AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        // Uniform on purpose. BoxDecoration can only paint a *rounded* border
-        // when all four sides match; give it a thicker or differently-coloured
-        // left side alongside a borderRadius and painting throws part-way
-        // through — after the shadow and background, before the child. The card
-        // keeps its slot and its size but renders as an empty white rectangle.
-        // That was the "sometimes the deal card is empty" bug: it hit exactly
-        // the deals whose left border went red for being due soon.
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: _hover
+              ? AppColors.primary.withValues(alpha: 0.45)
+              : AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadow,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            blurRadius: _hover ? 16 : 6,
+            offset: Offset(0, _hover ? 6 : 2),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Stack(
-          children: [
-            // The Stack takes its size from this, the only unpositioned child;
-            // the stripe then stretches to whatever height the content needs.
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: _cardBody(),
-            ),
-            if (accentColor != null)
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(width: accentWidth, color: accentColor),
-              ),
-          ],
-        ),
-      ),
+      child: _cardBody(),
     );
 
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: InkWell(
+      child: GestureDetector(
         onTap: widget.onTap ?? _openDetail,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: card,
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 150),
+          offset: _hover ? const Offset(0, -0.015) : Offset.zero,
+          child: card,
+        ),
       ),
     );
   }
 
   Widget _cardBody() {
+    final hasAccount = deal.accountName.trim().isNotEmpty;
+    final hasName = deal.name.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Tier badge + overflow menu.
+        // Account line + overflow menu.
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (hasAccount) ...[
+              InitialsAvatar(name: deal.accountName, size: 22),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            // Every line falls back to a visible placeholder, so a deal whose
+            // lookups came back blank still renders as an identifiable card.
             Expanded(
-              child: deal.tier.isNotEmpty
-                  ? Align(
-                      alignment: Alignment.centerLeft,
-                      child: TierBadge(tier: deal.tier),
-                    )
-                  : const SizedBox.shrink(),
+              child: Text(
+                hasAccount ? deal.accountName : 'No account linked',
+                style: AppTextStyles.caption.copyWith(
+                  color: hasAccount
+                      ? AppColors.textSecondary
+                      : AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             _overflowMenu(),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        // Every line below falls back to a visible placeholder. A deal whose
-        // name/account/owner came back blank — or whose account couldn't be
-        // resolved because the account or user list was unavailable — used to
-        // render as an all-but-empty card with nothing to identify or click.
         Text(
-          deal.name.trim().isEmpty ? 'Untitled deal #${deal.id}' : deal.name,
+          hasName ? deal.name : 'Untitled deal #${deal.id}',
           style: AppTextStyles.labelLarge.copyWith(
-            color: deal.name.trim().isEmpty
-                ? AppColors.textMuted
-                : AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            color: hasName ? AppColors.textPrimary : AppColors.textMuted,
+            height: 1.35,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
         Text(
-          deal.accountName.trim().isEmpty
-              ? 'No account linked'
-              : deal.accountName,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: deal.accountName.trim().isEmpty
-                ? AppColors.textMuted
-                : AppColors.primary,
-          ),
-          overflow: TextOverflow.ellipsis,
+          'DL-${deal.id}',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
         ),
-        // Linked contacts come straight off the wire (`DealRead.contacts`),
-        // needing none of the id→name lookups the account and owner lines
-        // depend on — so they keep the card identifiable even when those
-        // lookups return nothing.
+        if (deal.tier.isNotEmpty || deal.priority != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (deal.tier.isNotEmpty) StatusBadge.tier(deal.tier),
+              if (deal.priority != null) StatusBadge.priority(deal.priority!),
+            ],
+          ),
+        ],
+        // Linked contacts come straight off the wire, so they keep the card
+        // identifiable even when the account/owner lookups return nothing.
         if (deal.contacts.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Icon(Icons.person_outline, size: 13, color: AppColors.textMuted),
+              Icon(Icons.person_outline, size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -486,42 +503,76 @@ class _DealCardState extends State<_DealCard> {
             ],
           ),
         ],
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          CurrencyFormatter.formatINR(deal.value),
-          style: AppTextStyles.labelMedium,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Divider(height: 1, color: AppColors.borderLight),
         ),
-        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            if (deal.expectedCloseDate != null) ...[
-              Icon(
-                Icons.event_outlined,
-                size: 13,
-                color: _dueSoon ? AppColors.error : AppColors.textMuted,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                DateFormatter.shortDate(deal.expectedCloseDate!),
-                style: AppTextStyles.caption.copyWith(
-                  color: _dueSoon ? AppColors.error : AppColors.textSecondary,
+            Expanded(
+              child: Text(
+                CurrencyFormatter.formatINR(deal.value),
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ] else
-              Text(
-                'No close date',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textMuted,
-                ),
-              ),
-            const Spacer(),
+            ),
+            _closeChip(),
+            const SizedBox(width: AppSpacing.sm),
             Tooltip(
               message: deal.ownerLabel,
-              child: InitialsAvatar(name: deal.ownerLabel, size: 26),
+              child: ClipOval(
+                child: InitialsAvatar(name: deal.ownerLabel, size: 24),
+              ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  /// Expected-close chip: red when due within 10 days or overdue.
+  Widget _closeChip() {
+    final days = _daysLeft;
+    final String label;
+    if (days == null) {
+      label = 'No date';
+    } else if (days < 0) {
+      label = 'Overdue';
+    } else if (days == 0) {
+      label = 'Today';
+    } else if (_dueSoon) {
+      label = '${days}d left';
+    } else {
+      label = DateFormatter.shortDate(deal.expectedCloseDate!);
+    }
+    final fg = _dueSoon ? AppColors.error : AppColors.textSecondary;
+    return Tooltip(
+      message: deal.expectedCloseDate == null
+          ? 'No expected close date'
+          : 'Expected close ${DateFormatter.displayDate(deal.expectedCloseDate!)}',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: _dueSoon ? AppColors.errorLight : AppColors.borderLight,
+          borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule, size: 12, color: fg),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTextStyles.badge.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -534,6 +585,9 @@ class _DealCardState extends State<_DealCard> {
         iconSize: 18,
         tooltip: 'Options',
         icon: Icon(Icons.more_horiz, color: AppColors.textMuted),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
         onSelected: (v) {
           if (v == 'view') _openDetail();
           if (v == 'edit') _edit();

@@ -45,21 +45,25 @@ class AppTheme {
           fontSize: 32,
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
+          letterSpacing: -0.6,
         ),
         displayMedium: GoogleFonts.inter(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
+          letterSpacing: -0.5,
         ),
         headlineLarge: GoogleFonts.inter(
           fontSize: 24,
           fontWeight: FontWeight.w700,
           color: p.textPrimary,
+          letterSpacing: -0.4,
         ),
         headlineMedium: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: p.textPrimary,
+          letterSpacing: -0.2,
         ),
         titleLarge: GoogleFonts.inter(
           fontSize: 18,
@@ -130,8 +134,10 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
+        // Primary CTAs are near-black ink in light mode (blue in dark) — see
+        // [AppPalette.primaryButton]. Blue stays the accent: links, tabs, nav.
         style: ElevatedButton.styleFrom(
-          backgroundColor: p.primary,
+          backgroundColor: p.primaryButton,
           foregroundColor: p.textOnPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(
@@ -335,6 +341,9 @@ class AppTheme {
           color: isDark ? p.textPrimary : p.surface,
         ),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: p.surface,

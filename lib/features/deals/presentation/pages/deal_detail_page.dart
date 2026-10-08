@@ -90,21 +90,32 @@ class _DealDetailView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(context, state),
-          Material(
-            color: AppColors.cardBackground,
-            child: TabBar(
-              isScrollable: true,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              indicatorWeight: 3,
-              tabAlignment: TabAlignment.start,
-              tabs: [
-                Tab(text: 'Deal Info'),
-                Tab(text: 'Contacts'),
-                Tab(text: 'Documents'),
-                Tab(text: 'Activity'),
-              ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: TabBar(
+                isScrollable: true,
+                labelColor: AppColors.textPrimary,
+                unselectedLabelColor: AppColors.textSecondary,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 2,
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  _iconTab(Icons.receipt_long_outlined, 'Deal Info'),
+                  _iconTab(
+                    Icons.contacts_outlined,
+                    'Contacts',
+                    count: deal.contacts.length,
+                  ),
+                  _iconTab(Icons.folder_outlined, 'Documents'),
+                  _iconTab(Icons.history, 'Activity'),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -122,262 +133,261 @@ class _DealDetailView extends StatelessWidget {
     );
   }
 
+  static Tab _iconTab(IconData icon, String label, {int? count}) {
+    return Tab(
+      height: 44,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(label),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.borderLight,
+                borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
+              ),
+              child: Text(
+                '$count',
+                style: AppTextStyles.badge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, DealDetailLoaded state) {
     final deal = state.deal;
     final stages = state.stages;
-    final currentSort = stages
-        .where((s) => s.id == deal.stageId)
-        .map((s) => s.sortOrder)
-        .fold<int?>(null, (_, v) => v);
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xxl),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+    final canManage = context.can(Perms.dealsManage);
+    final currentIndex = stages.indexWhere((s) => s.id == deal.stageId);
+
+    final breadcrumb = Row(
+      children: [
+        InkWell(
+          onTap: () => context.go('/deals'),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Back to Deals',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Text(
+          '  /  ',
+          style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
+        ),
+        Flexible(
+          child: Text(
+            deal.accountName,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          '  •  ${deal.stageLabel}',
+          style: AppTextStyles.labelLarge.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const Spacer(),
+        if (!context.isMobile)
+          Text(
+            'DL-${deal.id}  •  Created ${DateFormatter.displayDate(deal.createdAt)}',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+      ],
+    );
+
+    final actions = Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _exportButton(deal),
+        if (canManage) ...[
+          ElevatedButton.icon(
+            onPressed: () => _openEditDealDialog(context, deal),
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            label: const Text('Edit Deal'),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            ),
+            child: SizedBox(
+              height: AppSpacing.buttonHeight - 2,
+              width: AppSpacing.buttonHeight - 2,
+              child: _deleteMenuButton(context, deal),
+            ),
+          ),
+        ],
+      ],
+    );
+
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
+          children: [
+            StatusBadge.dealStage(deal.stageLabel),
+            if (deal.tier.isNotEmpty) StatusBadge.tier(deal.tier),
+            if (deal.priority != null) StatusBadge.priority(deal.priority!),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(deal.name, style: AppTextStyles.h1),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.xl,
+          runSpacing: AppSpacing.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('VALUE', style: AppTextStyles.tableHeader),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  CurrencyFormatter.formatINR(deal.value),
+                  style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Owner: ', style: AppTextStyles.bodySmall),
+                OwnerChip(name: deal.ownerLabel),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final close = deal.expectedCloseDate;
+    final stats = Wrap(
+      spacing: AppSpacing.huge,
+      runSpacing: AppSpacing.lg,
+      children: [
+        MetaStat(
+          label: 'Score',
+          value: Text(
+            deal.totalScore == null ? 'Not scored' : '${deal.totalScore}',
+            style: TextStyle(
+              color: deal.totalScore == null ? AppColors.error : null,
+            ),
+          ),
+        ),
+        MetaStat(label: 'Priority', value: Text(deal.priority ?? '—')),
+        MetaStat(
+          label: 'Expected close',
+          value: Text(close == null ? '—' : DateFormatter.displayDate(close)),
+        ),
+        MetaStat(
+          label: 'Proposal sent',
+          value: Text(
+            deal.proposalStatus == 'proposal_sent'
+                ? (deal.proposalSentAt == null
+                      ? 'Sent'
+                      : DateFormatter.displayDate(deal.proposalSentAt!))
+                : 'Not sent',
+          ),
+        ),
+        MetaStat(
+          label: 'Proposal SLA',
+          value: Text(deal.proposalSla ?? 'Not set'),
+        ),
+        MetaStat(
+          label: 'Next follow-up',
+          value: Text(
+            deal.followUpDate == null
+                ? 'Not set'
+                : DateFormatter.displayDate(deal.followUpDate!),
+          ),
+        ),
+      ],
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          context.isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => context.go('/deals'),
-                          icon: const Icon(Icons.arrow_back),
-                        ),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  deal.accountName,
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.primary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              // Text('•', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted)),
-                              // const SizedBox(width: AppSpacing.sm),
-                              // Container(
-                              //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              //   decoration: BoxDecoration(
-                              //     color: AppColors.primaryLight,
-                              //     borderRadius: BorderRadius.circular(4),
-                              //   ),
-                              //   child: Text(deal.stageName, style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
-                              // ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(deal.name, style: AppTextStyles.h1),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      CurrencyFormatter.formatINR(deal.value),
-                      style: AppTextStyles.h2,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Owner: ${deal.ownerLabel}',
-                      style: AppTextStyles.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        _exportButton(deal),
-                        if (context.can(Perms.dealsManage)) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          ElevatedButton.icon(
-                            onPressed: () => _openEditDealDialog(context, deal),
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: const Text('Edit Deal'),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          _deleteMenuButton(context, deal),
-                        ],
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      onPressed: () => context.go('/deals'),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
+          breadcrumb,
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            decoration: appCardDecoration(radius: AppSpacing.cardRadiusLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                context.isMobile
+                    ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  deal.accountName,
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.primary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                '•',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  deal.stageLabel,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                              if (deal.priority != null) ...[
-                                const SizedBox(width: AppSpacing.sm),
-                                StatusBadge.priority(deal.priority!),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(deal.name, style: AppTextStyles.h1),
+                          titleBlock,
+                          const SizedBox(height: AppSpacing.lg),
+                          actions,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: titleBlock),
+                          const SizedBox(width: AppSpacing.lg),
+                          actions,
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          CurrencyFormatter.formatINR(deal.value),
-                          style: AppTextStyles.h2,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Owner: ${deal.ownerLabel}',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _exportButton(deal),
-                            if (context.can(Perms.dealsManage)) ...[
-                              const SizedBox(width: AppSpacing.sm),
-                              ElevatedButton.icon(
-                                onPressed: () =>
-                                    _openEditDealDialog(context, deal),
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Edit Deal'),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              _deleteMenuButton(context, deal),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-          const SizedBox(height: AppSpacing.xl),
-          // Stage progress stepper — a connected node-track built from the
-          // dynamic pipeline stages: completed stages show a filled check
-          // node, the current stage an emphasized ring, upcoming stages a
-          // hollow node.
-          if (stages.isNotEmpty)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(stages.length, (i) {
-                final s = stages[i];
-                final isCurrent = s.id == deal.stageId;
-                final isCompleted =
-                    currentSort != null && s.sortOrder < currentSort;
-                // The track is filled up to and including the current node.
-                final leftColor = (isCompleted || isCurrent)
-                    ? AppColors.primary
-                    : AppColors.border;
-                final rightColor = isCompleted
-                    ? AppColors.primary
-                    : AppColors.border;
-                return Expanded(
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 30,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: i == 0
-                                      ? Colors.transparent
-                                      : leftColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                            _StepNode(
-                              index: i,
-                              isCompleted: isCompleted,
-                              isCurrent: isCurrent,
-                            ),
-                            Expanded(
-                              child: Container(
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: i == stages.length - 1
-                                      ? Colors.transparent
-                                      : rightColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        s.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: isCurrent
-                              ? AppColors.primary
-                              : (isCompleted
-                                    ? AppColors.textPrimary
-                                    : AppColors.textMuted),
-                          fontWeight: isCurrent
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
+                if (stages.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  SegmentedStageBar(
+                    stages: stages.map((s) => s.name).toList(),
+                    currentIndex: currentIndex,
                   ),
-                );
-              }),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                stats,
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -460,25 +470,24 @@ class _DealDetailView extends StatelessWidget {
     }
     final info = SectionCard(
       title: 'Deal Information',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _infoRow('Account', deal.accountName),
-          _infoRow('Stage', deal.stageLabel),
-          _infoRow('Value', CurrencyFormatter.formatINR(deal.value)),
-          _infoRowWidget(
+      child: InfoGrid(
+        items: [
+          _kv('Account', deal.accountName),
+          _kv('Stage', deal.stageLabel),
+          _kv('Value', CurrencyFormatter.formatINR(deal.value)),
+          (
             'Tier',
             deal.tier.isNotEmpty
                 ? TierBadge(tier: deal.tier)
                 : Text('—', style: AppTextStyles.bodyMedium),
           ),
-          _infoRow('Owner', deal.ownerLabel),
-          _infoRow('Contacts', deal.contacts.isEmpty ? '—' : deal.contactNames),
+          _kv('Owner', deal.ownerLabel),
+          _kv('Contacts', deal.contacts.isEmpty ? '—' : deal.contactNames),
           if (deal.coldReason != null && deal.coldReason!.isNotEmpty)
-            _infoRow('Cold Reason', deal.coldReason!),
+            _kv('Cold Reason', deal.coldReason!),
           // "Description" and "Payment Status" rows were removed — neither
           // exists on the Deal API, so both always rendered placeholders.
-          _infoRowWidget(
+          (
             'Expected Close',
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,28 +507,28 @@ class _DealDetailView extends StatelessWidget {
             ),
           ),
           // D1–D8 scoring, computed server-side; '—' when unscored.
-          _infoRowWidget(
+          (
             'Priority',
             deal.priority == null
                 ? Text('—', style: AppTextStyles.bodyMedium)
                 : StatusBadge.priority(deal.priority!),
           ),
-          _infoRow('Total Score', deal.totalScore?.toString() ?? '—'),
-          _infoRow('Response Mode', deal.responseMode ?? '—'),
-          _infoRow('Proposal SLA', deal.proposalSla ?? '—'),
-          _infoRow(
+          _kv('Total Score', deal.totalScore?.toString() ?? '—'),
+          _kv('Response Mode', deal.responseMode ?? '—'),
+          _kv('Proposal SLA', deal.proposalSla ?? '—'),
+          _kv(
             'Proposal SLA Due',
             deal.proposalSlaDueAt == null
                 ? '—'
                 : DateFormatter.dateTime(deal.proposalSlaDueAt!),
           ),
-          _infoRow(
+          _kv(
             'Proposal Status',
             deal.proposalStatus == 'proposal_sent'
                 ? 'Proposal Sent${deal.proposalSentAt == null ? '' : ' on ${DateFormatter.displayDate(deal.proposalSentAt!)}'}'
                 : 'Not Sent',
           ),
-          _infoRowWidget(
+          (
             'Originator',
             deal.originator == null
                 ? Text('—', style: AppTextStyles.bodyMedium)
@@ -536,7 +545,7 @@ class _DealDetailView extends StatelessWidget {
                   ),
           ),
           // The one field editable straight from this card.
-          _infoRowWidget(
+          (
             'Follow-up',
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -769,88 +778,7 @@ class _DealDetailView extends StatelessWidget {
     });
   }
 
-  Widget _infoRow(String label, String value) {
-    return _infoRowWidget(label, Text(value, style: AppTextStyles.bodyMedium));
-  }
-
-  Widget _infoRowWidget(String label, Widget value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: AppTextStyles.labelMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Align(alignment: Alignment.centerLeft, child: value),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A single stage node in the deal progress stepper.
-/// - completed → filled primary circle with a white check
-/// - current   → filled primary circle with a soft outer ring
-/// - upcoming  → hollow circle with the (1-based) stage number
-class _StepNode extends StatelessWidget {
-  const _StepNode({
-    required this.index,
-    required this.isCompleted,
-    required this.isCurrent,
-  });
-  final int index;
-  final bool isCompleted;
-  final bool isCurrent;
-
-  @override
-  Widget build(BuildContext context) {
-    final node = Container(
-      width: 26,
-      height: 26,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: (isCompleted || isCurrent)
-            ? AppColors.primary
-            : AppColors.cardBackground,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: (isCompleted || isCurrent)
-              ? AppColors.primary
-              : AppColors.border,
-          width: 2,
-        ),
-      ),
-      child: isCompleted
-          ? const Icon(Icons.check, size: 15, color: Colors.white)
-          : Text(
-              '${index + 1}',
-              style: AppTextStyles.caption.copyWith(
-                color: isCurrent ? Colors.white : AppColors.textMuted,
-                fontWeight: FontWeight.w700,
-                height: 1,
-              ),
-            ),
-    );
-    if (!isCurrent) return node;
-    // The current stage gets a soft ring to stand out on the track.
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        shape: BoxShape.circle,
-      ),
-      child: node,
-    );
-  }
+  (String, Widget) _kv(String label, String value) => (label, Text(value));
 }
 
 const Map<String, IconData> _activityIcons = {

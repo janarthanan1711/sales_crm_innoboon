@@ -34,8 +34,8 @@ class ErrorInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode;
         final responseData = err.response?.data;
-        final message = _extractErrorMessage(responseData) ??
-            'Server error occurred';
+        final message =
+            _extractErrorMessage(responseData) ?? 'Server error occurred';
 
         if (statusCode == 401) {
           handler.next(
@@ -64,10 +64,7 @@ class ErrorInterceptor extends Interceptor {
         handler.next(
           DioException(
             requestOptions: err.requestOptions,
-            error: ServerException(
-              message: message,
-              statusCode: statusCode,
-            ),
+            error: ServerException(message: message, statusCode: statusCode),
             type: err.type,
             response: err.response,
           ),

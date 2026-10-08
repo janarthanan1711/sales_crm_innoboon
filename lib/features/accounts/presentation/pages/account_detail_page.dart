@@ -117,197 +117,43 @@ class _AccountDetailViewState extends State<_AccountDetailView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Header Card ──────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Builder(
-                builder: (context) {
-                  final identity = Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => context.go('/accounts'),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      InitialsAvatar(name: account.companyName, size: 48),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    account.companyName,
-                                    style: AppTextStyles.h1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.md),
-                                TierBadge(tier: account.tier),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                if (account.domain != null &&
-                                    account.domain!.isNotEmpty) ...[
-                                  Flexible(
-                                    child: Text(
-                                      account.domain!,
-                                      style: AppTextStyles.bodySmall.copyWith(
-                                        color: AppColors.primary,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.md),
-                                ],
-                                Icon(
-                                  Icons.person_outline,
-                                  size: 14,
-                                  color: AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    account.primaryOwner,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-
-                  // "New Contact" only makes sense from the Overview / Contacts
-                  // tabs (index 0 / 1).
-                  final showAddContact = _tabController.index <= 1;
-                  final actions = [
-                    RecordExportButton(
-                      fileName: 'account_${account.id}.xlsx',
-                      successMessage: 'Account exported.',
-                      fetch: () => sl<ExportAccountDetailUseCase>()(account.id),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _showEditAccountDialog(context, account),
-                      icon: const Icon(Icons.edit, size: 16),
-                      label: const Text('Edit Account'),
-                    ),
-                    if (showAddContact)
-                      OutlinedButton.icon(
-                        onPressed: () => _tabController.animateTo(1),
-                        icon: const Icon(Icons.person_add_alt_1, size: 16),
-                        label: const Text('New Contact'),
-                      ),
-                    ElevatedButton.icon(
-                      onPressed: () => _openNewDeal(context, account),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('New Deal'),
-                    ),
-                    PopupMenuButton<String>(
-                      tooltip: 'More actions',
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          _confirmDeleteAccount(context, account);
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline,
-                                size: 18,
-                                color: AppColors.error,
-                              ),
-                              SizedBox(width: AppSpacing.sm),
-                              Text(
-                                'Delete Account',
-                                style: TextStyle(color: AppColors.error),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ];
-
-                  // On phones the three action buttons won't fit beside the
-                  // title — stack them into a Wrap underneath instead.
-                  if (context.isMobile) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        identity,
-                        const SizedBox(height: AppSpacing.md),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
-                          children: actions,
-                        ),
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(child: identity),
-                      const SizedBox(width: AppSpacing.md),
-                      ...[
-                        for (int i = 0; i < actions.length; i++) ...[
-                          if (i > 0) const SizedBox(width: AppSpacing.sm),
-                          actions[i],
-                        ],
-                      ],
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _HeaderStats(state: state),
-            ],
-          ),
-        ),
+        _buildHeader(context, state),
 
         // ── Tabs ─────────────────────────────────────────────
-        TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: AppTextStyles.labelLarge,
-          tabs: [
-            const Tab(text: 'Overview'),
-            Tab(
-              text:
-                  'Contacts${_countSuffix(account.contactCount, state.contacts.length)}',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
-            Tab(
-              text:
-                  'Deals${_countSuffix(account.dealCount, state.deals.length)}',
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              labelColor: AppColors.textPrimary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 2,
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                _iconTab(Icons.dashboard_outlined, 'Overview'),
+                _iconTab(
+                  Icons.contacts_outlined,
+                  'Contacts',
+                  count: _count(account.contactCount, state.contacts.length),
+                ),
+                _iconTab(
+                  Icons.monetization_on_outlined,
+                  'Deals',
+                  count: _count(account.dealCount, state.deals.length),
+                ),
+                _iconTab(Icons.folder_outlined, 'Documents'),
+                _iconTab(Icons.travel_explore_outlined, 'Source Detail'),
+                _iconTab(Icons.history, 'Activity Log'),
+              ],
             ),
-            const Tab(text: 'Documents'),
-            const Tab(text: 'Source Detail'),
-            const Tab(text: 'Activity Log'),
-          ],
+          ),
         ),
 
         // ── Tab Content ──────────────────────────────────────
@@ -328,12 +174,335 @@ class _AccountDetailViewState extends State<_AccountDetailView>
     );
   }
 
-  /// A " (N)" badge for a tab label. Prefers the loaded list length (what's
-  /// actually rendered); falls back to the account's server-reported count
-  /// before the list resolves. Empty string when there's nothing to show.
-  String _countSuffix(int accountCount, int loadedLength) {
-    final n = loadedLength > 0 ? loadedLength : accountCount;
-    return n > 0 ? ' ($n)' : '';
+  /// Tab badge count. Prefers the loaded list length (what's actually
+  /// rendered); falls back to the account's server-reported count before the
+  /// list resolves.
+  int _count(int accountCount, int loadedLength) =>
+      loadedLength > 0 ? loadedLength : accountCount;
+
+  static Tab _iconTab(IconData icon, String label, {int? count}) {
+    return Tab(
+      height: 44,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(label),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.borderLight,
+                borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
+              ),
+              child: Text(
+                '$count',
+                style: AppTextStyles.badge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, AccountDetailLoaded state) {
+    final account = state.account;
+    final isMobile = context.isMobile;
+    final hasDomain = account.domain != null && account.domain!.isNotEmpty;
+    final location = [
+      account.city,
+      account.country,
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
+
+    final breadcrumb = Row(
+      children: [
+        InkWell(
+          onTap: () => context.go('/accounts'),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Back to Accounts',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Text(
+          '  /  ',
+          style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
+        ),
+        Flexible(
+          child: Text(
+            account.companyName,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const Spacer(),
+        if (!isMobile)
+          Text(
+            'Account #${account.id}',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+      ],
+    );
+
+    // "New Contact" only makes sense from the Overview / Contacts tabs
+    // (index 0 / 1).
+    final showAddContact = _tabController.index <= 1;
+    final actions = Wrap(
+      alignment: WrapAlignment.end,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        RecordExportButton(
+          fileName: 'account_${account.id}.xlsx',
+          successMessage: 'Account exported.',
+          fetch: () => sl<ExportAccountDetailUseCase>()(account.id),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => _showEditAccountDialog(context, account),
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit Account'),
+        ),
+        if (showAddContact)
+          OutlinedButton.icon(
+            onPressed: () => _tabController.animateTo(1),
+            icon: const Icon(Icons.person_add_alt_1, size: 16),
+            label: const Text('New Contact'),
+          ),
+        ElevatedButton.icon(
+          onPressed: () => _openNewDeal(context, account),
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('New Deal'),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          ),
+          child: SizedBox(
+            height: AppSpacing.buttonHeight - 2,
+            width: AppSpacing.buttonHeight - 2,
+            child: PopupMenuButton<String>(
+              tooltip: 'More actions',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _confirmDeleteAccount(context, account);
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: AppColors.error,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Delete Account',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
+    Widget keyItem(IconData icon, Widget child) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Flexible(child: child),
+      ],
+    );
+
+    final titleBlock = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InitialsAvatar(name: account.companyName, size: isMobile ? 44 : 56),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  if (account.tier.trim().isNotEmpty)
+                    StatusBadge.tier(account.tier),
+                  if (account.industry != null && account.industry!.isNotEmpty)
+                    StatusBadge(
+                      label: account.industry!,
+                      backgroundColor: AppColors.primaryLight,
+                      textColor: AppColors.primary,
+                    ),
+                  if (account.engagementTypeLabel != null &&
+                      account.engagementTypeLabel!.isNotEmpty)
+                    StatusBadge(
+                      label: account.engagementTypeLabel!,
+                      backgroundColor: AppColors.tierSilverBg,
+                      textColor: AppColors.textSecondary,
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(account.companyName, style: AppTextStyles.h1),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.xl,
+                runSpacing: AppSpacing.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (hasDomain)
+                    keyItem(
+                      Icons.language,
+                      Text(
+                        account.domain!,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (location.isNotEmpty)
+                    keyItem(
+                      Icons.location_on_outlined,
+                      Text(
+                        location,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Owner: ', style: AppTextStyles.bodySmall),
+                      Flexible(child: OwnerChip(name: account.primaryOwner)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    // `last_activity`/`next_step` come back null from the API today, so they
+    // show a placeholder rather than a fake value.
+    const na = 'Not available yet';
+    final stats = Wrap(
+      spacing: AppSpacing.huge,
+      runSpacing: AppSpacing.lg,
+      children: [
+        MetaStat(
+          label: 'Open deal value',
+          value: Text(
+            CurrencyFormatter.formatINR(state.openDealValue),
+            style: AppTextStyles.h3.copyWith(color: AppColors.primary),
+          ),
+        ),
+        // Contacts / Deals counts are already on the tabs; skip them on
+        // phones to keep the fixed header short.
+        if (!isMobile) ...[
+          MetaStat(
+            label: 'Contacts',
+            value: Text(
+              '${_count(account.contactCount, state.contacts.length)}',
+            ),
+          ),
+          MetaStat(
+            label: 'Deals',
+            value: Text('${_count(account.dealCount, state.deals.length)}'),
+          ),
+        ],
+        MetaStat(label: 'Last activity', value: Text(state.lastActivity ?? na)),
+        MetaStat(label: 'Next step', value: Text(state.nextStep ?? na)),
+      ],
+    );
+
+    final pad = isMobile ? AppSpacing.lg : AppSpacing.xxl;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          breadcrumb,
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: EdgeInsets.all(pad),
+            decoration: appCardDecoration(radius: AppSpacing.cardRadiusLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                isMobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          titleBlock,
+                          const SizedBox(height: AppSpacing.lg),
+                          actions,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: titleBlock),
+                          const SizedBox(width: AppSpacing.lg),
+                          Flexible(child: actions),
+                        ],
+                      ),
+                const SizedBox(height: AppSpacing.xl),
+                Divider(height: 1, color: AppColors.borderLight),
+                const SizedBox(height: AppSpacing.lg),
+                stats,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openNewDeal(BuildContext context, Account account) async {
@@ -565,7 +734,7 @@ class _OverviewTab extends StatelessWidget {
   List<Contact> get contacts => state.contacts;
   List<Deal> get deals => state.deals;
 
-  String _money(double v) => '₹ ${v.toStringAsFixed(0)}';
+  String _money(double v) => CurrencyFormatter.formatINR(v);
 
   @override
   Widget build(BuildContext context) {
@@ -578,70 +747,29 @@ class _OverviewTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _labeled(
-                      'Domain',
-                      (account.domain != null && account.domain!.isNotEmpty)
-                          ? LinkText(
-                              text: account.domain!,
-                              url: account.domain,
-                              maxLines: 1,
-                            )
-                          : Text('Not set', style: AppTextStyles.bodyMedium),
-                    ),
+              InfoGrid(
+                items: [
+                  (
+                    'Domain',
+                    (account.domain != null && account.domain!.isNotEmpty)
+                        ? LinkText(
+                            text: account.domain!,
+                            url: account.domain,
+                            maxLines: 1,
+                          )
+                        : const Text('Not set'),
                   ),
-                  Expanded(
-                    child: _labeled(
-                      'Industry',
-                      Text(
-                        account.industry ?? 'Not set',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                    ),
+                  ('Industry', Text(account.industry ?? 'Not set')),
+                  (
+                    'Source',
+                    Text(leadSourceLabels[account.source] ?? 'Not set'),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _labeled(
-                      'Source',
-                      Text(
-                        leadSourceLabels[account.source] ?? 'Not set',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                    ),
+                  ('Country', Text(account.country ?? 'Not set')),
+                  (
+                    'Engagement Type',
+                    Text(account.engagementTypeLabel ?? 'Not set'),
                   ),
-                  Expanded(
-                    child: _labeled(
-                      'Country',
-                      Text(
-                        account.country ?? 'Not set',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _labeled(
-                      'Engagement Type',
-                      Text(
-                        account.engagementTypeLabel ?? 'Not set',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                    ),
-                  ),
-                  const Expanded(child: SizedBox.shrink()),
+                  ('City', Text(account.city ?? 'Not set')),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -1296,48 +1424,6 @@ class _PrimaryBadge extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
-}
-
-/// The Open Deal Value / Last Activity / Next Step strip under the account
-/// header. `last_activity`/`next_step` come back null from the API today, so
-/// they show a placeholder rather than a fake value.
-class _HeaderStats extends StatelessWidget {
-  const _HeaderStats({required this.state});
-  final AccountDetailLoaded state;
-
-  @override
-  Widget build(BuildContext context) {
-    const na = 'Not available yet';
-    return Wrap(
-      spacing: AppSpacing.xxl,
-      runSpacing: AppSpacing.md,
-      children: [
-        _stat(
-          'Open Deal Value',
-          '₹ ${state.openDealValue.toStringAsFixed(0)}',
-          highlight: true,
-        ),
-        _stat('Last Activity', state.lastActivity ?? na),
-        _stat('Next Step', state.nextStep ?? na),
-      ],
-    );
-  }
-
-  Widget _stat(String label, String value, {bool highlight = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: AppTextStyles.overline),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: highlight
-              ? AppTextStyles.h3.copyWith(color: AppColors.primary)
-              : AppTextStyles.bodyMedium,
-        ),
-      ],
     );
   }
 }

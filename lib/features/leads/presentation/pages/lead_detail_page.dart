@@ -115,21 +115,22 @@ class _LeadDetailViewState extends State<_LeadDetailView>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
+          width: double.infinity,
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
           child: TabBar(
             controller: _tabController,
             isScrollable: true,
-            labelColor: AppColors.primary,
+            labelColor: AppColors.textPrimary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
-            indicatorWeight: 3,
-            labelStyle: AppTextStyles.labelLarge,
+            indicatorWeight: 2,
+            indicatorSize: TabBarIndicatorSize.tab,
             tabAlignment: TabAlignment.start,
-            tabs: const [
-              Tab(text: 'Overview'),
-              Tab(text: 'Activity'),
+            tabs: [
+              _iconTab(Icons.dashboard_outlined, 'Overview'),
+              _iconTab(Icons.history, 'Activity', count: _activityCount(lead)),
             ],
           ),
         ),
@@ -171,7 +172,68 @@ class _LeadDetailViewState extends State<_LeadDetailView>
       ),
     );
   }
+
+  static Tab _iconTab(IconData icon, String label, {int? count}) {
+    return Tab(
+      height: 44,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(label),
+          if (count != null && count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.borderLight,
+                borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
+              ),
+              child: Text(
+                '$count',
+                style: AppTextStyles.badge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
+
+int _activityCount(Lead lead) =>
+    lead.activityCount ?? (lead.activities?.length ?? 0);
+
+DateTime? _mostRecentActivity(Lead lead) {
+  final activities = lead.activities;
+  if (activities == null || activities.isEmpty) return null;
+  return activities
+      .map((a) => a.createdAt)
+      .reduce((a, b) => a.isAfter(b) ? a : b);
+}
+
+/// Human duration that stays consistent with "Created … ago": shows hours
+/// (and minutes) for young leads rather than rounding down to "0 days".
+String _formatDuration(Duration d) {
+  if (d.inDays >= 1) {
+    final days = d.inDays;
+    return '$days day${days == 1 ? '' : 's'}';
+  }
+  if (d.inHours >= 1) {
+    final hours = d.inHours;
+    return '$hours hour${hours == 1 ? '' : 's'}';
+  }
+  final mins = d.inMinutes < 1 ? 1 : d.inMinutes;
+  return '$mins minute${mins == 1 ? '' : 's'}';
+}
+
+/// "3 days" since the lead was created, or null when the API omitted it.
+String? _inSystemLabel(Lead lead) => lead.createdAt == null
+    ? null
+    : _formatDuration(DateTime.now().difference(lead.createdAt!));
 
 /// Switches between Overview/Activity content based on the shared
 /// [tabController] — the Contact Information / Related Records side panels
@@ -208,218 +270,273 @@ class _Header extends StatelessWidget {
     ].where((s) => s != null && s.isNotEmpty).join(' ');
     final displayName = contactName.isEmpty ? lead.company : contactName;
     final canManage = context.can(Perms.leadsManage);
+    final statusLabel = labelForWireValue(leadStatusLabels, lead.status);
+    final mutedLabel = AppTextStyles.labelLarge.copyWith(
+      color: AppColors.textSecondary,
+    );
 
-    final identity = Row(
+    final breadcrumb = Row(
+      children: [
+        InkWell(
+          onTap: () => context.go('/leads'),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text('Back to Leads', style: mutedLabel),
+              ],
+            ),
+          ),
+        ),
+        Text(
+          '  /  ',
+          style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
+        ),
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: lead.company,
+                  style: AppTextStyles.labelLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextSpan(text: '  •  $statusLabel', style: mutedLabel),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const Spacer(),
+        if (!context.isMobile)
+          Text(
+            [
+              'LD-${lead.id}',
+              if (lead.createdAt != null)
+                'Created ${DateFormatter.displayDate(lead.createdAt!)}',
+            ].join('  •  '),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+      ],
+    );
+
+    final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: () => context.go('/leads'),
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to leads',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
+          children: [
+            StatusBadge.leadStatus(statusLabel),
+            // Mark converted leads so it's clear this prospect is now an
+            // account.
+            if (lead.isConverted)
+              StatusBadge(
+                label: 'Account',
+                backgroundColor: AppColors.successLight,
+                textColor: AppColors.success,
+              ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        InitialsAvatar(name: displayName, size: 48),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            InitialsAvatar(name: displayName, size: 48),
+            const SizedBox(width: AppSpacing.md),
+            Flexible(
+              child: Text(
+                displayName,
+                style: context.isMobile ? AppTextStyles.h2 : AppTextStyles.h1,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            IconButton(
+              onPressed: () => context.read<LeadDetailBloc>().add(
+                LeadDetailFavouriteToggled(lead.id, !lead.isFavourite),
+              ),
+              icon: Icon(
+                lead.isFavourite ? Icons.star : Icons.star_border,
+                size: 20,
+                color: lead.isFavourite
+                    ? AppColors.warning
+                    : AppColors.textMuted,
+              ),
+              tooltip: lead.isFavourite
+                  ? 'Remove from favourites'
+                  : 'Mark as favourite',
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.xl,
+          runSpacing: AppSpacing.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              '${lead.jobTitle ?? ''}${lead.jobTitle != null ? ' at ' : ''}${lead.company}',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Owner: ', style: AppTextStyles.bodySmall),
+                OwnerChip(name: lead.ownerName),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    // Export is read-only, so it sits outside the `canManage` actions —
+    // view-only users can download the record too. Edit / Convert / Delete
+    // require `leads.access` (manage); Delete lives in the overflow menu.
+    final actions = Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        RecordExportButton(
+          tooltip: 'Export this lead to Excel',
+          fileName: 'lead_${lead.id}.xlsx',
+          successMessage: 'Lead exported.',
+          fetch: () => sl<ExportLeadDetailUseCase>()(lead.id),
+        ),
+        if (canManage) ...[
+          OutlinedButton.icon(
+            onPressed: () => _editLead(context, lead),
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            label: const Text('Edit'),
+          ),
+          if (!lead.isConverted)
+            ElevatedButton.icon(
+              onPressed: () => _showConvertDialog(context, lead),
+              icon: const Icon(Icons.swap_horiz, size: 16),
+              label: const Text('Convert to Account'),
+            ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+            ),
+            child: SizedBox(
+              height: AppSpacing.buttonHeight - 2,
+              width: AppSpacing.buttonHeight - 2,
+              child: PopupMenuButton<String>(
+                tooltip: 'More actions',
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  if (value == 'delete') _confirmDelete(context, lead.id);
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
+                        SizedBox(width: AppSpacing.sm),
+                        Text(
+                          'Delete',
+                          style: TextStyle(color: AppColors.error),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+
+    final lastActivity = _mostRecentActivity(lead);
+    final followUp = lead.nextFollowUpDate;
+    final stats = Wrap(
+      spacing: AppSpacing.huge,
+      runSpacing: AppSpacing.lg,
+      children: [
+        MetaStat(
+          label: 'Source',
+          value: Text(labelForWireValue(leadSourceLabels, lead.source)),
+        ),
+        MetaStat(
+          label: 'Next follow-up',
+          value: Text(
+            followUp == null ? 'Not set' : DateFormatter.displayDate(followUp),
+          ),
+        ),
+        MetaStat(label: 'Activities', value: Text('${_activityCount(lead)}')),
+        MetaStat(
+          label: 'Last contact',
+          value: Text(
+            lastActivity == null
+                ? 'Never'
+                : DateFormatter.relativeTime(lastActivity),
+          ),
+        ),
+        MetaStat(label: 'In system', value: Text(_inSystemLabel(lead) ?? '—')),
+        MetaStat(
+          label: 'Last updated',
+          value: Text(DateFormatter.displayDate(lead.updatedAt)),
+        ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        breadcrumb,
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(
+            context.isMobile ? AppSpacing.lg : AppSpacing.xxl,
+          ),
+          decoration: appCardDecoration(radius: AppSpacing.cardRadiusLarge),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.sm,
-                children: [
-                  Text(displayName, style: AppTextStyles.h2),
-                  IconButton(
-                    onPressed: () => context.read<LeadDetailBloc>().add(
-                      LeadDetailFavouriteToggled(lead.id, !lead.isFavourite),
+              context.isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleBlock,
+                        const SizedBox(height: AppSpacing.lg),
+                        actions,
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: titleBlock),
+                        const SizedBox(width: AppSpacing.lg),
+                        actions,
+                      ],
                     ),
-                    icon: Icon(
-                      lead.isFavourite ? Icons.star : Icons.star_border,
-                      size: 18,
-                      color: lead.isFavourite
-                          ? AppColors.warning
-                          : AppColors.textMuted,
-                    ),
-                    tooltip: lead.isFavourite
-                        ? 'Remove from favourites'
-                        : 'Mark as favourite',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  StatusBadge.leadStatus(
-                    labelForWireValue(leadStatusLabels, lead.status),
-                  ),
-                  // Mark converted leads so it's clear this prospect is now an
-                  // account.
-                  if (lead.isConverted)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.success.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.business,
-                            size: 13,
-                            color: AppColors.success,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Account',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.success,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${lead.jobTitle ?? ''}${lead.jobTitle != null ? ' at ' : ''}${lead.company}',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              const SizedBox(height: AppSpacing.xl),
+              stats,
             ],
           ),
-        ),
-      ],
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: context.isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                identity,
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.lg,
-                  runSpacing: AppSpacing.sm,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [_ownerMeta(), _exportAction()],
-                ),
-                if (canManage) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _actions(context),
-                ],
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: identity),
-                const SizedBox(width: AppSpacing.lg),
-                _ownerMeta(),
-                const SizedBox(width: AppSpacing.lg),
-                _exportAction(),
-                if (canManage) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  _actions(context),
-                ],
-              ],
-            ),
-    );
-  }
-
-  /// Export is read-only, so it sits outside the `canManage` actions —
-  /// view-only users can download the record too.
-  ///
-  /// The "Tier: —" meta that used to sit beside this was removed: a Lead has
-  /// no tier of its own (it's assigned at conversion), so it was always an
-  /// em-dash placeholder.
-  Widget _exportAction() {
-    return RecordExportButton(
-      tooltip: 'Export this lead to Excel',
-      fileName: 'lead_${lead.id}.xlsx',
-      successMessage: 'Lead exported.',
-      fetch: () => sl<ExportLeadDetailUseCase>()(lead.id),
-    );
-  }
-
-  Widget _ownerMeta() {
-    final owner = lead.ownerName ?? 'Unassigned';
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Owner: ',
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        if (lead.ownerName != null) ...[
-          InitialsAvatar(name: owner, size: 22),
-          const SizedBox(width: AppSpacing.xs),
-        ],
-        Text(owner, style: AppTextStyles.labelMedium),
-      ],
-    );
-  }
-
-  // Edit / Convert / Delete require `leads.access` (manage). View-only users
-  // (`leads.view_all`) don't see these actions. Delete lives in the overflow
-  // menu to match the mockup.
-  Widget _actions(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        OutlinedButton.icon(
-          onPressed: () => _editLead(context, lead),
-          icon: const Icon(Icons.edit, size: 16),
-          label: const Text('Edit'),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        if (!lead.isConverted)
-          ElevatedButton.icon(
-            onPressed: () => _showConvertDialog(context, lead),
-            icon: const Icon(Icons.swap_horiz, size: 16),
-            label: const Text('Convert to Account'),
-          ),
-        // Only Delete lives in the overflow — the "Edit Lead" item that used
-        // to be here duplicated the Edit button beside it.
-        PopupMenuButton<String>(
-          tooltip: 'More actions',
-          icon: const Icon(Icons.more_vert),
-          onSelected: (value) {
-            if (value == 'delete') _confirmDelete(context, lead.id);
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Delete', style: TextStyle(color: AppColors.error)),
-                ],
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -572,89 +689,58 @@ class _ContactInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Contact Information',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label('Primary Email'),
-          _linkText(lead.email),
-          const SizedBox(height: AppSpacing.md),
-          _label('Phone'),
-          (lead.phone != null && lead.phone!.isNotEmpty)
-              ? LinkText(text: lead.phone!, phone: lead.phone)
-              : Text('Not provided', style: AppTextStyles.bodyMedium),
-          const Divider(height: AppSpacing.xl * 1.2),
-          if (lead.domain != null) ...[
-            Row(
-              children: [
-                Icon(Icons.language, size: 16, color: AppColors.textSecondary),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: LinkText(
-                    text: lead.domain!,
-                    url: lead.domain,
-                    maxLines: 1,
-                  ),
-                ),
-              ],
+      child: InfoGrid(
+        items: [
+          ('Primary Email', LinkText(text: lead.email, email: lead.email)),
+          (
+            'Phone',
+            (lead.phone != null && lead.phone!.isNotEmpty)
+                ? LinkText(text: lead.phone!, phone: lead.phone)
+                : const Text('Not provided'),
+          ),
+          if (lead.domain != null)
+            (
+              'Website',
+              LinkText(text: lead.domain!, url: lead.domain, maxLines: 1),
             ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
+          // Long profile URLs used to ellipsize into uselessness in this
+          // narrow side panel, so show a compact label (scheme/`www.`
+          // stripped, tail elided) and keep the full URL in a tooltip.
           if (lead.linkedinUrl != null)
-            Row(
-              children: [
-                Icon(Icons.link, size: 16, color: AppColors.textSecondary),
-                const SizedBox(width: AppSpacing.xs),
-                // Long profile URLs used to ellipsize into uselessness in this
-                // narrow side panel, so show a compact label (scheme/`www.`
-                // stripped, tail elided) and keep the full URL in a tooltip.
-                Expanded(
-                  child: Tooltip(
-                    message: lead.linkedinUrl!,
-                    child: LinkText(
-                      text: _shortLinkLabel(lead.linkedinUrl!),
-                      url: lead.linkedinUrl,
-                      maxLines: 1,
-                    ),
-                  ),
+            (
+              'LinkedIn',
+              Tooltip(
+                message: lead.linkedinUrl!,
+                child: LinkText(
+                  text: _shortLinkLabel(lead.linkedinUrl!),
+                  url: lead.linkedinUrl,
+                  maxLines: 1,
                 ),
-              ],
-            ),
-          const Divider(height: AppSpacing.xl * 1.2),
-          _label('Source'),
-          const SizedBox(height: AppSpacing.xs),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                labelForWireValue(leadSourceLabels, lead.source),
-                style: AppTextStyles.caption,
+            ),
+          (
+            'Source',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: StatusBadge(
+                label: labelForWireValue(leadSourceLabels, lead.source),
+                backgroundColor: AppColors.primaryLight,
+                textColor: AppColors.primary,
               ),
             ),
           ),
-          const Divider(height: AppSpacing.xl * 1.2),
-          _label('Created'),
-          Text(
-            lead.createdAt != null
-                ? '${DateFormatter.relativeTime(lead.createdAt!)} by ${lead.ownerName ?? 'Unassigned'}'
-                : 'Unknown',
-            style: AppTextStyles.bodyMedium,
+          (
+            'Created',
+            Text(
+              lead.createdAt != null
+                  ? '${DateFormatter.relativeTime(lead.createdAt!)} by ${lead.ownerName ?? 'Unassigned'}'
+                  : 'Unknown',
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _label(String text) => Text(
-    text,
-    style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
-  );
-
-  Widget _linkText(String text) => LinkText(text: text, email: text);
 }
 
 class _RelatedRecordsCard extends StatelessWidget {
@@ -775,17 +861,13 @@ class _OverviewCenter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lead = state.lead;
-    final activityCount = lead.activityCount ?? (lead.activities?.length ?? 0);
-    final lastActivity = _mostRecentActivity(lead);
-    final inSystem = lead.createdAt != null
-        ? DateTime.now().difference(lead.createdAt!)
-        : null;
-    final inSystemLabel = inSystem == null ? null : _formatDuration(inSystem);
+    final activityCount = _activityCount(lead);
+    final inSystemLabel = _inSystemLabel(lead);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!lead.isConverted && context.can(Perms.leadsManage))
+        if (!lead.isConverted && context.can(Perms.leadsManage)) ...[
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -796,7 +878,7 @@ class _OverviewCenter extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.lightbulb_outline, color: Colors.white),
+                Icon(Icons.lightbulb_outline, color: AppColors.onAccent),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -805,7 +887,7 @@ class _OverviewCenter extends StatelessWidget {
                       Text(
                         'Ready to convert?',
                         style: AppTextStyles.labelLarge.copyWith(
-                          color: Colors.white,
+                          color: AppColors.onAccent,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -814,7 +896,7 @@ class _OverviewCenter extends StatelessWidget {
                             ? 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'} over $inSystemLabel.'
                             : 'This lead has been contacted $activityCount time${activityCount == 1 ? '' : 's'}.',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: AppColors.onAccent.withValues(alpha: 0.85),
                         ),
                       ),
                     ],
@@ -825,24 +907,10 @@ class _OverviewCenter extends StatelessWidget {
               ],
             ),
           ),
-        const SizedBox(height: AppSpacing.xl),
-        Row(
-          children: [
-            Expanded(child: _statTile('$activityCount', 'Activities')),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: _statTile(
-                lastActivity != null
-                    ? DateFormatter.relativeTime(lastActivity)
-                    : 'Never',
-                'Last Contact',
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _statTile(inSystemLabel ?? '—', 'In System')),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.xl),
+        ],
+        // Activities / Last contact / In system now live in the header's
+        // MetaStat strip.
         SectionCard(
           // No trailing edit icon here — editing is done from the single Edit
           // button in the page header.
@@ -868,55 +936,6 @@ class _OverviewCenter extends StatelessWidget {
                 ),
         ),
       ],
-    );
-  }
-
-  DateTime? _mostRecentActivity(Lead lead) {
-    final activities = lead.activities;
-    if (activities == null || activities.isEmpty) return null;
-    return activities
-        .map((a) => a.createdAt)
-        .reduce((a, b) => a.isAfter(b) ? a : b);
-  }
-
-  /// Human duration that stays consistent with "Created … ago": shows hours
-  /// (and minutes) for young leads rather than rounding down to "0 days".
-  String _formatDuration(Duration d) {
-    if (d.inDays >= 1) {
-      final days = d.inDays;
-      return '$days day${days == 1 ? '' : 's'}';
-    }
-    if (d.inHours >= 1) {
-      final hours = d.inHours;
-      return '$hours hour${hours == 1 ? '' : 's'}';
-    }
-    final mins = d.inMinutes < 1 ? 1 : d.inMinutes;
-    return '$mins minute${mins == 1 ? '' : 's'}';
-  }
-
-  Widget _statTile(String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.lg,
-        horizontal: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: AppTextStyles.h2),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1037,11 +1056,7 @@ class _ActivityCenterState extends State<_ActivityCenter> {
         state.activityDateFrom != null && state.activityDateTo != null;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: appCardDecoration(),
       child: Wrap(
         spacing: AppSpacing.lg,
         runSpacing: AppSpacing.xs,
@@ -1127,11 +1142,7 @@ class _ActivityCenterState extends State<_ActivityCenter> {
         vertical: AppSpacing.xxl,
         horizontal: AppSpacing.lg,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: appCardDecoration(),
       child: Column(
         children: [
           Icon(Icons.assignment_outlined, size: 44, color: AppColors.textMuted),
@@ -1334,11 +1345,7 @@ class _ActivityRow extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: appCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

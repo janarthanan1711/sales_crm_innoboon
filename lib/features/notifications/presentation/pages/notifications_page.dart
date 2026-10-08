@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/widgets/shared_widgets.dart';
 import '../../../../app/router/route_paths.dart';
 import '../../domain/entities/app_notification.dart';
 import '../bloc/notification_bloc.dart';
@@ -78,23 +79,11 @@ class _NotificationsViewState extends State<_NotificationsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Notifications', style: AppTextStyles.h1),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Stay updated with your tasks and deals',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                TextButton.icon(
+            PageHeader(
+              title: 'Notifications',
+              subtitle: 'Stay updated with your tasks and deals',
+              actions: [
+                OutlinedButton.icon(
                   onPressed: () {
                     context.read<NotificationBloc>().add(
                       const NotificationMarkedAllRead(),
@@ -105,56 +94,64 @@ class _NotificationsViewState extends State<_NotificationsView> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
-            Builder(
-              builder: (context) {
-                final segmented = SegmentedButton<_NotificationTab>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _NotificationTab.all,
-                      label: Text('All Notifications'),
-                    ),
-                    ButtonSegment(
-                      value: _NotificationTab.unread,
-                      label: Text('Unread Only'),
-                    ),
-                  ],
-                  selected: {_tab},
-                  onSelectionChanged: (s) => setState(() {
-                    _tab = s.first;
-                    _applyFilters();
-                  }),
-                );
-                final typeFilter = _TypeFilterDropdown(
-                  value: _typeFilter,
-                  onChanged: (v) => setState(() {
-                    _typeFilter = v;
-                    _applyFilters();
-                  }),
-                );
-                // Stack on phones so the segmented control + type filter don't
-                // overflow a narrow row.
-                if (context.isMobile) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: segmented,
+            const SizedBox(height: AppSpacing.xxl),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: appCardDecoration(),
+              child: Builder(
+                builder: (context) {
+                  final segmented = SegmentedButton<_NotificationTab>(
+                    segments: const [
+                      ButtonSegment(
+                        value: _NotificationTab.all,
+                        label: Text('All Notifications'),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Align(alignment: Alignment.centerLeft, child: typeFilter),
+                      ButtonSegment(
+                        value: _NotificationTab.unread,
+                        label: Text('Unread Only'),
+                      ),
+                    ],
+                    selected: {_tab},
+                    onSelectionChanged: (s) => setState(() {
+                      _tab = s.first;
+                      _applyFilters();
+                    }),
+                  );
+                  final typeFilter = _TypeFilterDropdown(
+                    value: _typeFilter,
+                    onChanged: (v) => setState(() {
+                      _typeFilter = v;
+                      _applyFilters();
+                    }),
+                  );
+                  // Stack on phones so the segmented control + type filter don't
+                  // overflow a narrow row.
+                  if (context.isMobile) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: segmented,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: typeFilter,
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: segmented),
+                      const SizedBox(width: AppSpacing.sm),
+                      typeFilter,
                     ],
                   );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: segmented),
-                    const SizedBox(width: AppSpacing.sm),
-                    typeFilter,
-                  ],
-                );
-              },
+                },
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
@@ -175,7 +172,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
                     return Center(
                       child: Text(
                         state.message,
-                        style: const TextStyle(color: Colors.red),
+                        style: TextStyle(color: AppColors.error),
                       ),
                     );
                   }
@@ -488,27 +485,42 @@ class _GroupedNotificationList extends StatelessWidget {
     const order = ['Today', 'Yesterday', 'Earlier Weekly', 'Older'];
     final orderedKeys = order.where(groups.containsKey).toList();
 
-    return ListView(
-      children: [
-        for (final key in orderedKeys) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            child: Text(key.toUpperCase(), style: AppTextStyles.overline),
-          ),
-          ...groups[key]!.map(
-            (n) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: _NotificationCard(
+    return Container(
+      decoration: appCardDecoration(),
+      clipBehavior: Clip.antiAlias,
+      child: ListView(
+        children: [
+          for (final (gi, key) in orderedKeys.indexed) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  top: gi == 0
+                      ? BorderSide.none
+                      : BorderSide(color: AppColors.borderLight),
+                  bottom: BorderSide(color: AppColors.borderLight),
+                ),
+              ),
+              child: Text(key.toUpperCase(), style: AppTextStyles.tableHeader),
+            ),
+            for (final (i, n) in groups[key]!.indexed) ...[
+              if (i > 0) Divider(height: 1, color: AppColors.borderLight),
+              _NotificationCard(
                 notification: n,
                 selected: selectedIds.contains(n.id),
                 onToggleSelected: n.isComputed
                     ? null
                     : () => onToggleSelected(n.id),
               ),
-            ),
-          ),
+            ],
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -529,14 +541,22 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.xl,
+        AppSpacing.lg,
+      ),
       decoration: BoxDecoration(
         color: notification.isRead
             ? AppColors.cardBackground
             : AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(
-          color: selected ? AppColors.primary : AppColors.border,
+        // Left accent marks a selected row (rows are flush in one card now).
+        border: Border(
+          left: BorderSide(
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: 3,
+          ),
         ),
       ),
       child: Row(
@@ -549,14 +569,15 @@ class _NotificationCard extends StatelessWidget {
                 : (_) => onToggleSelected!(),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: _getIconBgColor(notification.type),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               _getIcon(notification.type),
-              size: 20,
+              size: 18,
               color: _getIconColor(notification.type),
             ),
           ),

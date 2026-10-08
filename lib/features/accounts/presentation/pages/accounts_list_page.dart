@@ -205,7 +205,11 @@ class _AccountsListViewState extends State<_AccountsListView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xxl),
+            if (!context.isMobile) ...[
+              _buildStats(context),
+              const SizedBox(height: AppSpacing.xl),
+            ],
             _buildFilters(context),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
@@ -271,128 +275,158 @@ class _AccountsListViewState extends State<_AccountsListView> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Accounts', style: AppTextStyles.h1),
-        const SizedBox(height: 4),
-        Text(
-          'Manage your customer accounts and relationships',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
+    return PageHeader(
+      title: 'Accounts',
+      subtitle: 'Manage your customer accounts and relationships.',
+      actions: [
+        _exportButton(context),
+        ElevatedButton.icon(
+          onPressed: () => context.go(RoutePaths.createAccount),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('New Account'),
         ),
       ],
     );
-    final newBtn = ElevatedButton.icon(
-      onPressed: () => context.go(RoutePaths.createAccount),
-      icon: const Icon(Icons.add, size: 18),
-      label: const Text('New Account'),
-    );
+  }
 
-    if (context.isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          title,
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(child: _exportButton(context)),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(child: newBtn),
-            ],
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(child: title),
-        _exportButton(context),
-        const SizedBox(width: AppSpacing.sm),
-        newBtn,
-      ],
+  /// KPI strip. "Total" is the server count for the active filters; the rest
+  /// are over the accounts on the current page (the list is paginated
+  /// server-side), so their captions say so.
+  Widget _buildStats(BuildContext context) {
+    return BlocBuilder<AccountsListBloc, AccountsListState>(
+      builder: (context, state) {
+        final loaded = state is AccountsListLoaded ? state : null;
+        final accounts = loaded?.accounts ?? const <Account>[];
+        int tierCount(String t) =>
+            accounts.where((a) => a.tier.toLowerCase() == t).length;
+        final key = tierCount('diamond') + tierCount('gold');
+        final withDeals = accounts.where((a) => a.dealCount > 0).length;
+        final contacts = accounts.fold<int>(0, (s, a) => s + a.contactCount);
+        final pct = accounts.isEmpty
+            ? '0%'
+            : '${(withDeals * 100 / accounts.length).round()}%';
+        return StatCardRow(
+          cards: [
+            StatCard(
+              label: 'Total accounts',
+              value: '${loaded?.total ?? 0}',
+              caption: 'Matching current filters',
+              dotColor: AppColors.primary,
+            ),
+            StatCard(
+              label: 'Key accounts',
+              value: '$key',
+              caption:
+                  '${tierCount('diamond')} Diamond · ${tierCount('gold')} Gold',
+              dotColor: AppColors.tierDiamondText,
+            ),
+            StatCard(
+              label: 'With deals',
+              value: '$withDeals',
+              caption: 'On this page',
+              captionTrailing: Text(
+                pct,
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              dotColor: AppColors.success,
+            ),
+            StatCard(
+              label: 'Contacts',
+              value: '$contacts',
+              caption: 'Across accounts on this page',
+              dotColor: AppColors.info,
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildFilters(BuildContext context) {
     final bloc = context.read<AccountsListBloc>();
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          SizedBox(
-            width: context.isMobile ? 200 : 280,
-            child: AppSearchField(
-              controller: _searchController,
-              hintText: 'Search by company name or domain',
-              onChanged: (query) => bloc.add(AccountsListSearchChanged(query)),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appCardDecoration(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            SizedBox(
+              width: context.isMobile ? 200 : 280,
+              child: AppSearchField(
+                controller: _searchController,
+                hintText: 'Search by company name or domain',
+                onChanged: (query) =>
+                    bloc.add(AccountsListSearchChanged(query)),
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Tier',
-            selected: _tier,
-            options: ['All', ...leadTierLabels.values],
-            onSelected: (v) {
-              setState(() => _tier = v == 'All' ? null : v);
-              bloc.add(
-                AccountsListFilterChanged(
-                  tier: v == 'All'
-                      ? 'All'
-                      : wireValueForLabel(leadTierLabels, v),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _OwnerFilterDropdown(
-            users: _users,
-            selectedId: _ownerId,
-            onSelected: (id) {
-              setState(() => _ownerId = id);
-              bloc.add(
-                AccountsListFilterChanged(
-                  ownerId: id ?? AccountsListFilterChanged.clearOwner,
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Industry',
-            selected: _industry,
-            options: ['All', ...AppConstants.industries],
-            onSelected: (v) {
-              setState(() => _industry = v == 'All' ? null : v);
-              bloc.add(AccountsListFilterChanged(industry: v));
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () => _pickDateRange(context),
-            icon: const Icon(Icons.date_range, size: 18),
-            label: Text(
-              _dateFrom != null && _dateTo != null
-                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
-                  : 'Date Range',
+            const SizedBox(width: AppSpacing.sm),
+            _FilterDropdown(
+              label: 'Tier',
+              selected: _tier,
+              options: ['All', ...leadTierLabels.values],
+              onSelected: (v) {
+                setState(() => _tier = v == 'All' ? null : v);
+                bloc.add(
+                  AccountsListFilterChanged(
+                    tier: v == 'All'
+                        ? 'All'
+                        : wireValueForLabel(leadTierLabels, v),
+                  ),
+                );
+              },
             ),
-          ),
-          if (_dateFrom != null && _dateTo != null)
-            IconButton(
-              icon: const Icon(Icons.close, size: 16),
-              tooltip: 'Clear date range',
-              onPressed: () => _clearDateRange(context),
+            const SizedBox(width: AppSpacing.sm),
+            _OwnerFilterDropdown(
+              users: _users,
+              selectedId: _ownerId,
+              onSelected: (id) {
+                setState(() => _ownerId = id);
+                bloc.add(
+                  AccountsListFilterChanged(
+                    ownerId: id ?? AccountsListFilterChanged.clearOwner,
+                  ),
+                );
+              },
             ),
-          const SizedBox(width: AppSpacing.sm),
-          TextButton.icon(
-            onPressed: _clearFilters,
-            icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
-            label: const Text('Clear Filters'),
-          ),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            _FilterDropdown(
+              label: 'Industry',
+              selected: _industry,
+              options: ['All', ...AppConstants.industries],
+              onSelected: (v) {
+                setState(() => _industry = v == 'All' ? null : v);
+                bloc.add(AccountsListFilterChanged(industry: v));
+              },
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: () => _pickDateRange(context),
+              icon: const Icon(Icons.date_range, size: 18),
+              label: Text(
+                _dateFrom != null && _dateTo != null
+                    ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                    : 'Date Range',
+              ),
+            ),
+            if (_dateFrom != null && _dateTo != null)
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                tooltip: 'Clear date range',
+                onPressed: () => _clearDateRange(context),
+              ),
+            const SizedBox(width: AppSpacing.sm),
+            TextButton.icon(
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+              label: const Text('Clear Filters'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -414,54 +448,40 @@ class _AccountsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final allSelected =
         accounts.isNotEmpty && accounts.every((a) => selected.contains(a.id));
-    final table = Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+    final table = TableCard(
+      title: 'All Accounts',
+      trailing: Text(
+        'Showing ${accounts.length} account${accounts.length == 1 ? '' : 's'}',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
-      child: Column(
+      header: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 40,
-                  child: Checkbox(
-                    value: allSelected,
-                    onChanged: (v) => onToggleAll(v ?? false),
-                  ),
-                ),
-                _header('COMPANY NAME', flex: 3),
-                _header('DOMAIN', flex: 2),
-                _header('INDUSTRY', flex: 2),
-                _header('SOURCE', flex: 2),
-                _header('TIER', flex: 2),
-                _header('PRIMARY OWNER', flex: 2),
-                _header('CONTACTS', flex: 1),
-                _header('DEALS', flex: 1),
-              ],
+          SizedBox(
+            width: 40,
+            child: Checkbox(
+              value: allSelected,
+              onChanged: (v) => onToggleAll(v ?? false),
             ),
           ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: accounts.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) => _AccountRow(
-                account: accounts[index],
-                selected: selected.contains(accounts[index].id),
-                onToggle: () => onToggle(accounts[index].id),
-              ),
-            ),
-          ),
+          _header('COMPANY NAME', flex: 3),
+          _header('DOMAIN', flex: 2),
+          _header('INDUSTRY', flex: 2),
+          _header('SOURCE', flex: 2),
+          _header('TIER', flex: 2),
+          _header('PRIMARY OWNER', flex: 2),
+          _header('CONTACTS', flex: 1),
+          _header('DEALS', flex: 1),
         ],
+      ),
+      body: ListView.separated(
+        itemCount: accounts.length,
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.borderLight),
+        itemBuilder: (context, index) => _AccountRow(
+          account: accounts[index],
+          selected: selected.contains(accounts[index].id),
+          onToggle: () => onToggle(accounts[index].id),
+        ),
       ),
     );
 
@@ -514,10 +534,10 @@ class _AccountRowState extends State<_AccountRow> {
         onTap: () => context.go('/accounts/${account.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          color: _isHovered ? AppColors.navHover : Colors.transparent,
+          color: _isHovered ? AppColors.background : Colors.transparent,
           child: Row(
             children: [
               SizedBox(
@@ -529,18 +549,19 @@ class _AccountRowState extends State<_AccountRow> {
               ),
               Expanded(
                 flex: 3,
-                child: Row(
-                  children: [
-                    InitialsAvatar(name: account.companyName, size: 32),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        account.companyName,
-                        style: AppTextStyles.tableCellLink,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                  child: TwoLineCell(
+                    leading: InitialsAvatar(
+                      name: account.companyName,
+                      size: 32,
                     ),
-                  ],
+                    title: account.companyName,
+                    subtitle: [
+                      account.city,
+                      account.country,
+                    ].where((s) => s != null && s.isNotEmpty).join(' · '),
+                  ),
                 ),
               ),
               Expanded(
@@ -588,7 +609,9 @@ class _AccountRowState extends State<_AccountRow> {
                 flex: 1,
                 child: Text(
                   '${account.dealCount}',
-                  style: AppTextStyles.tableCell,
+                  style: AppTextStyles.tableCell.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

@@ -83,19 +83,24 @@ class StatusBadge extends StatelessWidget {
     required this.label,
     required this.backgroundColor,
     required this.textColor,
+    this.showDot = false,
   });
 
   final String label;
   final Color backgroundColor;
   final Color textColor;
 
+  /// Leading colour dot, used by stage/status pills.
+  final bool showDot;
+
   /// Factory constructors for common statuses
   factory StatusBadge.dealStage(String stage) {
     final colors = _getDealStageColors(stage);
     return StatusBadge(
-      label: stage.toUpperCase(),
+      label: stage,
       backgroundColor: colors.bg,
       textColor: colors.text,
+      showDot: true,
     );
   }
 
@@ -105,6 +110,7 @@ class StatusBadge extends StatelessWidget {
       label: status,
       backgroundColor: colors.bg,
       textColor: colors.text,
+      showDot: true,
     );
   }
 
@@ -147,14 +153,41 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+        horizontal: AppSpacing.badgePaddingH,
+        vertical: AppSpacing.badgePaddingV,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppSpacing.badgeRadius),
       ),
-      child: Text(label, style: AppTextStyles.badge.copyWith(color: textColor)),
+      // One Text.rich (dot as a WidgetSpan) rather than a Row: it ellipsizes
+      // inside narrow table columns, sizes naturally under unbounded width,
+      // and still supports intrinsic sizing — a Row+Flexible can't do all 3.
+      child: Text.rich(
+        TextSpan(
+          children: [
+            if (showDot)
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: textColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            TextSpan(text: label),
+          ],
+        ),
+        style: AppTextStyles.badge.copyWith(color: textColor),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -254,7 +287,11 @@ class InitialsAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = _getInitials(name);
-    final bgColor = backgroundColor ?? _getColorFromName(name);
+    final hue = _getColorFromName(name);
+    // Soft tint + coloured initials by default; callers can still force a
+    // solid fill via [backgroundColor]/[textColor].
+    final bgColor =
+        backgroundColor ?? hue.withValues(alpha: AppColors.isDark ? 0.25 : 0.12);
     return Container(
       width: size,
       height: size,
@@ -266,7 +303,7 @@ class InitialsAvatar extends StatelessWidget {
       child: Text(
         initials,
         style: AppTextStyles.badge.copyWith(
-          color: textColor ?? Colors.white,
+          color: textColor ?? (backgroundColor != null ? Colors.white : hue),
           fontSize: size * 0.35,
         ),
       ),
@@ -352,7 +389,12 @@ class OwnerChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (showAvatar) ...[
-          InitialsAvatar(name: displayName, size: AppSpacing.avatarSmall),
+          ClipOval(
+            child: InitialsAvatar(
+              name: displayName,
+              size: AppSpacing.avatarSmall - 4,
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
         ],
         Flexible(
@@ -392,11 +434,19 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 64, color: AppColors.textMuted),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 28, color: AppColors.primary),
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: AppTextStyles.h3.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.h4,
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
@@ -557,21 +607,22 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: appCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null || titleWidget != null)
-            Padding(
+            Container(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.cardPadding,
+                AppSpacing.lg,
                 AppSpacing.cardPadding,
-                AppSpacing.cardPadding,
-                AppSpacing.md,
+                AppSpacing.lg,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.borderLight),
+                ),
               ),
               child: Row(
                 children: [
@@ -584,11 +635,9 @@ class SectionCard extends StatelessWidget {
           Padding(
             padding:
                 padding ??
-                EdgeInsets.fromLTRB(
+                const EdgeInsets.fromLTRB(
                   AppSpacing.cardPadding,
-                  title != null || titleWidget != null
-                      ? 0
-                      : AppSpacing.cardPadding,
+                  AppSpacing.cardPadding,
                   AppSpacing.cardPadding,
                   AppSpacing.cardPadding,
                 ),
@@ -759,6 +808,565 @@ class AppFilterChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+// ─── Modern layout building blocks (2026 revamp) ──────────────────────────
+
+/// Standard white surface: rounded, hairline border, soft shadow.
+BoxDecoration appCardDecoration({double? radius}) => BoxDecoration(
+  color: AppColors.cardBackground,
+  borderRadius: BorderRadius.circular(radius ?? AppSpacing.cardRadius),
+  border: Border.all(color: AppColors.border),
+  boxShadow: [
+    BoxShadow(
+      color: AppColors.shadow,
+      blurRadius: 12,
+      offset: const Offset(0, 2),
+    ),
+  ],
+);
+
+/// Page title block: large bold title, optional muted subtitle, actions right.
+/// Stacks the actions under the title on narrow screens.
+class PageHeader extends StatelessWidget {
+  const PageHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.titleTrailing,
+    this.actions = const [],
+  });
+
+  final String title;
+  final String? subtitle;
+
+  /// Sits right after the title (e.g. a view toggle).
+  final Widget? titleTrailing;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                style: AppTextStyles.displayMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (titleTrailing != null) ...[
+              const SizedBox(width: AppSpacing.lg),
+              titleTrailing!,
+            ],
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle!,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth < 720) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              heading,
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: actions,
+                ),
+              ],
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: heading),
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.sm),
+              actions[i],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// KPI tile: uppercase label + status dot, big value, caption line.
+class StatCard extends StatelessWidget {
+  const StatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    this.caption,
+    this.captionTrailing,
+    this.dotColor,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final String? caption;
+
+  /// Right-aligned note on the caption line (e.g. "70%").
+  final Widget? captionTrailing;
+  final Color? dotColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Ink(
+          decoration: appCardDecoration(),
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label.toUpperCase(),
+                      style: AppTextStyles.tableHeader,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (dotColor != null)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value, style: AppTextStyles.displayMedium),
+              ),
+              if (caption != null || captionTrailing != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        caption ?? '',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    ?captionTrailing,
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lays [StatCard]s out in an even row, wrapping to 2/1 per row when narrow.
+class StatCardRow extends StatelessWidget {
+  const StatCardRow({super.key, required this.cards});
+  final List<Widget> cards;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final perRow = c.maxWidth >= 1000
+            ? cards.length
+            : c.maxWidth >= 560
+            ? 2
+            : 1;
+        const gap = AppSpacing.lg;
+        final w = (c.maxWidth - gap * (perRow - 1)) / perRow;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [for (final card in cards) SizedBox(width: w, child: card)],
+        );
+      },
+    );
+  }
+}
+
+/// White card wrapping a list/table: optional title bar, a grey column-header
+/// strip, then the rows. Clips its children to the rounded corners.
+class TableCard extends StatelessWidget {
+  const TableCard({
+    super.key,
+    this.title,
+    this.trailing,
+    required this.header,
+    required this.body,
+    this.footer,
+  });
+
+  final String? title;
+  final Widget? trailing;
+
+  /// The column-header row content (laid out by the caller).
+  final Widget header;
+  final Widget body;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: appCardDecoration(),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          if (title != null || trailing != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.lg,
+              ),
+              child: Row(
+                children: [
+                  if (title != null) Text(title!, style: AppTextStyles.h4),
+                  const Spacer(),
+                  ?trailing,
+                ],
+              ),
+            ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              border: Border(
+                top: title != null || trailing != null
+                    ? BorderSide(color: AppColors.borderLight)
+                    : BorderSide.none,
+                bottom: BorderSide(color: AppColors.borderLight),
+              ),
+            ),
+            child: header,
+          ),
+          Expanded(child: body),
+          if (footer != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.md,
+              ),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.borderLight)),
+              ),
+              child: footer,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Two-line table cell: bold primary text over a muted caption.
+class TwoLineCell extends StatelessWidget {
+  const TwoLineCell({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.titleStyle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget? leading;
+  final TextStyle? titleStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style:
+              titleStyle ??
+              AppTextStyles.tableCell.copyWith(fontWeight: FontWeight.w600),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (subtitle != null && subtitle!.isNotEmpty)
+          Text(
+            subtitle!,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+    if (leading == null) return text;
+    return Row(
+      children: [
+        leading!,
+        const SizedBox(width: AppSpacing.md),
+        Flexible(child: text),
+      ],
+    );
+  }
+}
+
+/// Label-over-value field grid (two columns on wide screens), each cell
+/// separated by a hairline — the "Deal Information" look.
+class InfoGrid extends StatelessWidget {
+  const InfoGrid({super.key, required this.items, this.columns = 2});
+
+  final List<(String, Widget)> items;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = c.maxWidth < 520 ? 1 : columns;
+        const gap = AppSpacing.xxl;
+        final w = (c.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          children: [
+            for (final (label, value) in items)
+              Container(
+                width: w,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppColors.borderLight),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DefaultTextStyle.merge(
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                      child: value,
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Compact pipeline progress: numbered chip + "Step x of n", then one rounded
+/// segment per stage with a tiny label beneath. Matches the deal-detail mock.
+class SegmentedStageBar extends StatelessWidget {
+  const SegmentedStageBar({
+    super.key,
+    required this.stages,
+    required this.currentIndex,
+    this.label = 'Pipeline stage',
+  });
+
+  final List<String> stages;
+
+  /// -1 when the current stage isn't in [stages].
+  final int currentIndex;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = currentIndex >= 0 ? stages[currentIndex] : null;
+    final summary = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            currentIndex >= 0 ? '${currentIndex + 1}' : '–',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: AppColors.onAccent,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label.toUpperCase(), style: AppTextStyles.tableHeader),
+                if (current != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  StatusBadge(
+                    label: current,
+                    backgroundColor: AppColors.primaryLight,
+                    textColor: AppColors.primary,
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              currentIndex >= 0
+                  ? 'Step ${currentIndex + 1} of ${stages.length} in the pipeline'
+                  : 'Outside the main pipeline',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    final bar = Row(
+      children: [
+        for (var i = 0; i < stages.length; i++) ...[
+          if (i > 0) const SizedBox(width: 4),
+          Expanded(
+            child: Tooltip(
+              message: stages[i],
+              child: Column(
+                children: [
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i <= currentIndex
+                          ? AppColors.primary
+                          : AppColors.border,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    stages[i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10.5,
+                      color: i == currentIndex
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                      fontWeight: i == currentIndex
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: LayoutBuilder(
+        builder: (context, c) => c.maxWidth < 640
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  summary,
+                  const SizedBox(height: AppSpacing.lg),
+                  bar,
+                ],
+              )
+            : Row(
+                children: [
+                  summary,
+                  const SizedBox(width: AppSpacing.xxl),
+                  Expanded(child: bar),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// Uppercase label over a value — the stats strip under a record header.
+class MetaStat extends StatelessWidget {
+  const MetaStat({super.key, required this.label, required this.value});
+  final String label;
+  final Widget value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label.toUpperCase(), style: AppTextStyles.tableHeader),
+        const SizedBox(height: 6),
+        DefaultTextStyle.merge(
+          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w500),
+          child: value,
+        ),
+      ],
     );
   }
 }

@@ -218,10 +218,12 @@ class _DealsListViewState extends State<_DealsListView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xxl),
+            if (!context.isMobile) ...[
+              _buildStats(context),
+              const SizedBox(height: AppSpacing.xl),
+            ],
             _buildFilters(context),
-            const SizedBox(height: AppSpacing.md),
-            Divider(height: 1, color: AppColors.border),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: BlocConsumer<DealsListBloc, DealsListState>(
@@ -309,11 +311,7 @@ class _DealsListViewState extends State<_DealsListView> {
         : null;
 
     final result = await sl<ExportDealsUseCase>()(
-      ExportDealsParams(
-        ownerId: ownerId,
-        stageId: stageId,
-        search: search,
-      ),
+      ExportDealsParams(ownerId: ownerId, stageId: stageId, search: search),
     );
     if (!mounted) return;
     setState(() => _exporting = false);
@@ -350,40 +348,73 @@ class _DealsListViewState extends State<_DealsListView> {
 
   String _compactINR(double v) {
     if (v >= 10000000) return '₹${(v / 10000000).toStringAsFixed(2)} Cr';
-    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(2)} L';
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(1)} L';
     return CurrencyFormatter.formatINR(v);
   }
 
-  /// The "Total Pipeline Value" figure — sum of the currently-shown deals,
-  /// excluding Closed Won / Closed Lost / Cold since those deals are no
-  /// longer "in pipeline".
-  Widget _pipelineValue(BuildContext context) {
+  static bool _isClosed(Deal d) =>
+      d.stageIsCold ||
+      d.stageName == 'Closed Won' ||
+      d.stageName == 'Closed Lost';
+
+  /// KPI strip over the currently-shown deals (same client filters as the
+  /// table). "Open pipeline" excludes Closed Won / Closed Lost / Cold.
+  Widget _buildStats(BuildContext context) {
     return BlocBuilder<DealsListBloc, DealsListState>(
       builder: (context, state) {
         final deals = state is DealsListLoaded
             ? _applyClientFilters(state.deals)
             : const <Deal>[];
-        final total = deals
-            .where(
-              (d) =>
-                  !d.stageIsCold &&
-                  d.stageName != 'Closed Won' &&
-                  d.stageName != 'Closed Lost',
-            )
-            .fold<double>(0, (s, d) => s + d.value);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'Total Pipeline Value',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-              ),
+        final open = deals.where((d) => !_isClosed(d)).toList();
+        final openValue = open.fold<double>(0, (s, d) => s + d.value);
+        final highValue = open.where((d) => d.value >= 2500000).toList();
+        final now = DateTime.now();
+        final dueSoon = open.where((d) {
+          final c = d.expectedCloseDate;
+          return c != null && c.difference(now).inDays <= 14;
+        }).length;
+        final won = deals.where((d) => d.stageName == 'Closed Won').toList();
+        final wonValue = won.fold<double>(0, (s, d) => s + d.value);
+        final pct = (int part, int whole) =>
+            whole == 0 ? '0%' : '${(part * 100 / whole).round()}%';
+        return StatCardRow(
+          cards: [
+            StatCard(
+              label: 'Total deals',
+              value: '${deals.length}',
+              caption: 'In current view',
+              dotColor: AppColors.primary,
             ),
-            const SizedBox(height: 2),
-            Text(
-              _compactINR(total),
-              style: AppTextStyles.h3.copyWith(color: AppColors.primary),
+            StatCard(
+              label: 'Open pipeline',
+              value: _compactINR(openValue),
+              caption: '${open.length} open deals',
+              dotColor: AppColors.success,
+            ),
+            StatCard(
+              label: 'High value',
+              value: '${highValue.length}',
+              caption: '> ₹25L open',
+              captionTrailing: Text(
+                pct(highValue.length, open.length),
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              dotColor: AppColors.tierGoldText,
+            ),
+            StatCard(
+              label: 'Due soon',
+              value: '$dueSoon',
+              caption: 'Closing < 14 days',
+              dotColor: AppColors.error,
+            ),
+            StatCard(
+              label: 'Closed won',
+              value: _compactINR(wonValue),
+              caption: '${won.length} deals won',
+              dotColor: AppColors.stageWon,
             ),
           ],
         );
@@ -393,76 +424,24 @@ class _DealsListViewState extends State<_DealsListView> {
 
   Widget _buildHeader(BuildContext context) {
     final canManage = context.can(Perms.dealsManage);
-    final title = Row(
-      children: [
-        Text(widget.title ?? 'Deals', style: AppTextStyles.h1),
-        const SizedBox(width: AppSpacing.lg),
-        _ViewToggle(
-          isBoard: _isKanbanView,
-          onChanged: (b) => setState(() => _isKanbanView = b),
-        ),
+    return PageHeader(
+      title: widget.title ?? 'Deals',
+      subtitle:
+          'Pipeline overview, active proposals, and closed opportunities.',
+      titleTrailing: _ViewToggle(
+        isBoard: _isKanbanView,
+        onChanged: (b) => setState(() => _isKanbanView = b),
+      ),
+      actions: [
+        _exportButton(context),
+        if (canManage)
+          ElevatedButton.icon(
+            onPressed: () => _openCreateDealDialog(context),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('New Deal'),
+          ),
       ],
     );
-
-    final actions = [
-      _pipelineValue(context),
-      const SizedBox(width: AppSpacing.lg),
-      _exportButton(context),
-      if (canManage) ...[
-        const SizedBox(width: AppSpacing.sm),
-        ElevatedButton.icon(
-          onPressed: () => _openCreateDealDialog(context),
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('New Deal'),
-        ),
-      ],
-    ];
-
-    if (context.isMobile) {
-      // Keep every control within the narrow width: title + toggle share a row
-      // via a Spacer, the pipeline figure sits on its own line, and the two
-      // action buttons split the width with Expanded. Previously these were in
-      // fixed Rows that overflowed and clipped the toggle/buttons off-screen —
-      // which silently swallowed their taps.
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(widget.title ?? 'Deals', style: AppTextStyles.h1),
-              const Spacer(),
-              _ViewToggle(
-                isBoard: _isKanbanView,
-                onChanged: (b) => setState(() => _isKanbanView = b),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: _pipelineValue(context),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(child: _exportButton(context)),
-              if (canManage) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openCreateDealDialog(context),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('New Deal'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      );
-    }
-
-    return Row(children: [title, const Spacer(), ...actions]);
   }
 
   /// How many panel filters are narrowing the list — shown on the Filters icon.
@@ -483,7 +462,7 @@ class _DealsListViewState extends State<_DealsListView> {
       children: [
         Flexible(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 240),
+            constraints: const BoxConstraints(maxWidth: 320),
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _search = v),
@@ -491,6 +470,7 @@ class _DealsListViewState extends State<_DealsListView> {
                 isDense: true,
                 prefixIcon: Icon(Icons.search, size: 18),
                 hintText: 'Search deals, accounts...',
+                filled: true,
               ),
             ),
           ),
@@ -545,15 +525,22 @@ class _DealsListViewState extends State<_DealsListView> {
       ],
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        bar,
-        if (_showFilters) ...[
-          const SizedBox(height: AppSpacing.sm),
-          SingleChildScrollView(scrollDirection: Axis.horizontal, child: panel),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          bar,
+          if (_showFilters) ...[
+            const SizedBox(height: AppSpacing.md),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: panel,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -792,47 +779,33 @@ class _DealsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final table = Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+    final table = TableCard(
+      title: 'Active Pipeline Registry',
+      trailing: Text(
+        'Showing ${deals.length} deal${deals.length == 1 ? '' : 's'}',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
-      child: Column(
+      header: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                _header('DEAL NAME', flex: 3),
-                _header('ACCOUNT', flex: 2),
-                _header('STAGE', flex: 2),
-                _header('PRIORITY', flex: 2),
-                _header('VALUE', flex: 1),
-                _header('OWNER', flex: 2),
-                _header('ORIGINATOR', flex: 2),
-                _header('NEXT FOLLOW-UP', flex: 2),
-                _header('SCORE', flex: 1),
-                _header('MODE', flex: 2),
-                _header('PROPOSAL SLA', flex: 2),
-                _header('SLA DUE', flex: 2),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: deals.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) => _DealRow(deal: deals[index]),
-            ),
-          ),
+          _header('DEAL NAME', flex: 3),
+          _header('ACCOUNT', flex: 2),
+          _header('STAGE', flex: 2),
+          _header('PRIORITY', flex: 2),
+          _header('VALUE', flex: 2),
+          _header('OWNER', flex: 2),
+          _header('ORIGINATOR', flex: 2),
+          _header('NEXT FOLLOW-UP', flex: 2),
+          _header('SCORE', flex: 1),
+          _header('MODE', flex: 2),
+          _header('PROPOSAL SLA', flex: 2),
+          _header('SLA DUE', flex: 2),
         ],
+      ),
+      body: ListView.separated(
+        itemCount: deals.length,
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.borderLight),
+        itemBuilder: (context, index) => _DealRow(deal: deals[index]),
       ),
     );
 
@@ -879,24 +852,37 @@ class _DealRowState extends State<_DealRow> {
         onTap: () => context.go('/deals/${widget.deal.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          color: _isHovered ? AppColors.navHover : Colors.transparent,
+          color: _isHovered ? AppColors.background : Colors.transparent,
           child: Row(
             children: [
               Expanded(
                 flex: 3,
-                child: Text(
-                  widget.deal.name,
-                  style: AppTextStyles.tableCellLink,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                  child: TwoLineCell(
+                    title: widget.deal.name,
+                    subtitle: [
+                      'DL-${widget.deal.id}',
+                      if (widget.deal.tier.isNotEmpty)
+                        '${widget.deal.tier[0].toUpperCase()}${widget.deal.tier.substring(1)} tier',
+                    ].join(' · '),
+                  ),
                 ),
               ),
               Expanded(
                 flex: 2,
-                child: Text(
-                  widget.deal.accountName,
-                  style: AppTextStyles.tableCell,
+                child: TwoLineCell(
+                  leading: InitialsAvatar(
+                    name: widget.deal.accountName,
+                    size: 32,
+                  ),
+                  title: widget.deal.accountName,
+                  titleStyle: AppTextStyles.tableCell.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Expanded(
@@ -916,10 +902,12 @@ class _DealRowState extends State<_DealRow> {
                 ),
               ),
               Expanded(
-                flex: 1,
+                flex: 2,
                 child: Text(
                   CurrencyFormatter.formatINR(widget.deal.value),
-                  style: AppTextStyles.tableCell,
+                  style: AppTextStyles.tableCell.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Expanded(flex: 2, child: OwnerChip(name: widget.deal.ownerLabel)),

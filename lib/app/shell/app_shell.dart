@@ -251,7 +251,7 @@ class _TabletShell extends StatelessWidget {
               leading: Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 child: Icon(
-                  Icons.bar_chart_rounded,
+                  Icons.hub_outlined,
                   color: AppColors.primary,
                   size: 32,
                 ),
@@ -328,11 +328,11 @@ class _WebSidebar extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.primaryButton,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.bar_chart_rounded,
+                    Icons.hub_outlined,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -341,12 +341,7 @@ class _WebSidebar extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      AppConstants.appName,
-                      style: AppTextStyles.h4.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
+                    Text(AppConstants.appName, style: AppTextStyles.h4),
                     Text(
                       AppConstants.appSubtitle,
                       style: AppTextStyles.caption,
@@ -376,18 +371,6 @@ class _WebSidebar extends StatelessWidget {
           ],
           if (!_kShowQuickAction) const SizedBox(height: AppSpacing.xl),
 
-          // ── Main Menu Label ──────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.sm,
-            ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('MAIN MENU', style: AppTextStyles.overline),
-            ),
-          ),
-
           // ── Main Nav Items (filtered by permissions) ─────
           ..._visibleNavItems(context, _sidebarMainItems).map(
             (item) => _SidebarNavItem(
@@ -396,7 +379,14 @@ class _WebSidebar extends StatelessWidget {
               onTap: () => _onNavTap(context, item.path),
             ),
           ),
-          if (_hasAdminAccess(context))
+          if (_hasAdminAccess(context)) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              child: Divider(),
+            ),
             _SidebarNavItem(
               item: const NavItem(
                 label: 'Admin Settings',
@@ -407,6 +397,7 @@ class _WebSidebar extends StatelessWidget {
               isActive: currentPath == RoutePaths.settings,
               onTap: () => _onNavTap(context, RoutePaths.settings),
             ),
+          ],
 
           const Spacer(),
 
@@ -428,8 +419,6 @@ class _WebSidebar extends StatelessWidget {
                 ),
               ),
             ),
-
-          const Divider(),
 
           // ── Bottom Items ─────────────────
           ..._sidebarBottomItems.map(
@@ -576,11 +565,11 @@ class _MobileTopBar extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: AppColors.primaryButton,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(
-                Icons.bar_chart_rounded,
+                Icons.hub_outlined,
                 color: Colors.white,
                 size: 16,
               ),

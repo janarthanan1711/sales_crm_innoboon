@@ -20,6 +20,7 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.2,
+    letterSpacing: -0.6,
   );
 
   static TextStyle get displayMedium => GoogleFonts.inter(
@@ -27,6 +28,7 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.2,
+    letterSpacing: -0.5,
   );
 
   // ─── Headings ──────────────────────────────────────────
@@ -35,6 +37,7 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     height: 1.3,
+    letterSpacing: -0.4,
   );
 
   static TextStyle get h2 => GoogleFonts.inter(
@@ -42,6 +45,7 @@ class AppTextStyles {
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     height: 1.3,
+    letterSpacing: -0.2,
   );
 
   static TextStyle get h3 => GoogleFonts.inter(
@@ -105,10 +109,10 @@ class AppTextStyles {
 
   // ─── Table ─────────────────────────────────────────────
   static TextStyle get tableHeader => GoogleFonts.inter(
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     height: 1.4,
   );
 

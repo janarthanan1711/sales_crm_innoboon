@@ -167,7 +167,7 @@ class AppPalette {
 
   bool get isDark => brightness == Brightness.dark;
 
-  /// Original Figma tokens, unchanged.
+  /// Light tokens — 2026 revamp: grey page/sidebar, ink CTAs, blue accents.
   static const AppPalette light = AppPalette(
     brightness: Brightness.light,
     primary: Color(0xFF2563EB),
@@ -175,21 +175,22 @@ class AppPalette {
     primaryDark: Color(0xFF1D4ED8),
     primaryHover: Color(0xFF3B82F6),
     surface: Color(0xFFFFFFFF),
-    background: Color(0xFFF8FAFC),
-    scaffoldBackground: Color(0xFFF8FAFC),
+    background: Color(0xFFF7F8FA),
+    scaffoldBackground: Color(0xFFF7F8FA),
     cardBackground: Color(0xFFFFFFFF),
-    sidebarBackground: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF1E293B),
+    sidebarBackground: Color(0xFFF7F8FA),
+    textPrimary: Color(0xFF0F172A),
     textSecondary: Color(0xFF64748B),
     textMuted: Color(0xFF94A3B8),
     textOnPrimary: Color(0xFFFFFFFF),
     textLink: Color(0xFF2563EB),
-    // Kept verbatim from the pages that hand-rolled them, so light mode is
-    // pixel-identical to before dark mode existed.
+    // textStrong/textBody/fieldLabel kept from the pages that hand-rolled them.
+    // primaryButton is the near-black "ink" used for primary CTAs (2026 revamp);
+    // dark mode keeps blue so white button text still has contrast.
     textStrong: Color(0xFF0F172A),
     textBody: Color(0xFF475569),
     fieldLabel: Color(0xFF334155),
-    primaryButton: Color(0xFF0F47C6),
+    primaryButton: Color(0xFF111827),
     border: Color(0xFFE2E8F0),
     borderLight: Color(0xFFF1F5F9),
     divider: Color(0xFFE2E8F0),
@@ -230,7 +231,7 @@ class AppPalette {
     navActive: Color(0xFF2563EB),
     navActiveBg: Color(0xFFEFF6FF),
     navInactive: Color(0xFF64748B),
-    navHover: Color(0xFFF8FAFC),
+    navHover: Color(0xFFEEF1F5),
     shadow: Color(0x0A000000),
     overlay: Color(0x33000000),
     avatarBg: Color(0xFFE2E8F0),

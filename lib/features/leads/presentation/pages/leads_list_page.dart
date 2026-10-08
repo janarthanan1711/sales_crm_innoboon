@@ -206,7 +206,11 @@ class _LeadsListViewState extends State<_LeadsListView> {
           children: [
             // ── Header ─────────────────────
             _buildHeader(context),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xxl),
+            if (!context.isMobile) ...[
+              _buildStats(),
+              const SizedBox(height: AppSpacing.xl),
+            ],
 
             // ── Filters ────────────────────
             _buildFilters(context),
@@ -261,161 +265,178 @@ class _LeadsListViewState extends State<_LeadsListView> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Leads', style: AppTextStyles.h1),
-        const SizedBox(height: 4),
-        Text(
-          'Manage and qualify your sales leads',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+  /// KPI strip over the loaded page of leads. "Total" is the server count
+  /// for the active filters; the rest are tallied from the rows on screen.
+  Widget _buildStats() {
+    return BlocBuilder<LeadsListBloc, LeadsListState>(
+      builder: (context, state) {
+        final leads = state is LeadsListLoaded ? state.leads : const <Lead>[];
+        final total = state is LeadsListLoaded ? state.total : 0;
+        int count(String status) =>
+            leads.where((l) => l.status == status).length;
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final followUpDue = leads.where((l) {
+          final d = l.nextFollowUpDate;
+          return d != null && !l.isConverted && !d.isAfter(today);
+        }).length;
+        final converted = leads.where((l) => l.isConverted).length;
+        return StatCardRow(
+          cards: [
+            StatCard(
+              label: 'Total leads',
+              value: '$total',
+              caption: 'Matching current filters',
+              dotColor: AppColors.primary,
+            ),
+            StatCard(
+              label: 'Not contacted',
+              value: '${count('not_contacted')}',
+              caption: 'Awaiting first touch',
+              dotColor: AppColors.warning,
+            ),
+            StatCard(
+              label: 'Contacted',
+              value: '${count('contacted')}',
+              caption: 'In conversation',
+              dotColor: AppColors.info,
+            ),
+            StatCard(
+              label: 'Follow-up due',
+              value: '$followUpDue',
+              caption: 'Today or overdue',
+              dotColor: AppColors.error,
+            ),
+            StatCard(
+              label: 'Converted',
+              value: '$converted',
+              caption: 'Now accounts',
+              dotColor: AppColors.success,
+            ),
+          ],
+        );
+      },
     );
+  }
 
+  Widget _buildHeader(BuildContext context) {
     // Create/manage actions are gated on `leads.access` (manage). Users
     // with only `leads.view_all` see the list read-only.
     final canManage = context.can(Perms.leadsManage);
-    final importButton = OutlinedButton.icon(
-      onPressed: () {
-        final bloc = context.read<LeadsListBloc>();
-        showDialog(
-          context: context,
-          builder: (_) => _ImportLeadsDialog(listBloc: bloc),
-        );
-      },
-      icon: const Icon(Icons.upload_file_outlined, size: 18),
-      label: const Text('Import Leads'),
-    );
-    final newLeadButton = ElevatedButton.icon(
-      onPressed: () => context.go(RoutePaths.createLead),
-      icon: const Icon(Icons.add, size: 18),
-      label: const Text('New Lead'),
-    );
-
-    // On phones, stack the actions under the title so the buttons don't
-    // overflow the row; on wider screens keep them inline on the right.
-    if (context.isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          title,
-          const SizedBox(height: AppSpacing.md),
-          Row(children: [Expanded(child: _exportButton(context))]),
-          if (canManage) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(child: importButton),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: newLeadButton),
-              ],
-            ),
-          ],
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(child: title),
+    return PageHeader(
+      title: 'Leads',
+      subtitle: 'Capture, qualify and convert prospects into accounts.',
+      actions: [
         _exportButton(context),
         if (canManage) ...[
-          const SizedBox(width: AppSpacing.sm),
-          importButton,
-          const SizedBox(width: AppSpacing.sm),
-          newLeadButton,
+          OutlinedButton.icon(
+            onPressed: () {
+              final bloc = context.read<LeadsListBloc>();
+              showDialog(
+                context: context,
+                builder: (_) => _ImportLeadsDialog(listBloc: bloc),
+              );
+            },
+            icon: const Icon(Icons.upload_file_outlined, size: 18),
+            label: const Text('Import Leads'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => context.go(RoutePaths.createLead),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('New Lead'),
+          ),
         ],
       ],
     );
   }
 
   Widget _buildFilters(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          SizedBox(
-            width: context.isMobile ? 200 : 280,
-            child: AppSearchField(
-              controller: _searchController,
-              hintText: 'Search leads...',
-              onChanged: (query) {
-                context.read<LeadsListBloc>().add(
-                  LeadsListSearchChanged(query),
-                );
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: appCardDecoration(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            SizedBox(
+              width: context.isMobile ? 200 : 280,
+              child: AppSearchField(
+                controller: _searchController,
+                hintText: 'Search leads...',
+                onChanged: (query) {
+                  context.read<LeadsListBloc>().add(
+                    LeadsListSearchChanged(query),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            _OwnerFilterDropdown(
+              selectedId: _ownerIdFilter,
+              onSelected: (ownerId) {
+                setState(() => _ownerIdFilter = ownerId);
+                _applyFilters(context);
               },
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _OwnerFilterDropdown(
-            selectedId: _ownerIdFilter,
-            onSelected: (ownerId) {
-              setState(() => _ownerIdFilter = ownerId);
-              _applyFilters(context);
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Source',
-            icon: Icons.source_outlined,
-            selected: _sourceFilter == null
-                ? null
-                : labelForWireValue(leadSourceLabels, _sourceFilter!),
-            options: ['All', ...AppConstants.leadSources],
-            onSelected: (value) {
-              setState(() {
-                _sourceFilter = value == 'All'
-                    ? null
-                    : wireValueForLabel(leadSourceLabels, value);
-              });
-              _applyFilters(context);
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _FilterDropdown(
-            label: 'Status',
-            icon: Icons.circle_outlined,
-            selected: _statusFilter == null
-                ? null
-                : labelForWireValue(leadStatusLabels, _statusFilter!),
-            options: ['All', ...AppConstants.leadStatuses],
-            onSelected: (value) {
-              setState(() {
-                _statusFilter = value == 'All'
-                    ? null
-                    : wireValueForLabel(leadStatusLabels, value);
-              });
-              _applyFilters(context);
-            },
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () => _pickDateRange(context),
-            icon: const Icon(Icons.date_range, size: 18),
-            label: Text(
-              _dateFrom != null && _dateTo != null
-                  ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
-                  : 'Date Range',
+            const SizedBox(width: AppSpacing.sm),
+            _FilterDropdown(
+              label: 'Source',
+              icon: Icons.source_outlined,
+              selected: _sourceFilter == null
+                  ? null
+                  : labelForWireValue(leadSourceLabels, _sourceFilter!),
+              options: ['All', ...AppConstants.leadSources],
+              onSelected: (value) {
+                setState(() {
+                  _sourceFilter = value == 'All'
+                      ? null
+                      : wireValueForLabel(leadSourceLabels, value);
+                });
+                _applyFilters(context);
+              },
             ),
-          ),
-          if (_dateFrom != null && _dateTo != null)
-            IconButton(
-              onPressed: () => _clearDateRange(context),
-              icon: const Icon(Icons.close, size: 16),
-              tooltip: 'Clear date range',
-              visualDensity: VisualDensity.compact,
+            const SizedBox(width: AppSpacing.sm),
+            _FilterDropdown(
+              label: 'Status',
+              icon: Icons.circle_outlined,
+              selected: _statusFilter == null
+                  ? null
+                  : labelForWireValue(leadStatusLabels, _statusFilter!),
+              options: ['All', ...AppConstants.leadStatuses],
+              onSelected: (value) {
+                setState(() {
+                  _statusFilter = value == 'All'
+                      ? null
+                      : wireValueForLabel(leadStatusLabels, value);
+                });
+                _applyFilters(context);
+              },
             ),
-          const SizedBox(width: AppSpacing.sm),
-          TextButton.icon(
-            onPressed: () => _clearFilters(context),
-            icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
-            label: const Text('Clear'),
-          ),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: () => _pickDateRange(context),
+              icon: const Icon(Icons.date_range, size: 18),
+              label: Text(
+                _dateFrom != null && _dateTo != null
+                    ? '${DateFormatter.shortDate(_dateFrom!)} – ${DateFormatter.shortDate(_dateTo!)}'
+                    : 'Date Range',
+              ),
+            ),
+            if (_dateFrom != null && _dateTo != null)
+              IconButton(
+                onPressed: () => _clearDateRange(context),
+                icon: const Icon(Icons.close, size: 16),
+                tooltip: 'Clear date range',
+                visualDensity: VisualDensity.compact,
+              ),
+            const SizedBox(width: AppSpacing.sm),
+            TextButton.icon(
+              onPressed: () => _clearFilters(context),
+              icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+              label: const Text('Clear'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -464,84 +485,47 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
         leads.isNotEmpty &&
         leads.every((lead) => _selectedIds.contains(lead.id));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: AppColors.border),
+    return TableCard(
+      title: 'Lead Registry',
+      trailing: Text(
+        'Showing ${leads.length} of ${widget.total} leads',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
-      child: Column(
+      header: Row(
         children: [
-          // Table header
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: _kCheckboxColWidth,
-                  child: Checkbox(
-                    value: allSelected,
-                    onChanged: _toggleSelectAll,
-                  ),
-                ),
-                _tableHeader('LEAD NAME', flex: 3),
-                _tableHeader('COMPANY', flex: 2),
-                _tableHeader('CONTACT', flex: 3),
-                _tableHeader('SOURCE', flex: 1),
-                _tableHeader('STATUS', flex: 2),
-                _tableHeader('OWNER', flex: 2),
-                _tableHeader('LAST ACTIVITY', flex: 2),
-                SizedBox(
-                  width: _kActionsColWidth,
-                  child: Text(
-                    'ACTION',
-                    style: AppTextStyles.tableHeader,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
+          SizedBox(
+            width: _kCheckboxColWidth,
+            child: Checkbox(value: allSelected, onChanged: _toggleSelectAll),
           ),
-          // Table rows
-          Expanded(
-            child: ListView.separated(
-              itemCount: leads.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final lead = leads[index];
-                return _LeadTableRow(
-                  lead: lead,
-                  isSelected: _selectedIds.contains(lead.id),
-                  onSelectToggle: () => _toggleSelected(lead.id),
-                );
-              },
-            ),
-          ),
-          // Pagination footer
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.border)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Showing ${leads.length} of ${widget.total} leads',
-                  style: AppTextStyles.bodySmall,
-                ),
-              ],
+          _tableHeader('LEAD NAME', flex: 3),
+          _tableHeader('COMPANY', flex: 2),
+          _tableHeader('CONTACT', flex: 3),
+          _tableHeader('SOURCE', flex: 1),
+          _tableHeader('STATUS', flex: 3),
+          _tableHeader('OWNER', flex: 2),
+          _tableHeader('LAST ACTIVITY', flex: 2),
+          SizedBox(
+            width: _kActionsColWidth,
+            child: Text(
+              'ACTION',
+              style: AppTextStyles.tableHeader,
+              textAlign: TextAlign.center,
             ),
           ),
         ],
+      ),
+      body: ListView.separated(
+        itemCount: leads.length,
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, color: AppColors.borderLight),
+        itemBuilder: (context, index) {
+          final lead = leads[index];
+          return _LeadTableRow(
+            lead: lead,
+            isSelected: _selectedIds.contains(lead.id),
+            onSelectToggle: () => _toggleSelected(lead.id),
+          );
+        },
       ),
     );
   }
@@ -586,10 +570,10 @@ class _LeadTableRowState extends State<_LeadTableRow> {
         onTap: () => context.go('/leads/${lead.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.lg,
           ),
-          color: _isHovered ? AppColors.navHover : Colors.transparent,
+          color: _isHovered ? AppColors.background : Colors.transparent,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -603,42 +587,34 @@ class _LeadTableRowState extends State<_LeadTableRow> {
               // Lead Name
               Expanded(
                 flex: 3,
-                child: Row(
-                  children: [
-                    InitialsAvatar(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                  child: TwoLineCell(
+                    leading: InitialsAvatar(
                       name: contactName.isEmpty ? lead.firstName : contactName,
                       size: 32,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            contactName,
-                            style: AppTextStyles.tableCellLink,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (lead.jobTitle != null &&
-                              lead.jobTitle!.isNotEmpty)
-                            Text(
-                              lead.jobTitle!,
-                              style: AppTextStyles.caption,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    title: contactName,
+                    subtitle: [
+                      'LD-${lead.id}',
+                      if (lead.jobTitle != null && lead.jobTitle!.isNotEmpty)
+                        lead.jobTitle!,
+                    ].join(' · '),
+                  ),
                 ),
               ),
               // Company
               Expanded(
                 flex: 2,
-                child: Text(
-                  lead.company,
-                  style: AppTextStyles.tableCell,
-                  overflow: TextOverflow.ellipsis,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                  child: TwoLineCell(
+                    title: lead.company,
+                    subtitle: lead.domain,
+                    titleStyle: AppTextStyles.tableCell.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
               // Contact
@@ -674,7 +650,7 @@ class _LeadTableRowState extends State<_LeadTableRow> {
               // Status — left-aligned so the badge background hugs the text
               // (a static, content-sized width) instead of filling the column.
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: StatusBadge.leadStatus(
@@ -683,14 +659,7 @@ class _LeadTableRowState extends State<_LeadTableRow> {
                 ),
               ),
               // Owner
-              Expanded(
-                flex: 2,
-                child: Text(
-                  lead.ownerName ?? 'Unassigned',
-                  style: AppTextStyles.tableCell,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              Expanded(flex: 2, child: OwnerChip(name: lead.ownerName)),
               // Last Activity
               Expanded(
                 flex: 2,
@@ -799,7 +768,7 @@ class _MobileLeadsList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       itemCount: leads.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
         final lead = leads[index];
         return _LeadCard(lead: lead);
@@ -819,85 +788,89 @@ class _LeadCard extends StatelessWidget {
       lead.lastName,
     ].where((s) => s != null && s.isNotEmpty).join(' ');
 
-    return Card(
-      child: InkWell(
-        onTap: () => context.go('/leads/${lead.id}'),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  InitialsAvatar(name: lead.company, size: 40),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(lead.company, style: AppTextStyles.h4),
-                        Text(contactName, style: AppTextStyles.bodySmall),
-                      ],
+    return Container(
+      decoration: appCardDecoration(),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.go('/leads/${lead.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    InitialsAvatar(name: lead.company, size: 40),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(lead.company, style: AppTextStyles.h4),
+                          Text(contactName, style: AppTextStyles.bodySmall),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      lead.isFavourite ? Icons.star : Icons.star_border,
-                      size: 20,
-                      color: lead.isFavourite
-                          ? AppColors.warning
-                          : AppColors.textMuted,
+                    IconButton(
+                      icon: Icon(
+                        lead.isFavourite ? Icons.star : Icons.star_border,
+                        size: 20,
+                        color: lead.isFavourite
+                            ? AppColors.warning
+                            : AppColors.textMuted,
+                      ),
+                      tooltip: lead.isFavourite
+                          ? 'Remove from favourites'
+                          : 'Mark as favourite',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => context.read<LeadsListBloc>().add(
+                        LeadsListFavouriteToggled(lead.id, !lead.isFavourite),
+                      ),
                     ),
-                    tooltip: lead.isFavourite
-                        ? 'Remove from favourites'
-                        : 'Mark as favourite',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => context.read<LeadsListBloc>().add(
-                      LeadsListFavouriteToggled(lead.id, !lead.isFavourite),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    StatusBadge.leadStatus(
+                      labelForWireValue(leadStatusLabels, lead.status),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  StatusBadge.leadStatus(
-                    labelForWireValue(leadStatusLabels, lead.status),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    '• ${labelForWireValue(leadSourceLabels, lead.source)}',
-                    style: AppTextStyles.caption,
-                  ),
-                  const Spacer(),
-                  Text(
-                    DateFormatter.relativeTime(lead.updatedAt),
-                    style: AppTextStyles.caption,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Icon(
-                    Icons.email_outlined,
-                    size: 14,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      lead.email,
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '• ${labelForWireValue(leadSourceLabels, lead.source)}',
                       style: AppTextStyles.caption,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  OwnerChip(name: lead.ownerName),
-                ],
-              ),
-            ],
+                    const Spacer(),
+                    Text(
+                      DateFormatter.relativeTime(lead.updatedAt),
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.email_outlined,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        lead.email,
+                        style: AppTextStyles.caption,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    OwnerChip(name: lead.ownerName),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

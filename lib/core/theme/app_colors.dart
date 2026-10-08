@@ -53,9 +53,8 @@ class AppColors {
 
   /// Three one-off shades that several pages hard-coded instead of using the
   /// tokens above (a near-black hero heading, a slate-600 body, a slate-700
-  /// field label), plus the deeper blue those pages used on their primary
-  /// button. Promoted to tokens so they can go dark — their light values are
-  /// exactly what those pages had, so nothing shifts in light mode.
+  /// field label), plus [primaryButton] — the near-black "ink" every primary
+  /// CTA uses in light mode (blue in dark). Also the ElevatedButton default.
   static Color get textStrong => _palette.textStrong;
   static Color get textBody => _palette.textBody;
   static Color get fieldLabel => _palette.fieldLabel;

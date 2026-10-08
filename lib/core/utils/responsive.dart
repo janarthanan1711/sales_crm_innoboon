@@ -35,8 +35,7 @@ class Responsive {
   static bool isWeb(BuildContext context) =>
       getScreenSize(context) == ScreenSize.web;
 
-  static bool isDesktopOrTablet(BuildContext context) =>
-      !isMobile(context);
+  static bool isDesktopOrTablet(BuildContext context) => !isMobile(context);
 
   /// Page padding based on screen size
   static double pagePadding(BuildContext context) {

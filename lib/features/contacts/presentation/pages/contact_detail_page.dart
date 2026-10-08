@@ -59,76 +59,97 @@ class _ContactDetailView extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, ContactDetailLoaded state) {
     final c = state.overview.contact;
-    final infoCard = _ContactInfoCard(
-      contact: c,
-      createdAt: state.overview.createdAt,
-      createdByName: state.overview.createdByName,
-    );
     return SingleChildScrollView(
       padding: EdgeInsets.all(context.pagePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _breadcrumb(context, c),
-          const SizedBox(height: AppSpacing.md),
-          _HeaderCard(contact: c),
+          _breadcrumb(context, c, state.overview.createdAt),
           const SizedBox(height: AppSpacing.lg),
-          ResponsiveBuilder(
-            mobile: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                infoCard,
-                const SizedBox(height: AppSpacing.lg),
-                _MainPanel(state: state),
-              ],
-            ),
-            web: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(width: 320, child: infoCard),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(child: _MainPanel(state: state)),
-              ],
-            ),
+          _HeaderCard(
+            contact: c,
+            dealCount: state.deals.length,
+            createdAt: state.overview.createdAt,
           ),
+          const SizedBox(height: AppSpacing.xl),
+          _ContactInfoCard(
+            contact: c,
+            createdAt: state.overview.createdAt,
+            createdByName: state.overview.createdByName,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _DealsSection(deals: state.deals),
         ],
       ),
     );
   }
 
-  Widget _breadcrumb(BuildContext context, Contact c) {
+  Widget _breadcrumb(BuildContext context, Contact c, DateTime? createdAt) {
     return Row(
       children: [
         InkWell(
           onTap: () => context.go('/contacts'),
-          child: Text(
-            'Contacts',
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Back to Contacts',
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 6),
-          child: Icon(
-            Icons.chevron_right,
-            size: 16,
-            color: AppColors.textMuted,
-          ),
+        Text(
+          '  /  ',
+          style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
         ),
         Flexible(
           child: Text(
             c.fullName,
-            style: AppTextStyles.bodySmall,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        const Spacer(),
+        if (!context.isMobile)
+          Text(
+            [
+              'CT-${c.id}',
+              if (createdAt != null)
+                'Created ${DateFormatter.displayDate(createdAt)}',
+            ].join('  •  '),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
       ],
     );
   }
 }
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.contact});
+  const _HeaderCard({
+    required this.contact,
+    required this.dealCount,
+    this.createdAt,
+  });
   final Contact contact;
+  final int dealCount;
+  final DateTime? createdAt;
 
   Future<void> _edit(BuildContext context) async {
     final bloc = context.read<ContactDetailBloc>();
@@ -150,74 +171,157 @@ class _HeaderCard extends StatelessWidget {
         contact.jobTitle!,
       if (contact.accountName != null) contact.accountName!,
     ];
-    return SectionCard(
-      child: Row(
-        children: [
-          InitialsAvatar(
-            name: contact.fullName.isEmpty
-                ? contact.firstName
-                : contact.fullName,
-            size: 56,
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    final email = contact.email;
+    final phone = contact.phone;
+
+    final actions = Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        RecordExportButton(
+          iconOnly: false,
+          tooltip: 'Export this contact to Excel',
+          fileName: 'contact_${contact.id}.xlsx',
+          successMessage: 'Contact exported.',
+          fetch: () => sl<ExportContactDetailUseCase>()(contact.id),
+        ),
+        ElevatedButton.icon(
+          onPressed: () => _edit(context),
+          icon: const Icon(Icons.edit_outlined, size: 16),
+          label: const Text('Edit Contact'),
+        ),
+      ],
+    );
+
+    final titleBlock = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InitialsAvatar(
+          name: contact.fullName.isEmpty ? contact.firstName : contact.fullName,
+          size: 64,
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (contact.isPrimary ||
+                  contact.isOriginator ||
+                  contact.tier != null) ...[
                 Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: AppSpacing.sm,
-                  runSpacing: 4,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(contact.fullName, style: AppTextStyles.h2),
                     if (contact.isPrimary) const _PrimaryPill(),
                     if (contact.isOriginator)
                       const OriginatorBadge(compact: false),
                     if (contact.tier != null) TierBadge(tier: contact.tier!),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              Text(contact.fullName, style: AppTextStyles.h1),
+              if (subtitleParts.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitleParts.join('  •  '),
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
-                if (contact.ownerName != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.person_outline,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Owner: ${contact.ownerName}',
-                        style: AppTextStyles.caption,
-                      ),
-                    ],
-                  ),
-                ],
               ],
-            ),
+              if ((email != null && email.isNotEmpty) ||
+                  (phone != null && phone.isNotEmpty)) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.xl,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    if (email != null && email.isNotEmpty)
+                      _contactLine(
+                        Icons.mail_outline,
+                        LinkText(text: email, email: email, maxLines: 1),
+                      ),
+                    if (phone != null && phone.isNotEmpty)
+                      _contactLine(
+                        Icons.phone_outlined,
+                        LinkText(text: phone, phone: phone, maxLines: 1),
+                      ),
+                  ],
+                ),
+              ],
+            ],
           ),
-          OutlinedButton.icon(
-            onPressed: () => _edit(context),
-            icon: const Icon(Icons.edit, size: 16),
-            label: const Text('Edit Contact'),
+        ),
+      ],
+    );
+
+    final stats = Wrap(
+      spacing: AppSpacing.huge,
+      runSpacing: AppSpacing.lg,
+      children: [
+        MetaStat(label: 'Account', value: Text(contact.accountName ?? '—')),
+        MetaStat(
+          label: 'Owner',
+          value: contact.ownerName == null
+              ? const Text('—')
+              : OwnerChip(name: contact.ownerName!),
+        ),
+        MetaStat(label: 'Linked deals', value: Text('$dealCount')),
+        MetaStat(
+          label: 'Created on',
+          value: Text(
+            createdAt == null ? '—' : DateFormatter.displayDate(createdAt!),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          RecordExportButton(
-            iconOnly: false,
-            tooltip: 'Export this contact to Excel',
-            fileName: 'contact_${contact.id}.xlsx',
-            successMessage: 'Contact exported.',
-            fetch: () => sl<ExportContactDetailUseCase>()(contact.id),
-          ),
+        ),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(
+        context.isMobile ? AppSpacing.lg : AppSpacing.xxl,
+      ),
+      decoration: appCardDecoration(radius: AppSpacing.cardRadiusLarge),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          context.isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleBlock,
+                    const SizedBox(height: AppSpacing.lg),
+                    actions,
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: titleBlock),
+                    const SizedBox(width: AppSpacing.lg),
+                    actions,
+                  ],
+                ),
+          const SizedBox(height: AppSpacing.xl),
+          Divider(height: 1, color: AppColors.borderLight),
+          const SizedBox(height: AppSpacing.xl),
+          stats,
         ],
       ),
+    );
+  }
+
+  Widget _contactLine(IconData icon, Widget child) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Flexible(child: child),
+      ],
     );
   }
 }
@@ -240,22 +344,21 @@ class _ContactInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      title: 'Contact Info',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _row('Email', contact.email, email: contact.email),
-          _row('Phone', contact.phone, phone: contact.phone),
-          _row(
+      title: 'Contact Information',
+      child: InfoGrid(
+        items: [
+          _item('Email', contact.email, email: contact.email),
+          _item('Phone', contact.phone, phone: contact.phone),
+          _item(
             'Alternate Phone',
             contact.alternatePhone,
             phone: contact.alternatePhone,
           ),
-          _row('Social', contact.linkedinUrl, url: contact.linkedinUrl),
-          _row('Account', contact.accountName),
-          _row('Owner', contact.ownerName),
+          _item('Social', contact.linkedinUrl, url: contact.linkedinUrl),
+          _item('Account', contact.accountName),
+          _item('Owner', contact.ownerName),
           if (createdAt != null)
-            _row(
+            _item(
               'Created On',
               DateFormatter.shortDate(createdAt!),
               subtitle: createdByName != null && createdByName!.isNotEmpty
@@ -267,7 +370,7 @@ class _ContactInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _row(
+  (String, Widget) _item(
     String label,
     String? value, {
     String? email,
@@ -277,16 +380,11 @@ class _ContactInfoCard extends StatelessWidget {
   }) {
     final hasValue = value != null && value.isNotEmpty;
     final isLink = hasValue && (email != null || url != null || phone != null);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Column(
+    return (
+      label,
+      Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 2),
           if (isLink)
             LinkText(
               text: value,
@@ -296,7 +394,7 @@ class _ContactInfoCard extends StatelessWidget {
               maxLines: 1,
             )
           else
-            Text(hasValue ? value : '—', style: AppTextStyles.bodyMedium),
+            Text(hasValue ? value : '—'),
           if (subtitle != null)
             Text(
               subtitle,
@@ -310,83 +408,68 @@ class _ContactInfoCard extends StatelessWidget {
   }
 }
 
-// Deals is the only remaining sub-section (Overview was removed), so this no
-// longer needs a TabBar/TabController — just render it directly.
-class _MainPanel extends StatelessWidget {
-  const _MainPanel({required this.state});
-  final ContactDetailLoaded state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Deals', style: AppTextStyles.h3),
-        const SizedBox(height: AppSpacing.md),
-        // Height-bounded: _DealsTab is a ListView, which needs a bounded
-        // height to lay out inside the outer scroll view.
-        SizedBox(height: 460, child: _DealsTab(deals: state.deals)),
-      ],
-    );
-  }
-}
-
-class _DealsTab extends StatelessWidget {
-  const _DealsTab({required this.deals});
+// Deals is the only sub-section (Overview was removed), so there's no
+// TabBar — just one card listing the linked deals.
+class _DealsSection extends StatelessWidget {
+  const _DealsSection({required this.deals});
   final List<ContactDeal> deals;
 
   @override
   Widget build(BuildContext context) {
-    if (deals.isEmpty) {
-      return const _EmptyTab(
-        icon: Icons.handshake_outlined,
-        message: 'This contact isn’t linked to any deals yet.',
-      );
-    }
-    return ListView.separated(
-      itemCount: deals.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        final d = deals[index];
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      d.dealName,
-                      style: AppTextStyles.labelLarge,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (d.expectedCloseDate != null)
-                      Text(
-                        'Closes ${DateFormatter.shortDate(d.expectedCloseDate!)}',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                  ],
-                ),
+    return SectionCard(
+      title: 'Deals',
+      trailing: Text(
+        '${deals.length} linked',
+        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+      ),
+      padding: EdgeInsets.zero,
+      child: deals.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.huge),
+              child: _EmptyTab(
+                icon: Icons.handshake_outlined,
+                message: 'This contact isn’t linked to any deals yet.',
               ),
-              const SizedBox(width: AppSpacing.md),
-              Text(
-                d.currency == 'USD'
-                    ? '\$${d.value.toStringAsFixed(0)}'
-                    : CurrencyFormatter.formatINR(d.value),
-                style: AppTextStyles.labelMedium,
-              ),
-            ],
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < deals.length; i++) ...[
+                  if (i > 0) Divider(height: 1, color: AppColors.borderLight),
+                  _dealRow(deals[i]),
+                ],
+              ],
+            ),
+    );
+  }
+
+  Widget _dealRow(ContactDeal d) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TwoLineCell(
+              leading: InitialsAvatar(name: d.dealName, size: 32),
+              title: d.dealName,
+              subtitle: d.expectedCloseDate == null
+                  ? null
+                  : 'Closes ${DateFormatter.shortDate(d.expectedCloseDate!)}',
+            ),
           ),
-        );
-      },
+          const SizedBox(width: AppSpacing.md),
+          Text(
+            d.currency == 'USD'
+                ? '\$${d.value.toStringAsFixed(0)}'
+                : CurrencyFormatter.formatINR(d.value),
+            style: AppTextStyles.tableCell.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

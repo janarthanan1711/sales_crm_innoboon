@@ -22,11 +22,11 @@ class AppSpacing {
   // ─── Card ──────────────────────────────────────────────
   static const double cardPadding = 20.0;
   static const double cardPaddingSmall = 16.0;
-  static const double cardRadius = 8.0;
-  static const double cardRadiusLarge = 12.0;
+  static const double cardRadius = 12.0;
+  static const double cardRadiusLarge = 16.0;
 
   // ─── Button ────────────────────────────────────────────
-  static const double buttonRadius = 6.0;
+  static const double buttonRadius = 8.0;
   static const double buttonPaddingH = 16.0;
   static const double buttonPaddingV = 10.0;
   static const double buttonHeight = 40.0;
@@ -39,7 +39,7 @@ class AppSpacing {
   static const double badgePaddingV = 4.0;
 
   // ─── Input ─────────────────────────────────────────────
-  static const double inputRadius = 6.0;
+  static const double inputRadius = 8.0;
   static const double inputHeight = 44.0;
   static const double inputPaddingH = 12.0;
 

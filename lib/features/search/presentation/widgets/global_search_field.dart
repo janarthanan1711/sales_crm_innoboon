@@ -117,7 +117,7 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
             onChanged: _onChanged,
             decoration: InputDecoration(
               hintText: 'Search accounts, leads, deals...',
-              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textMuted),
               suffixIcon: _controller.text.isEmpty
                   ? null
                   : IconButton(
@@ -133,12 +133,12 @@ class _GlobalSearchFieldViewState extends State<_GlobalSearchFieldView> {
                 horizontal: AppSpacing.md,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                borderSide: BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.borderLight),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.inputRadius),
-                borderSide: BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.borderLight),
               ),
               filled: true,
               fillColor: AppColors.background,
