@@ -291,7 +291,8 @@ class InitialsAvatar extends StatelessWidget {
     // Soft tint + coloured initials by default; callers can still force a
     // solid fill via [backgroundColor]/[textColor].
     final bgColor =
-        backgroundColor ?? hue.withValues(alpha: AppColors.isDark ? 0.25 : 0.12);
+        backgroundColor ??
+        hue.withValues(alpha: AppColors.isDark ? 0.25 : 0.12);
     return Container(
       width: size,
       height: size,
@@ -444,11 +445,7 @@ class EmptyState extends StatelessWidget {
               child: Icon(icon, size: 28, color: AppColors.primary),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text(
-              title,
-              style: AppTextStyles.h4,
-              textAlign: TextAlign.center,
-            ),
+            Text(title, style: AppTextStyles.h4, textAlign: TextAlign.center),
             if (subtitle != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
@@ -812,7 +809,6 @@ class AppFilterChip extends StatelessWidget {
   }
 }
 
-
 // ─── Modern layout building blocks (2026 revamp) ──────────────────────────
 
 /// Standard white surface: rounded, hairline border, soft shadow.
@@ -999,26 +995,42 @@ class StatCard extends StatelessWidget {
   }
 }
 
-/// Lays [StatCard]s out in an even row, wrapping to 2/1 per row when narrow.
+/// Lays [StatCard]s out on a single line: evenly when there's room, else a
+/// sideways-scrolling strip of fixed-width cards. Never wraps — wrapping to
+/// 2–3 rows on laptop widths pushed the list below it off-screen. Hidden
+/// entirely on short viewports for the same reason.
 class StatCardRow extends StatelessWidget {
   const StatCardRow({super.key, required this.cards});
   final List<Widget> cards;
 
+  static const double _minCardWidth = 200;
+  static const double _minViewportHeight = 640;
+
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).height < _minViewportHeight) {
+      return const SizedBox.shrink();
+    }
+    const gap = AppSpacing.lg;
     return LayoutBuilder(
       builder: (context, c) {
-        final perRow = c.maxWidth >= 1000
-            ? cards.length
-            : c.maxWidth >= 560
-            ? 2
-            : 1;
-        const gap = AppSpacing.lg;
-        final w = (c.maxWidth - gap * (perRow - 1)) / perRow;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [for (final card in cards) SizedBox(width: w, child: card)],
+        final even = (c.maxWidth - gap * (cards.length - 1)) / cards.length;
+        final w = even >= _minCardWidth ? even : _minCardWidth;
+        final row = Row(
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(width: gap),
+              SizedBox(width: w, child: cards[i]),
+            ],
+          ],
+        );
+        if (even >= _minCardWidth) return row;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          // Room for the cards' shadow, which a scroll view would clip.
+          padding: const EdgeInsets.only(bottom: 4),
+          clipBehavior: Clip.none,
+          child: row,
         );
       },
     );
@@ -1027,7 +1039,11 @@ class StatCardRow extends StatelessWidget {
 
 /// White card wrapping a list/table: optional title bar, a grey column-header
 /// strip, then the rows. Clips its children to the rounded corners.
-class TableCard extends StatelessWidget {
+///
+/// When the card is narrower than [minWidth], the header strip and rows scroll
+/// sideways together (with a visible scrollbar) while the title bar stays put
+/// — so flex columns never get crushed on tablets and small laptops.
+class TableCard extends StatefulWidget {
   const TableCard({
     super.key,
     this.title,
@@ -1035,6 +1051,7 @@ class TableCard extends StatelessWidget {
     required this.header,
     required this.body,
     this.footer,
+    this.minWidth,
   });
 
   final String? title;
@@ -1045,6 +1062,47 @@ class TableCard extends StatelessWidget {
   final Widget body;
   final Widget? footer;
 
+  /// Narrowest the columns may get before the table scrolls horizontally.
+  final double? minWidth;
+
+  @override
+  State<TableCard> createState() => _TableCardState();
+}
+
+class _TableCardState extends State<TableCard> {
+  final _hScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
+
+  bool get _hasTitle => widget.title != null || widget.trailing != null;
+
+  Widget _columns() => Column(
+    children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border(
+            top: _hasTitle
+                ? BorderSide(color: AppColors.borderLight)
+                : BorderSide.none,
+            bottom: BorderSide(color: AppColors.borderLight),
+          ),
+        ),
+        child: widget.header,
+      ),
+      Expanded(child: widget.body),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1052,41 +1110,48 @@ class TableCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          if (title != null || trailing != null)
+          if (_hasTitle)
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                AppSpacing.lg,
-                AppSpacing.xl,
-                AppSpacing.lg,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.lg,
               ),
               child: Row(
                 children: [
-                  if (title != null) Text(title!, style: AppTextStyles.h4),
-                  const Spacer(),
-                  ?trailing,
+                  Expanded(
+                    child: widget.title == null
+                        ? const SizedBox.shrink()
+                        : Text(
+                            widget.title!,
+                            style: AppTextStyles.h4,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                  if (widget.trailing != null) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    widget.trailing!,
+                  ],
                 ],
               ),
             ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.md,
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final min = widget.minWidth;
+                if (min == null || c.maxWidth >= min) return _columns();
+                return Scrollbar(
+                  controller: _hScroll,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _hScroll,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(width: min, child: _columns()),
+                  ),
+                );
+              },
             ),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border(
-                top: title != null || trailing != null
-                    ? BorderSide(color: AppColors.borderLight)
-                    : BorderSide.none,
-                bottom: BorderSide(color: AppColors.borderLight),
-              ),
-            ),
-            child: header,
           ),
-          Expanded(child: body),
-          if (footer != null)
+          if (widget.footer != null)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(
@@ -1096,7 +1161,7 @@ class TableCard extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.borderLight)),
               ),
-              child: footer,
+              child: widget.footer,
             ),
         ],
       ),

@@ -487,6 +487,8 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
 
     return TableCard(
       title: 'Lead Registry',
+      // Below this the columns scroll sideways instead of squeezing.
+      minWidth: 1150,
       trailing: Text(
         'Showing ${leads.length} of ${widget.total} leads',
         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),

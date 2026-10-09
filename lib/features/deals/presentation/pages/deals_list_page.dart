@@ -34,9 +34,6 @@ const Map<String, String?> _kDueFilters = {
   'Past SLA': 'past_sla',
 };
 
-/// Narrowest the deals table gets before it scrolls horizontally.
-const double _kTableMinWidth = 2000;
-
 /// Client-side sort options for the "Expected Close" dropdown.
 enum _CloseSort { none, soonest, latest }
 
@@ -779,8 +776,11 @@ class _DealsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final table = TableCard(
+    return TableCard(
       title: 'Active Pipeline Registry',
+      // 12 columns: below this they scroll sideways instead of squeezing.
+      // (Was a fixed 2000px, which scrolled even on 1920px monitors.)
+      minWidth: 1600,
       trailing: Text(
         'Showing ${deals.length} deal${deals.length == 1 ? '' : 's'}',
         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
@@ -807,20 +807,6 @@ class _DealsTable extends StatelessWidget {
             Divider(height: 1, color: AppColors.borderLight),
         itemBuilder: (context, index) => _DealRow(deal: deals[index]),
       ),
-    );
-
-    // Below _kTableMinWidth the table scrolls sideways instead of squeezing
-    // its columns. A fixed (tight) width -- NOT just a minWidth -- so the
-    // Row-based header/rows get a bounded width for their Expanded children
-    // (inside a horizontal scroll view the max width is unbounded).
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= _kTableMinWidth) return table;
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(width: _kTableMinWidth, child: table),
-        );
-      },
     );
   }
 

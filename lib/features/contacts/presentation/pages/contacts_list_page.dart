@@ -500,6 +500,8 @@ class _ContactsListViewState extends State<_ContactsListView> {
         'Showing $n contact${n == 1 ? '' : 's'}',
         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
+      // Below this the columns scroll sideways instead of squeezing.
+      minWidth: 1050,
       header: Row(
         children: [
           SizedBox(
@@ -547,12 +549,6 @@ class _ContactsListViewState extends State<_ContactsListView> {
       ),
     );
 
-    if (context.isMobile) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(width: 980, child: table),
-      );
-    }
     return table;
   }
 

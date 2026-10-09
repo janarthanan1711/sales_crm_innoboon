@@ -454,6 +454,8 @@ class _AccountsTable extends StatelessWidget {
         'Showing ${accounts.length} account${accounts.length == 1 ? '' : 's'}',
         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
       ),
+      // Below this the columns scroll sideways instead of squeezing.
+      minWidth: 1100,
       header: Row(
         children: [
           SizedBox(
@@ -485,17 +487,6 @@ class _AccountsTable extends StatelessWidget {
       ),
     );
 
-    // On phones the 7-column table can't fit — let it scroll horizontally
-    // at a sensible minimum width instead of squeezing/overflowing cells.
-    if (context.isMobile) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 900),
-          child: SizedBox(width: 900, child: table),
-        ),
-      );
-    }
     return table;
   }
 
