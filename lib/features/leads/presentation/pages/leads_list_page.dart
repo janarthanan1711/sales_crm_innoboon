@@ -195,72 +195,65 @@ class _LeadsListViewState extends State<_LeadsListView> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = context.pagePadding;
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ─────────────────────
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.xxl),
-            if (!context.isMobile) ...[
-              _buildStats(),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-
-            // ── Filters ────────────────────
-            _buildFilters(context),
-            const SizedBox(height: AppSpacing.lg),
-
-            // ── Content ────────────────────
-            Expanded(
-              child: BlocBuilder<LeadsListBloc, LeadsListState>(
-                builder: (context, state) {
-                  if (state is LeadsListLoading) {
-                    return const AppLoadingIndicator(
-                      message: 'Loading leads...',
-                    );
-                  }
-                  if (state is LeadsListError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<LeadsListBloc>().add(
-                        const LeadsListLoadRequested(),
-                      ),
-                    );
-                  }
-                  if (state is LeadsListLoaded) {
-                    if (state.leads.isEmpty) {
-                      return EmptyState(
-                        icon: Icons.people_outline,
-                        title: 'No leads found',
-                        subtitle: 'Create your first lead to get started',
-                        actionLabel: context.can(Perms.leadsManage)
-                            ? '+ Add New Lead'
-                            : null,
-                        onAction: context.can(Perms.leadsManage)
-                            ? () => context.go(RoutePaths.createLead)
-                            : null,
-                      );
-                    }
-                    return ResponsiveBuilder(
-                      mobile: _MobileLeadsList(leads: state.leads),
-                      web: _WebLeadsTable(
-                        leads: state.leads,
-                        total: state.total,
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
+      body: ScrollPage(
+        children: [
+          // ── Header ─────────────────────
+          _buildHeader(context),
+          const SizedBox(height: AppSpacing.xl),
+          if (!context.isMobile) ...[
+            _buildStats(),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
+
+          // ── Filters ────────────────────
+          _buildFilters(context),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Content ────────────────────
+          BlocBuilder<LeadsListBloc, LeadsListState>(
+            builder: (context, state) {
+              if (state is LeadsListLoading) {
+                return const PageStateBox(
+                  child: AppLoadingIndicator(message: 'Loading leads...'),
+                );
+              }
+              if (state is LeadsListError) {
+                return PageStateBox(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<LeadsListBloc>().add(
+                      const LeadsListLoadRequested(),
+                    ),
+                  ),
+                );
+              }
+              if (state is LeadsListLoaded) {
+                if (state.leads.isEmpty) {
+                  return PageStateBox(
+                    child: EmptyState(
+                      icon: Icons.people_outline,
+                      title: 'No leads found',
+                      subtitle: 'Create your first lead to get started',
+                      actionLabel: context.can(Perms.leadsManage)
+                          ? '+ Add New Lead'
+                          : null,
+                      onAction: context.can(Perms.leadsManage)
+                          ? () => context.go(RoutePaths.createLead)
+                          : null,
+                    ),
+                  );
+                }
+                return ResponsiveBuilder(
+                  mobile: _MobileLeadsList(leads: state.leads),
+                  web: _WebLeadsTable(leads: state.leads, total: state.total),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -517,6 +510,8 @@ class _WebLeadsTableState extends State<_WebLeadsTable> {
         ],
       ),
       body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: leads.length,
         separatorBuilder: (_, _) =>
             Divider(height: 1, color: AppColors.borderLight),
@@ -769,6 +764,8 @@ class _MobileLeadsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: leads.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {

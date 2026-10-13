@@ -158,73 +158,70 @@ class _ContactsListViewState extends State<_ContactsListView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
-        padding: EdgeInsets.all(context.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.xxl),
-            if (!context.isMobile) ...[
-              _buildStats(context),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-            _buildFilters(context),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(
-              child: BlocConsumer<ContactsListBloc, ContactsListState>(
-                listener: (context, state) {
-                  if (state is ContactsListLoaded &&
-                      state.actionError != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.actionError!),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  }
-                  if (state is ContactsListLoaded) {
-                    final ids = state.contacts.map((c) => c.id).toSet();
-                    _selected.removeWhere((id) => !ids.contains(id));
-                  }
-                },
-                builder: (context, state) {
-                  if (state is ContactsListLoading ||
-                      state is ContactsListInitial) {
-                    return const AppLoadingIndicator(
-                      message: 'Loading contacts...',
-                    );
-                  }
-                  if (state is ContactsListError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<ContactsListBloc>().add(
-                        const ContactsListLoadRequested(),
-                      ),
-                    );
-                  }
-                  if (state is ContactsListLoaded) {
-                    if (state.contacts.isEmpty) {
-                      return const EmptyState(
-                        icon: Icons.contacts_outlined,
-                        title: 'No contacts found',
-                        subtitle: 'Adjust your filters or add a new contact',
-                      );
-                    }
-                    return Column(
-                      children: [
-                        if (_selected.isNotEmpty) _buildBulkBar(context),
-                        Expanded(child: _buildTable(context, state)),
-                        _PaginationBar(state: state),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
+      body: ScrollPage(
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: AppSpacing.xl),
+          if (!context.isMobile) ...[
+            _buildStats(context),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
+          _buildFilters(context),
+          const SizedBox(height: AppSpacing.lg),
+          BlocConsumer<ContactsListBloc, ContactsListState>(
+            listener: (context, state) {
+              if (state is ContactsListLoaded && state.actionError != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.actionError!),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+              if (state is ContactsListLoaded) {
+                final ids = state.contacts.map((c) => c.id).toSet();
+                _selected.removeWhere((id) => !ids.contains(id));
+              }
+            },
+            builder: (context, state) {
+              if (state is ContactsListLoading ||
+                  state is ContactsListInitial) {
+                return const PageStateBox(
+                  child: AppLoadingIndicator(message: 'Loading contacts...'),
+                );
+              }
+              if (state is ContactsListError) {
+                return PageStateBox(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<ContactsListBloc>().add(
+                      const ContactsListLoadRequested(),
+                    ),
+                  ),
+                );
+              }
+              if (state is ContactsListLoaded) {
+                if (state.contacts.isEmpty) {
+                  return const PageStateBox(
+                    child: EmptyState(
+                      icon: Icons.contacts_outlined,
+                      title: 'No contacts found',
+                      subtitle: 'Adjust your filters or add a new contact',
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    if (_selected.isNotEmpty) _buildBulkBar(context),
+                    _buildTable(context, state),
+                    _PaginationBar(state: state),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -529,6 +526,8 @@ class _ContactsListViewState extends State<_ContactsListView> {
         ],
       ),
       body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: n,
         separatorBuilder: (_, _) =>
             Divider(height: 1, color: AppColors.borderLight),

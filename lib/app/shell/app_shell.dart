@@ -369,7 +369,7 @@ class _WebSidebar extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
-          if (!_kShowQuickAction) const SizedBox(height: AppSpacing.xl),
+          if (!_kShowQuickAction) const SizedBox(height: AppSpacing.xs),
 
           // ── Main Nav Items (filtered by permissions) ─────
           ..._visibleNavItems(context, _sidebarMainItems).map(

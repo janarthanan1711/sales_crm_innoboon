@@ -205,74 +205,77 @@ class _DealsListViewState extends State<_DealsListView> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = context.pagePadding;
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.xxl),
-            if (!context.isMobile) ...[
-              _buildStats(context),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-            _buildFilters(context),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(
-              child: BlocConsumer<DealsListBloc, DealsListState>(
-                listener: (context, state) {
-                  if (state is DealsListLoaded && state.actionError != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(state.actionError!),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state is DealsListLoading) {
-                    return const AppLoadingIndicator(
-                      message: 'Loading deals...',
-                    );
-                  }
-                  if (state is DealsListError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<DealsListBloc>().add(
-                        const DealsListLoadRequested(),
-                      ),
-                    );
-                  }
-                  if (state is DealsListLoaded) {
-                    final deals = _applyClientFilters(state.deals);
-                    if (deals.isEmpty) {
-                      return const EmptyState(
-                        icon: Icons.monetization_on_outlined,
-                        title: 'No deals found',
-                        subtitle: 'Adjust your filters or add a new deal',
-                      );
-                    }
-                    return _isKanbanView
-                        ? KanbanBoard(
-                            deals: deals,
-                            stages: state.stages.isNotEmpty
-                                ? state.stages
-                                : _stages,
-                            canManage: context.can(Perms.dealsManage),
-                          )
-                        : _DealsTable(deals: deals);
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
+      body: ScrollPage(
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: AppSpacing.xl),
+          if (!context.isMobile) ...[
+            _buildStats(context),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
+          _buildFilters(context),
+          const SizedBox(height: AppSpacing.lg),
+          BlocConsumer<DealsListBloc, DealsListState>(
+            listener: (context, state) {
+              if (state is DealsListLoaded && state.actionError != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.actionError!),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is DealsListLoading) {
+                return const PageStateBox(
+                  child: AppLoadingIndicator(message: 'Loading deals...'),
+                );
+              }
+              if (state is DealsListError) {
+                return PageStateBox(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<DealsListBloc>().add(
+                      const DealsListLoadRequested(),
+                    ),
+                  ),
+                );
+              }
+              if (state is DealsListLoaded) {
+                final deals = _applyClientFilters(state.deals);
+                if (deals.isEmpty) {
+                  return const PageStateBox(
+                    child: EmptyState(
+                      icon: Icons.monetization_on_outlined,
+                      title: 'No deals found',
+                      subtitle: 'Adjust your filters or add a new deal',
+                    ),
+                  );
+                }
+                return _isKanbanView
+                    // Lanes scroll inside; give the board one screen of height.
+                    ? SizedBox(
+                        height:
+                            MediaQuery.sizeOf(context).height -
+                            AppSpacing.topBarHeight -
+                            AppSpacing.huge,
+                        child: KanbanBoard(
+                          deals: deals,
+                          stages: state.stages.isNotEmpty
+                              ? state.stages
+                              : _stages,
+                          canManage: context.can(Perms.dealsManage),
+                        ),
+                      )
+                    : _DealsTable(deals: deals);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -802,6 +805,8 @@ class _DealsTable extends StatelessWidget {
         ],
       ),
       body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: deals.length,
         separatorBuilder: (_, _) =>
             Divider(height: 1, color: AppColors.borderLight),

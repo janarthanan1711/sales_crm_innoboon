@@ -195,81 +195,71 @@ class _AccountsListViewState extends State<_AccountsListView> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = context.pagePadding;
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.xxl),
-            if (!context.isMobile) ...[
-              _buildStats(context),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-            _buildFilters(context),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(
-              child: BlocBuilder<AccountsListBloc, AccountsListState>(
-                builder: (context, state) {
-                  if (state is AccountsListLoading) {
-                    return const AppLoadingIndicator(
-                      message: 'Loading accounts...',
-                    );
-                  }
-                  if (state is AccountsListError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<AccountsListBloc>().add(
-                        const AccountsListLoadRequested(),
-                      ),
-                    );
-                  }
-                  if (state is AccountsListLoaded) {
-                    if (state.accounts.isEmpty) {
-                      return const EmptyState(
-                        icon: Icons.business_outlined,
-                        title: 'No accounts found',
-                        subtitle: 'Adjust your filters or add a new account',
-                      );
-                    }
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: _AccountsTable(
-                            accounts: state.accounts,
-                            selected: _selected,
-                            onToggle: (id) => setState(() {
-                              _selected.contains(id)
-                                  ? _selected.remove(id)
-                                  : _selected.add(id);
-                            }),
-                            onToggleAll: (checked) => setState(() {
-                              if (checked) {
-                                _selected.addAll(
-                                  state.accounts.map((a) => a.id),
-                                );
-                              } else {
-                                _selected.removeAll(
-                                  state.accounts.map((a) => a.id),
-                                );
-                              }
-                            }),
-                          ),
-                        ),
-                        _PaginationBar(state: state),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
+      body: ScrollPage(
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: AppSpacing.xl),
+          if (!context.isMobile) ...[
+            _buildStats(context),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
+          _buildFilters(context),
+          const SizedBox(height: AppSpacing.lg),
+          BlocBuilder<AccountsListBloc, AccountsListState>(
+            builder: (context, state) {
+              if (state is AccountsListLoading) {
+                return const PageStateBox(
+                  child: AppLoadingIndicator(message: 'Loading accounts...'),
+                );
+              }
+              if (state is AccountsListError) {
+                return PageStateBox(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<AccountsListBloc>().add(
+                      const AccountsListLoadRequested(),
+                    ),
+                  ),
+                );
+              }
+              if (state is AccountsListLoaded) {
+                if (state.accounts.isEmpty) {
+                  return const PageStateBox(
+                    child: EmptyState(
+                      icon: Icons.business_outlined,
+                      title: 'No accounts found',
+                      subtitle: 'Adjust your filters or add a new account',
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    _AccountsTable(
+                      accounts: state.accounts,
+                      selected: _selected,
+                      onToggle: (id) => setState(() {
+                        _selected.contains(id)
+                            ? _selected.remove(id)
+                            : _selected.add(id);
+                      }),
+                      onToggleAll: (checked) => setState(() {
+                        if (checked) {
+                          _selected.addAll(state.accounts.map((a) => a.id));
+                        } else {
+                          _selected.removeAll(state.accounts.map((a) => a.id));
+                        }
+                      }),
+                    ),
+                    _PaginationBar(state: state),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -476,6 +466,8 @@ class _AccountsTable extends StatelessWidget {
         ],
       ),
       body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: accounts.length,
         separatorBuilder: (_, _) =>
             Divider(height: 1, color: AppColors.borderLight),

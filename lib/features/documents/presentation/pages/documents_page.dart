@@ -66,57 +66,55 @@ class _DocumentsViewState extends State<_DocumentsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
-        padding: EdgeInsets.all(context.pagePadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const PageHeader(
-              title: 'Documents',
-              subtitle:
-                  'Every file across your accounts and deals, newest first.',
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            _buildFilters(context),
-            const SizedBox(height: AppSpacing.lg),
-            Expanded(
-              child: BlocBuilder<DocumentsListBloc, DocumentsListState>(
-                builder: (context, state) {
-                  if (state is DocumentsListLoading ||
-                      state is DocumentsListInitial) {
-                    return const AppLoadingIndicator(
-                      message: 'Loading documents...',
-                    );
-                  }
-                  if (state is DocumentsListError) {
-                    return ErrorState(
-                      message: state.message,
-                      onRetry: () => context.read<DocumentsListBloc>().add(
-                        const DocumentsListLoadRequested(),
-                      ),
-                    );
-                  }
-                  if (state is DocumentsListLoaded) {
-                    final docs = _apply(state.documents);
-                    if (docs.isEmpty) {
-                      return EmptyState(
-                        icon: Icons.description_outlined,
-                        title: state.documents.isEmpty
-                            ? 'No documents yet'
-                            : 'No matching documents',
-                        subtitle: state.documents.isEmpty
-                            ? 'Documents uploaded to accounts and deals appear here.'
-                            : 'Try a different search or filter.',
-                      );
-                    }
-                    return _DocumentsTable(documents: docs);
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
-          ],
-        ),
+      body: ScrollPage(
+        children: [
+          const PageHeader(
+            title: 'Documents',
+            subtitle:
+                'Every file across your accounts and deals, newest first.',
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _buildFilters(context),
+          const SizedBox(height: AppSpacing.lg),
+          BlocBuilder<DocumentsListBloc, DocumentsListState>(
+            builder: (context, state) {
+              if (state is DocumentsListLoading ||
+                  state is DocumentsListInitial) {
+                return const PageStateBox(
+                  child: AppLoadingIndicator(message: 'Loading documents...'),
+                );
+              }
+              if (state is DocumentsListError) {
+                return PageStateBox(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () => context.read<DocumentsListBloc>().add(
+                      const DocumentsListLoadRequested(),
+                    ),
+                  ),
+                );
+              }
+              if (state is DocumentsListLoaded) {
+                final docs = _apply(state.documents);
+                if (docs.isEmpty) {
+                  return PageStateBox(
+                    child: EmptyState(
+                      icon: Icons.description_outlined,
+                      title: state.documents.isEmpty
+                          ? 'No documents yet'
+                          : 'No matching documents',
+                      subtitle: state.documents.isEmpty
+                          ? 'Documents uploaded to accounts and deals appear here.'
+                          : 'Try a different search or filter.',
+                    ),
+                  );
+                }
+                return _DocumentsTable(documents: docs);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -230,6 +228,8 @@ class _DocumentsTable extends StatelessWidget {
         ],
       ),
       body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: n,
         separatorBuilder: (_, _) =>
             Divider(height: 1, color: AppColors.borderLight),

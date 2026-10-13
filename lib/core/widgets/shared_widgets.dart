@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_spacing.dart';
+import '../utils/responsive.dart';
 
 /// Tier badge widget matching Figma design
 /// Displays tier name with color-coded background
@@ -1004,13 +1005,9 @@ class StatCardRow extends StatelessWidget {
   final List<Widget> cards;
 
   static const double _minCardWidth = 200;
-  static const double _minViewportHeight = 640;
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).height < _minViewportHeight) {
-      return const SizedBox.shrink();
-    }
     const gap = AppSpacing.lg;
     return LayoutBuilder(
       builder: (context, c) {
@@ -1037,8 +1034,38 @@ class StatCardRow extends StatelessWidget {
   }
 }
 
+/// List-page body that scrolls as one piece — header, KPIs, filters and the
+/// table move together, so short screens still see a full page of rows.
+class ScrollPage extends StatelessWidget {
+  const ScrollPage({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pagePadding;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(p, AppSpacing.xl, p, p),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
+
+/// Fixed-height slot for a loading/empty/error state inside a [ScrollPage].
+class PageStateBox extends StatelessWidget {
+  const PageStateBox({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(height: 360, child: child);
+}
+
 /// White card wrapping a list/table: optional title bar, a grey column-header
-/// strip, then the rows. Clips its children to the rounded corners.
+/// strip, then the rows. Clips its children to the rounded corners. Sizes to
+/// its rows, so [body] must not scroll itself (shrink-wrapped, no physics) —
+/// the surrounding [ScrollPage] does the scrolling.
 ///
 /// When the card is narrower than [minWidth], the header strip and rows scroll
 /// sideways together (with a visible scrollbar) while the title bar stays put
@@ -1099,7 +1126,7 @@ class _TableCardState extends State<TableCard> {
         ),
         child: widget.header,
       ),
-      Expanded(child: widget.body),
+      widget.body,
     ],
   );
 
@@ -1109,6 +1136,7 @@ class _TableCardState extends State<TableCard> {
       decoration: appCardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (_hasTitle)
             Padding(
@@ -1134,22 +1162,20 @@ class _TableCardState extends State<TableCard> {
                 ],
               ),
             ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final min = widget.minWidth;
-                if (min == null || c.maxWidth >= min) return _columns();
-                return Scrollbar(
+          LayoutBuilder(
+            builder: (context, c) {
+              final min = widget.minWidth;
+              if (min == null || c.maxWidth >= min) return _columns();
+              return Scrollbar(
+                controller: _hScroll,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
                   controller: _hScroll,
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    controller: _hScroll,
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(width: min, child: _columns()),
-                  ),
-                );
-              },
-            ),
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(width: min, child: _columns()),
+                ),
+              );
+            },
           ),
           if (widget.footer != null)
             Container(
