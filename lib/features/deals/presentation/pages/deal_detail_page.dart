@@ -86,49 +86,49 @@ class _DealDetailView extends StatelessWidget {
     // mock-backed.
     return DefaultTabController(
       length: 4,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(context, state),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.border)),
+      // Header and tab bar scroll away with the tab content.
+      child: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(child: _buildHeader(context, state)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: TabBar(
+                  isScrollable: true,
+                  labelColor: AppColors.textPrimary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primary,
+                  indicatorWeight: 2,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  tabAlignment: TabAlignment.start,
+                  tabs: [
+                    _iconTab(Icons.receipt_long_outlined, 'Deal Info'),
+                    _iconTab(
+                      Icons.contacts_outlined,
+                      'Contacts',
+                      count: deal.contacts.length,
+                    ),
+                    _iconTab(Icons.folder_outlined, 'Documents'),
+                    _iconTab(Icons.history, 'Activity'),
+                  ],
+                ),
               ),
-              child: TabBar(
-                isScrollable: true,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
-                indicatorWeight: 2,
-                indicatorSize: TabBarIndicatorSize.tab,
-                tabAlignment: TabAlignment.start,
-                tabs: [
-                  _iconTab(Icons.receipt_long_outlined, 'Deal Info'),
-                  _iconTab(
-                    Icons.contacts_outlined,
-                    'Contacts',
-                    count: deal.contacts.length,
-                  ),
-                  _iconTab(Icons.folder_outlined, 'Documents'),
-                  _iconTab(Icons.history, 'Activity'),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _dealInfoTab(context, deal),
-                _ContactsTab(deal: deal),
-                _DealDocumentsTab(dealId: deal.id),
-                _activityTab(context, state),
-              ],
             ),
           ),
         ],
+        body: TabBarView(
+          children: [
+            _dealInfoTab(context, deal),
+            _ContactsTab(deal: deal),
+            _DealDocumentsTab(dealId: deal.id),
+            _activityTab(context, state),
+          ],
+        ),
       ),
     );
   }

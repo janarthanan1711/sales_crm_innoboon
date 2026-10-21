@@ -114,63 +114,63 @@ class _AccountDetailViewState extends State<_AccountDetailView>
 
   Widget _buildContent(BuildContext context, AccountDetailLoaded state) {
     final account = state.account;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(context, state),
+    // Header and tab bar scroll away with the tab content.
+    return NestedScrollView(
+      headerSliverBuilder: (context, _) => [
+        SliverToBoxAdapter(child: _buildHeader(context, state)),
 
         // ── Tabs ─────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                labelColor: AppColors.textPrimary,
+                unselectedLabelColor: AppColors.textSecondary,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 2,
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  _iconTab(Icons.dashboard_outlined, 'Overview'),
+                  _iconTab(
+                    Icons.contacts_outlined,
+                    'Contacts',
+                    count: _count(account.contactCount, state.contacts.length),
+                  ),
+                  _iconTab(
+                    Icons.monetization_on_outlined,
+                    'Deals',
+                    count: _count(account.dealCount, state.deals.length),
+                  ),
+                  _iconTab(Icons.folder_outlined, 'Documents'),
+                  _iconTab(Icons.travel_explore_outlined, 'Source Detail'),
+                  _iconTab(Icons.history, 'Activity Log'),
+                ],
+              ),
             ),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              labelColor: AppColors.textPrimary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              indicatorWeight: 2,
-              indicatorSize: TabBarIndicatorSize.tab,
-              tabAlignment: TabAlignment.start,
-              tabs: [
-                _iconTab(Icons.dashboard_outlined, 'Overview'),
-                _iconTab(
-                  Icons.contacts_outlined,
-                  'Contacts',
-                  count: _count(account.contactCount, state.contacts.length),
-                ),
-                _iconTab(
-                  Icons.monetization_on_outlined,
-                  'Deals',
-                  count: _count(account.dealCount, state.deals.length),
-                ),
-                _iconTab(Icons.folder_outlined, 'Documents'),
-                _iconTab(Icons.travel_explore_outlined, 'Source Detail'),
-                _iconTab(Icons.history, 'Activity Log'),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Tab Content ──────────────────────────────────────
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _OverviewTab(state: state),
-              _ContactsTab(account: account, contacts: state.contacts),
-              _DealsTab(deals: state.deals),
-              _DocumentsTab(accountId: account.id),
-              SourceDetailTab(accountId: account.id),
-              _AccountActivityTab(accountId: account.id),
-            ],
           ),
         ),
       ],
+
+      // ── Tab Content ──────────────────────────────────────
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _OverviewTab(state: state),
+          _ContactsTab(account: account, contacts: state.contacts),
+          _DealsTab(deals: state.deals),
+          _DocumentsTab(accountId: account.id),
+          SourceDetailTab(accountId: account.id),
+          _AccountActivityTab(accountId: account.id),
+        ],
+      ),
     );
   }
 
