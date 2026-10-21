@@ -22,8 +22,8 @@ import 'create_deal_page.dart';
 /// Priority-filter option for deals with no D1–D8 scoring.
 const String _kUnscored = 'Unscored';
 
-/// Priority filter options, highest first (server labels, Mode A–D).
-const List<String> _kPriorities = ['Very High', 'High', 'Medium', 'Low'];
+/// Priority filter options, highest first (server labels, Mode A–C).
+const List<String> _kPriorities = ['Very High', 'High', 'Medium'];
 
 /// "Due" filter label -> `GET /deals?quick_filter=` key (null = Any Date).
 /// Server-side so the rules match the dashboard tiles exactly.

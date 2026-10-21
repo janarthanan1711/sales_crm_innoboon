@@ -39,7 +39,7 @@ class Deal extends Equatable {
   final String? responseMode;
   final String? proposalSla;
 
-  /// Very High / High / Medium / Low for Mode A–D; null when unscored.
+  /// Very High / High / Medium for Mode A–C; null when unscored.
   final String? priority;
 
   /// Next follow-up date; drives the dashboard Overdue / Due today tiles.

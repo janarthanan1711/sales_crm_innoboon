@@ -256,7 +256,7 @@ class StatusBadge extends StatelessWidget {
   }
 
   static ({Color bg, Color text}) _getPriorityColors(String priority) {
-    // Deal priority (Mode A–D): Very High / High / Medium / Low.
+    // Deal priority (Mode A–C): Very High / High / Medium.
     switch (priority.toLowerCase()) {
       case 'very high':
         return (bg: AppColors.errorLight, text: AppColors.error);
